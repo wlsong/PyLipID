@@ -45,19 +45,11 @@ gets closer to the given residue than the smaller cutoff and ends when the lipid
 **-resi_offset**: Shift the residue index of the protein. Can be useful when a protein with missing residues at its N-terminus was martinized 
 to Martini force field, as martinize.py shift the residue index of the first residue to 1 regardless of its original index. 
 
-**-plot_koff**: plot koff to each protein residues and save all the fiures in a directory koff_{lipid} for each lipid species.
-
-**-plot_duration**: Plot the averaged interaction duration as a funtion of residue ID for each lipid species.
-
-**-plot_occupancy**: Plot the average occupancy as a function of reisude ID fror each lipid species.
-
-**-plot_lipidcount**: Plot the average num. of surrounding lipid as a function of residue ID for each lipid species.
-
 
 Usage example: 
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -plot_koff -plot_duration -plot_lipidcount -plot_occupancy
+-cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 
 ```
 
 ## Author
