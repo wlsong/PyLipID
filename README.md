@@ -18,7 +18,7 @@ It plots:
 - [community](https://python-louvain.readthedocs.io/en/latest/index.html)
 - [pandas](https://pandas.pydata.org)
 - [scipy](https://www.scipy.org)
-- [matplotlib[(https://matplotlib.org)
+- [matplotlib](https://matplotlib.org)
 
 [Anaconda](https://www.anaconda.com/distribution/) is recommended to manage python libraries. 
 
