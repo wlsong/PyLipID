@@ -56,8 +56,7 @@ parser.add_argument("-natoms_per_protein", default=None,  metavar="None", \
                     of the protein. If not specificied, the algorithm will deduce by dividing the num. of atoms in the selection of 'protein' by num. of proteins that \
                     is defined by -nprot.")
 parser.add_argument("-plot_koff", nargs="?", default=True, const=True, metavar="True", \
-                    help="Creat a directory koff_{lipid} for each lipid species, in which a figure of the sorted interaction duration \
-                    and fitted koff curve will be plot for each residue.")
+                    help="plot koff to each protein residues and save the koff figures in a directory koff_{lipid} for each lipid species.")
 parser.add_argument("-plot_duration", nargs="?", default=False, const=True, metavar="True", \
                     help="Plot the averaged interaction duration as a funtion of residue ID for each lipid species.")
 parser.add_argument("-plot_occupancy",nargs="?",  default=False, const=True, metavar="True", \
