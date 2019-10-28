@@ -54,6 +54,8 @@ python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro
 
 ## Author
 - Wanling Song (wlsong) 
+- Anna Duncan
+- Robin Corey
 
 See also a list of [contributors](https://github.com/wlsong/PyLipID/graphs/contributors) who participates in the project. 
 
