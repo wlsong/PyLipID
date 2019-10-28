@@ -52,7 +52,7 @@ python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro
 -cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 
 ```
 
-## Author
+## Authors
 - Wanling Song (wlsong) 
 - Anna Duncan
 - Robin Corey
