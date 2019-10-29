@@ -452,7 +452,7 @@ class LipidInteraction():
                 self.sigmas[residue] = {key:value for key, value in zip(delta_t_range, values)}
                 self.koff[residue] = 0.0
                 self.interaction_duration[residue] = 0.0
-                self._A[residue] = 0.0
+                self.A[residue] = 0.0
 
 
         if plot_koff:
