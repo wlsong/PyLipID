@@ -25,7 +25,7 @@ It plots:
 
 ## Usage:
 
-**-f**: Trajectories to check. Can be a series of trajectories with similar system settings. Read in by mdtraj.load().
+**-f**: Trajectories to check. Can be a list of trajectories with similar system settings. Read in by mdtraj.load().
 
 **-c**: structural information of the trajectories given to -f. Read in by mdtraj.load(). Supported format include gro, pdb xyz, etc. 
 
