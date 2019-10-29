@@ -56,8 +56,8 @@ parser.add_argument("-natoms_per_protein", default=None,  metavar="None", \
                     of the protein. If not specificied, the algorithm will deduce it by dividing the num. of atoms in the selection of 'protein' by num. of proteins that \
                     is defined by -nprot.")
 parser.add_argument("-plot_koff", nargs="?", default=True, const=True, metavar="True", help="Plot koff values for each reasidue based on the conglomerate interaction durations from all trajectories. \
-                    This means the koff is an average of all trajectories. A directory koff_{lipid} will be genereated for each lipid species. ")
-parser.add_argument("-save_dataset", nargs="?", default=True, const=True, metavar="True", help="Save all the calculated lipid itneractions in Pickle")
+                    This means the koff is an average over all trajectories. A directory koff_{lipid} will be genereated for each lipid species. ")
+parser.add_argument("-save_dataset", nargs="?", default=True, const=True, metavar="True", help="Save dataset in Pickle")
 parser.add_argument("-helix_regions", nargs="*", metavar="8,36", default="",
                     help="Label the helix locations by blue bars in lipid interaction plots.")
 
