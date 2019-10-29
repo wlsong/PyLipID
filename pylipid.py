@@ -439,7 +439,7 @@ class LipidInteraction():
         
         for residue in self.residue_set:
             duration_raw = np.concatenate(self.interaction_duration_raw[residue])
-            if np.sum(duration_raw) > 0 and len(duration_raw) > 20:
+            if np.sum(duration_raw) > 0 and len(duration_raw) > 10:
                 delta_t_range = np.arange(0, T_total[traj_idx], 10) if self.timeunit == "ns" else np.arange(0, T_total[traj_idx], 0.01)
                 self.sigmas[residue] = cal_sigma(duration_raw, np.mean(num_of_lipids), np.mean(T_total), delta_t_range)
                 restime, koff, A = cal_restime_koff(self.sigmas[residue], initial_guess)
@@ -459,7 +459,7 @@ class LipidInteraction():
             koff_dir = check_dir(self.save_dir, "koff_{}".format(self.lipid))
             for residue in self.residue_set:
                 durations_raw = np.concatenate(self.interaction_duration_raw[residue])
-                if np.sum(duration_raw) > 0 and len(duration_raw) > 20:
+                if np.sum(duration_raw) > 0 and len(duration_raw) > 10:
                     graph_koff(durations_raw, self.sigmas[residue], self.koff[residue], self.A[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
  
         
@@ -518,7 +518,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             save_dir = check_dir(self.save_dir, "interaction_network_{}".format(self.lipid))
         else:
             save_dir = check_dir(save_dir, "interaction_network_{}".format(self.lipid))
-        residue_interaction_strength = np.array((self.dataset["Duration raw"]))
+        residue_interaction_strength = np.array((self.dataset["Duration corrected"]))
 #        residue_interaction_strength *= 1000 / np.array(residue_interaction_strength)
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
         #### refined network ###
@@ -548,10 +548,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                         interaction_strength=int_strength, node_labels=self.residue_set[node_list])
 
             f.write("# Binding site {}\n".format(binding_site_id))
-            f.write("{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration raw", "Duration raw std", \
+            f.write("{:^15s}{:^15s}{:^20s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration raw", "Duration raw std", \
                     "Duration corrected", "Occupancy", "Occupancy std", "Lipid Count", "Lipid Count std", "Koff"))
             for residue in self.residue_set[node_list]:
-                f.write("{Residue:^15s}{Duration raw:^15.3f}{Duration raw_std:^15.3f}{Duration corrected:^15.3f}{Occupancy:^15.3f}{Occupancy_std:^15.3f}{LipidCount:^15f}{LipidCount_std:^15f}{Koff:^15.3f}\n".format(\
+                f.write("{Residue:^15s}{Duration raw:^15.3f}{Duration raw_std:^20.3f}{Duration corrected:^15.3f}{Occupancy:^15.3f}{Occupancy_std:^15.3f}{LipidCount:^15f}{LipidCount_std:^15f}{Koff:^15.5f}\n".format(\
                         **self.dataset[self.dataset["Residue"]==residue].to_dict("records")[0] ))
             f.write("\n")
             with open("{}/graph_bindingsite_{}.pickle".format(save_dir, binding_site_id), "wb") as filehandler:
@@ -632,7 +632,6 @@ for lipid in lipid_set:
     li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
 
 
-
 ###########################################
 ###########################################
 
@@ -647,6 +646,6 @@ for lipid in lipid_set:
 #                      save_dir="/sansom/s121/bioc1467/Work/GPCR/monomer/A2a")
 #li.cal_interactions()
 #li.cal_interaction_network()
-#
+
 
         
