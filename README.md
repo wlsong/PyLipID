@@ -7,9 +7,9 @@ It calculates:
 - lipid binding sites via interaction networks. 
 
 It plots:
-- lipid interaction with the protein as a function protein residues. 
+- lipid interaction with the protein as a function of protein residues. 
 - the calculated lipid koff to each protein residue. 
-- binding site interaction network. 
+- interaction network of lipid binding sites. 
 
 ## Requirements:
 - [mdtraj](http://mdtraj.org)
@@ -53,6 +53,11 @@ Usage example:
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
+```
+For phospholipids, it's recommended to use only the headgroup atoms to detect lipid binding sites:
+```
+python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+-cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
 ```
 
 ## Authors
