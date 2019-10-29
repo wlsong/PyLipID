@@ -452,7 +452,7 @@ class LipidInteraction():
                 self.sigmas[residue] = {key:value for key, value in zip(delta_t_range, values)}
                 self.koff[residue] = 0.0
                 self.interaction_duration[residue] = 0.0
-                self._A[residue] = 0.0
+                self.A[residue] = 0.0
 
 
         if plot_koff:
@@ -460,7 +460,7 @@ class LipidInteraction():
             for residue in self.residue_set:
                 durations_raw = np.concatenate(self.interaction_duration_raw[residue])
                 if np.sum(duration_raw) > 0 and len(duration_raw) > 20:
-                    graph_koff(durations_raw, self.sigma[residue], self.koff[residue], self.A[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
+                    graph_koff(durations_raw, self.sigmas[residue], self.koff[residue], self.A[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
  
         
         ##############################################
@@ -636,17 +636,17 @@ for lipid in lipid_set:
 ###########################################
 ###########################################
 
-#trajfile_list = []
-#grofile_list = []
-#for num in np.arange(2)+1:
-#    trajfile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/md_fit_3to8us.xtc".format(num))
-#    grofile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/protein_lipids.gro".format(num))
-#
-#lipid="POP2"
-#li = LipidInteraction(trajfile_list, grofile_list, lipid=lipid, nprot=1, resi_offset=6, timeunit="ns", \
-#                      save_dir="/sansom/s121/bioc1467/Work/GPCR/monomer/A2a")
-#li.cal_interactions()
-#li.cal_interaction_network()
+trajfile_list = []
+grofile_list = []
+for num in np.arange(2)+1:
+    trajfile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/md_fit_3to8us.xtc".format(num))
+    grofile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/protein_lipids.gro".format(num))
+
+lipid="POP2"
+li = LipidInteraction(trajfile_list, grofile_list, lipid=lipid, nprot=1, resi_offset=6, timeunit="ns", \
+                      save_dir="/sansom/s121/bioc1467/Work/GPCR/monomer/A2a")
+li.cal_interactions()
+li.cal_interaction_network()
 
 
         
