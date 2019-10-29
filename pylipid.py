@@ -636,17 +636,17 @@ for lipid in lipid_set:
 ###########################################
 ###########################################
 
-trajfile_list = []
-grofile_list = []
-for num in np.arange(2)+1:
-    trajfile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/md_fit_3to8us.xtc".format(num))
-    grofile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/protein_lipids.gro".format(num))
-
-lipid="POP2"
-li = LipidInteraction(trajfile_list, grofile_list, lipid=lipid, nprot=1, resi_offset=2, timeunit="ns", \
-                      save_dir="/sansom/s121/bioc1467/Work/GPCR/monomer/A2a")
-li.cal_interactions()
-li.cal_interaction_network()
-
+#trajfile_list = []
+#grofile_list = []
+#for num in np.arange(2)+1:
+#    trajfile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/md_fit_3to8us.xtc".format(num))
+#    grofile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/protein_lipids.gro".format(num))
+#
+#lipid="POP2"
+#li = LipidInteraction(trajfile_list, grofile_list, lipid=lipid, nprot=1, resi_offset=2, timeunit="ns", \
+#                      save_dir="/sansom/s121/bioc1467/Work/GPCR/monomer/A2a")
+#li.cal_interactions()
+#li.cal_interaction_network()
+#
 
         
