@@ -222,7 +222,7 @@ def graph_koff(duration_raw, sigma, koff, A, timeunit, residue, outputfilename):
     elif timeunit == "us":
         xlabel = r"Duration ($\mu s$)"
     fig = plt.figure(1, figsize=(6.0, 3.5))
-    left, width = 0.1, 0.35
+    left, width = 0.12, 0.35
     bottom, height = 0.17, 0.75
     left_h = left + width + 0.05
     rect_scatter = [left, bottom, width, height]
@@ -353,7 +353,7 @@ class LipidInteraction():
         ###################################################
         residue_set = []
         for atom_idx in np.arange(self.natoms_per_protein):
-            resi = "{}{}".format(_traj.topology.atom(atom_idx).residue.index + self.resi_offset, \
+            resi = "{}{}".format(_traj.topology.atom(atom_idx).residue.index + self.resi_offset + 1, \
                     _traj.topology.atom(atom_idx).residue.name)
             if not resi in residue_set:
                 residue_set.append(resi)
@@ -417,13 +417,13 @@ class LipidInteraction():
                 lipidcount_arg_idx = np.argsort(lipidcounts)[::-1]
                 log_text = "For protein ID: {}\n10 residues that showed longest interaction (and their raw interaction durations):\n".format(int(idx_protein))
                 for residue, duration in zip(self.residue_set[duration_arg_idx][:10], durations[duration_arg_idx][:10]):
-                    log_text += "{:^5s} -- {:^8.3f}\n".format(residue, duration)
+                    log_text += "{:^8s} -- {:^8.3f}\n".format(residue, duration)
                 log_text += "10 residues that showed highest lipid occupancy:\n"
                 for residue, occupancy in zip(self.residue_set[occupancy_arg_idx][:10], occupancies[occupancy_arg_idx][:10]):
-                    log_text += "{:^5s} -- {:^8.2f}\n".format(residue, occupancy)
+                    log_text += "{:^8s} -- {:^8.2f}\n".format(residue, occupancy)
                 log_text += "10 residues that have the largest number of surrounding lipids:\n"
                 for residue, lipidcount in zip(self.residue_set[lipidcount_arg_idx][:10], lipidcounts[lipidcount_arg_idx][:10]):
-                    log_text += "{:^5s} -- {:^8.2f}\n".format(residue, lipidcount)
+                    log_text += "{:^8s} -- {:^8.2f}\n".format(residue, lipidcount)
                 print(log_text)
                 f.write(log_text)
 
@@ -518,7 +518,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             save_dir = check_dir(self.save_dir, "interaction_network_{}".format(self.lipid))
         else:
             save_dir = check_dir(save_dir, "interaction_network_{}".format(self.lipid))
-        residue_interaction_strength = np.array((self.dataset["Duration"]))
+        residue_interaction_strength = np.array((self.dataset["Duration raw"]))
 #        residue_interaction_strength *= 1000 / np.array(residue_interaction_strength)
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
         #### refined network ###
@@ -598,7 +598,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             identify_helix_region(ax, ylim, helix_regions)
         ax.set_title("{} {}".format(self.lipid, item), fontsize=10, weight="bold")
         plt.tight_layout()
-        plt.savefig("{}/{}_{}.tiff".format(save_dir, item, self.lipid), dpi=200)
+        plt.savefig("{}/{}_{}.tiff".format(save_dir, "_".join(item.split()), self.lipid), dpi=200)
         plt.close()
         return
 
@@ -643,7 +643,7 @@ for lipid in lipid_set:
 #    grofile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/protein_lipids.gro".format(num))
 #
 #lipid="POP2"
-#li = LipidInteraction(trajfile_list, grofile_list, lipid=lipid, nprot=1, resi_offset=6, timeunit="ns", \
+#li = LipidInteraction(trajfile_list, grofile_list, lipid=lipid, nprot=1, resi_offset=2, timeunit="ns", \
 #                      save_dir="/sansom/s121/bioc1467/Work/GPCR/monomer/A2a")
 #li.cal_interactions()
 #li.cal_interaction_network()
