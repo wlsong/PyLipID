@@ -500,13 +500,14 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         print()
         
         if save_dataset:
-            with open("{}/interaction_duration_{}_corrected.pickle".format(self.save_dir, self.lipid), "wb") as f:
+            dataset_dir = check_dir(self.save_dir, "dataset")
+            with open("{}/interaction_duration_{}_corrected.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_duration, f, 2)
-            with open("{}/interaction_duration_{}_raw.pickle".format(self.save_dir, self.lipid), "wb") as f:
+            with open("{}/interaction_duration_{}_raw.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_duration_raw, f, 2)
-            with open("{}/interaction_occupancy_{}.pickle".format(self.save_dir, self.lipid), "wb") as f:
+            with open("{}/interaction_occupancy_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_occupancy, f, 2)
-            with open("{}/koff_{}.pickle".format(self.save_dir, self.lipid), "wb") as f:
+            with open("{}/koff_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.koff, f, 2)
 
         return
@@ -538,8 +539,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         residue_network_raw = nx.Graph(covariance_network)
         part = community.best_partition(residue_network_raw, weight='weight')
         values = [part.get(node) for node in residue_network_raw.nodes()]
+        binding_site_identifiers = np.ones(len(self.residue_set)) * 999
         for value in range(max(values)):
             node_list = [k for k,v in part.items() if v == value]
+            binding_site_identifiers[node_list] = value
             if len(node_list) == 1:
                 continue
             int_strength = residue_interaction_strength[node_list]
@@ -557,8 +560,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             with open("{}/graph_bindingsite_{}.pickle".format(save_dir, binding_site_id), "wb") as filehandler:
                 pickle.dump(subcommunity, filehandler, 2)
             binding_site_id += 1
-
         f.close()
+        
+        self.dataset["Binding site"]  = binding_site_identifiers
+        self.dataset.to_csv("{}/Lipid_interactions_{}.csv".format(self.save_dir, self.lipid), index=False)
         return
 
 
