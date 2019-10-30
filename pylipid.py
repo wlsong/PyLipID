@@ -612,9 +612,9 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
 
 
-##########################################
-########### start calculation ############
-##########################################
+######################################################
+########### session 1 use it as a toolkit ############
+######################################################
 
 trajfile_list = args.f
 grofile_list = args.c
@@ -640,9 +640,9 @@ for lipid in lipid_set:
     li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
 
 
-###############################################################
-############# Change below to use it as a script ##############
-###############################################################
+##########################################################
+############# session 2 use it as a script  ##############
+##########################################################
 
 #helix_regions = []
 #trajfile_list = []
