@@ -37,6 +37,7 @@ parser.add_argument("-f", nargs="+", metavar="./run/md.xtc", help="List of traje
 parser.add_argument("-c", nargs="+", metavar="./run/system.gro", \
                     help="List of coordinates of trajectory, in the same order as -f, required when inputs of -f are xtc trajectories, \
                     Supported format: gro, pdb, etc., Used by mdtraj.load()")
+parser.add_argument("-stride", default=1, metavar=1, help="Striding through trajectories. Only every stride-th will be analized." )
 parser.add_argument("-tu", default="us", choices=["ns", "us"], metavar="us", \
                     help="Time unit for interaction duration calculation. Available options: ns, us. This will affect the unit of koff as well.")
 parser.add_argument("-save_dir", default=None, metavar="None", help="The directory where all the generated results will be put in. \
@@ -176,14 +177,14 @@ def cal_restime_koff(sigma, initial_guess):
     delta_t_range = list(sigma.keys())
     delta_t_range.sort() # x
     hist_values = [sigma[delta_t] for delta_t in delta_t_range] # y
-    popt, pcov = curve_fit(mono_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=6000)
-    koff = abs(popt[1])
-    A = popt[0]
+    popt, pcov = curve_fit(bi_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=10000)
+    ks = [abs(k) for k in popt[:2]]
+    koff = np.min(ks)
     restime = 1/koff
-    return restime, koff, A
+    return restime, koff, popt
 
-def mono_expo(x, A, k):
-    return A*np.exp(-k*x)
+def bi_expo(x, k1, k2, A, B):
+    return A*np.exp(-k1*x) + B*np.exp(-k2*x)
 
 def graph_network(graph_object,outputfilename, interaction_strength=np.array([0]), \
                 layout='spring', node_labels=False, node_colour='r'):
@@ -216,7 +217,9 @@ def graph_network(graph_object,outputfilename, interaction_strength=np.array([0]
     return
 
 
-def graph_koff(duration_raw, sigma, koff, A, timeunit, residue, outputfilename):
+def graph_koff(duration_raw, sigma, params, timeunit, residue, outputfilename):
+    plt.rcParams["font.size"] = 10
+    plt.rcParams["font.weight"] = "bold"
     if timeunit == "ns":
         xlabel = "Duration (ns)"
     elif timeunit == "us":
@@ -246,14 +249,16 @@ def graph_koff(duration_raw, sigma, koff, A, timeunit, residue, outputfilename):
     axHisty.set_ylabel("Probability", fontsize=10, weight="bold")
     axHisty.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
     axHisty.set_ylim(-0.1, 1.1)
-    n_fitted = mono_expo(np.array(delta_t_range), A, koff)
+    n_fitted = bi_expo(np.array(delta_t_range), *params)
     r_squared = (stats.linregress(np.nan_to_num(n_fitted), np.nan_to_num(hist_values))[2])**2
+    ks = [abs(k) for k in params[:2]]
+    ks.sort()
     if timeunit == "ns":
         axHisty.plot(delta_t_range, n_fitted, 'r--', linewidth=3, \
-                     label="$k_{{off}}$ = {:.3f} ns$^{{-1}} $\n$R^2$ = {:.4f}".format(float(koff), r_squared))
+                     label="$k_{{off1}}$ = {:.3f} ns$^{{-1}} $\n$k_{{off2}}$ = {:.3f} ns$^{{-1}} $\n$R^2$ = {:.4f}".format(ks[0],ks[1],r_squared))
     elif timeunit == "us":
         axHisty.plot(delta_t_range, n_fitted, 'r--', linewidth=3, \
-                     label="$k_{{off}}$ = {:.3f} $\mu s^{{-1}} $\n$R^2$ = {:.4f}".format(float(koff), r_squared))
+                     label="$k_{{off1}}$ = {:.3f} $\mu s^{{-1}} $\n$k_{{off2}}$ = {:.3f} $\mu s^{{-1}} $\n$R^2$ = {:.4f}".format(ks[0],ks[1],r_squared))
     axHisty.legend(loc='upper right', prop={"size": 10, "weight": "bold"}, frameon=False)
     plt.savefig(outputfilename, dpi=200)
     plt.close()
@@ -309,7 +314,7 @@ def sparse_corrcoef(A, B=None):
 
 class LipidInteraction():
 
-    def __init__(self, trajfile_list, grofile_list=None, cutoff=[0.55, 1.4], \
+    def __init__(self, trajfile_list, grofile_list=None, stride=1, cutoff=[0.55, 1.4], \
                  lipid="POPC", lipid_atoms=None, nprot=1, natoms_per_protein=None, resi_offset=0, save_dir=None, timeunit="us"):
         if grofile_list != None:
             assert len(trajfile_list) == len(grofile_list), \
@@ -326,12 +331,13 @@ class LipidInteraction():
         self.resi_offset = int(resi_offset)
         self.koff = {}
         self.sigmas = {}
-        self.A = {}
+        self.params = {}
         self.timeunit = timeunit
         self.interaction_duration_raw = defaultdict(list)
         self.interaction_duration = defaultdict(list)
         self.interaction_occupancy = defaultdict(list)
         self.lipid_count = defaultdict(list)
+        self.stride = stride
 
         ############ do some checking and load params ##########
         if natoms_per_protein == None:
@@ -348,7 +354,7 @@ class LipidInteraction():
         else:
             self.natoms_per_protein = natoms_per_protein
         ####### after this check, it's assumed that all trajs have the same setup #########
-        _traj = md.load(trajfile_list[0], top=grofile_list[0])
+        _traj = md.load(trajfile_list[0], top=grofile_list[0], stride=self.stride)
         self.nresi_per_protein = _traj.topology.atom(self.natoms_per_protein).residue.index
         ###################################################
         residue_set = []
@@ -372,8 +378,8 @@ class LipidInteraction():
         else:
             self.save_dir = check_dir(save_dir, "Interaction_{}".format(self.lipid))
 
-        initial_guess = (1, 1) if self.timeunit == "us" else (500, 0.001)
-        converter = 1/10000000.0 if self.timeunit == "us" else 1/1000.0
+        initial_guess = (1, 1, 1, 1) 
+        converter = 1/1000000.0 if self.timeunit == "us" else 1/1000.0
 
         with open("{}/calculation_log_{}.txt".format(self.save_dir, self.lipid), "w") as f:
             f.write("Lipid to check: {}\n".format(self.lipid))
@@ -385,7 +391,7 @@ class LipidInteraction():
             for traj_idx, trajfile in enumerate(self.trajfile_list):
                 print("\n########## Start calculation of {} interaction in \n########## {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
                 f.write("\n###### Start calculation of {} interaction in \n###### {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
-                traj = md.load(trajfile, top=grofile_list[traj_idx])
+                traj = md.load(trajfile, top=grofile_list[traj_idx], stride=self.stride)
                 lipid_haystack = get_atom_index_for_lipid(self.lipid, traj, part=self.lipid_atoms)
                 lipid_resi_set = atom2residue(lipid_haystack, traj)
                 num_of_lipids.append(len(lipid_resi_set))
@@ -439,30 +445,27 @@ class LipidInteraction():
         
         for residue in self.residue_set:
             duration_raw = np.concatenate(self.interaction_duration_raw[residue])
-            if np.sum(duration_raw) > 0 and len(duration_raw) > 10:
+            if np.sum(duration_raw) > 0:
                 delta_t_range = np.arange(0, T_total[traj_idx], 10) if self.timeunit == "ns" else np.arange(0, T_total[traj_idx], 0.01)
                 self.sigmas[residue] = cal_sigma(duration_raw, np.mean(num_of_lipids), np.mean(T_total), delta_t_range)
-                restime, koff, A = cal_restime_koff(self.sigmas[residue], initial_guess)
+                restime, koff, params = cal_restime_koff(self.sigmas[residue], initial_guess)
                 self.koff[residue] = koff
                 self.interaction_duration[residue] = restime
-                self.A[residue] = A
+                self.params[residue] = params
             else:
-                delta_t_range = np.arange(0, T_total[0], 10) if self.timeunit == "ns" else np.arange(0, T_total[0], 0.01)
-                values = np.zeros(len(delta_t_range))
-                self.sigmas[residue] = {key:value for key, value in zip(delta_t_range, values)}
-                self.koff[residue] = 0.0
-                self.interaction_duration[residue] = 0.0
-                self.A[residue] = 0.0
-
+                delta_t_range = np.arange(0, T_total[traj_idx], 10) if self.timeunit == "ns" else np.arange(0, T_total[traj_idx], 0.01)
+                self.sigmas[residue] = {key:value for key, value in zip(delta_t_range, np.zeros(len(delta_t_range)))}
+                self.koff[residue] = 0
+                self.interaction_duration[residue] = 0
+                self.params[residue] = [0, 0, 0, 0]
 
         if plot_koff:
             koff_dir = check_dir(self.save_dir, "koff_{}".format(self.lipid))
             for residue in self.residue_set:
                 durations_raw = np.concatenate(self.interaction_duration_raw[residue])
-                if np.sum(duration_raw) > 0 and len(duration_raw) > 10:
-                    graph_koff(durations_raw, self.sigmas[residue], self.koff[residue], self.A[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
+                if np.sum(duration_raw) > 0:
+                    graph_koff(durations_raw, self.sigmas[residue], self.params[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
  
-        
         ##############################################
         ########## wrapping up dataset ###############
         ##############################################
@@ -619,7 +622,7 @@ lipid_set = args.lipids
 print(args.cutoffs)
 cutoff = [float(data) for data in args.cutoffs]
 for lipid in lipid_set:
-    li = LipidInteraction(trajfile_list, grofile_list, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
+    li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
                           natoms_per_protein=args.natoms_per_protein, resi_offset=args.resi_offset, save_dir=args.save_dir)
     li.cal_interactions(plot_koff=args.plot_koff, save_dataset=args.save_dataset)
     li.cal_interaction_network()
@@ -637,20 +640,28 @@ for lipid in lipid_set:
     li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
 
 
-###########################################
-###########################################
+###############################################################
+############# Change below to use it as a script ##############
+###############################################################
 
+#helix_regions = []
 #trajfile_list = []
 #grofile_list = []
-#for num in np.arange(2)+1:
-#    trajfile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/md_fit_3to8us.xtc".format(num))
-#    grofile_list.append("/sansom/s121/bioc1467/Work/GPCR/monomer/A2a/3eml_{}/protein_lipids.gro".format(num))
+#for num in np.arange(3)+1:
+#    trajfile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit.xtc".format(num))
+#    grofile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit_firstframe.gro".format(num))
 #
 #lipid="POP2"
-#li = LipidInteraction(trajfile_list, grofile_list, lipid=lipid, nprot=1, resi_offset=2, timeunit="ns", \
-#                      save_dir="/sansom/s121/bioc1467/Work/GPCR/monomer/A2a")
+#lipid_atoms = ["C1", "C2", "C3", "PO4", "P1", "P2"]
+#li = LipidInteraction(trajfile_list, grofile_list, stride=1, lipid=lipid, lipid_atoms=lipid_atoms, nprot=1, resi_offset=26, timeunit="us", \
+#                      save_dir="/sansom/s121/bioc1467/Work/LIPID/GM1/GCGR_headgroups_biexpo")
 #li.cal_interactions()
 #li.cal_interaction_network()
+#li.plot_interactions(item="Duration raw", helix_regions=helix_regions)
+#li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
+#li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
+#li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
+#
 
 
-        
+
