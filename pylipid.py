@@ -176,7 +176,7 @@ def cal_restime_koff(sigma, initial_guess):
     delta_t_range = list(sigma.keys())
     delta_t_range.sort() # x
     hist_values = [sigma[delta_t] for delta_t in delta_t_range] # y
-    popt, pcov = curve_fit(mono_expo, delta_t_range, hist_values, p0=initial_guess)
+    popt, pcov = curve_fit(mono_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=6000)
     koff = abs(popt[1])
     A = popt[0]
     restime = 1/koff
