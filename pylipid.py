@@ -16,7 +16,7 @@ import pickle
 import os
 from scipy import stats
 import matplotlib.pyplot as plt
-import matplotlib 
+import matplotlib
 matplotlib.use('Agg')
 import networkx as nx
 import seaborn as sns
@@ -166,7 +166,7 @@ def cal_sigma(durations, num_of_lipids, T_total, delta_t_range):
             try:
                 sigma[delta_t] = float(sum([restime - delta_t for restime in durations if restime >= delta_t])) / ((T_total - delta_t) * num_of_lipids * sigma0)
             except ZeroDivisionError:
-                sigma[delta_t] = 0    
+                sigma[delta_t] = 0
     return sigma
 
 
@@ -189,7 +189,7 @@ def bi_expo(x, k1, k2, A, B):
 def graph_network(graph_object,outputfilename, interaction_strength=np.array([0]), \
                 layout='spring', node_labels=False, node_colour='r'):
     """
-    Plot interaction network 
+    Plot interaction network
     """
     plt.rcParams["font.size"] = 8
     plt.rcParams["font.weight"] = "bold"
@@ -378,7 +378,7 @@ class LipidInteraction():
         else:
             self.save_dir = check_dir(save_dir, "Interaction_{}".format(self.lipid))
 
-        initial_guess = (1, 1, 1, 1) 
+        initial_guess = (1, 1, 1, 1)
         converter = 1/1000000.0 if self.timeunit == "us" else 1/1000.0
 
         with open("{}/calculation_log_{}.txt".format(self.save_dir, self.lipid), "w") as f:
@@ -410,11 +410,11 @@ class LipidInteraction():
                         self.interaction_occupancy[residue].append(occupancy)
                         self.lipid_count[residue].append(lipidcount)
                 ncol_start += ncol_per_protein * self.nprot
-                
+
                 ###############################################
                 ###### get some statistics for this traj ######
                 ###############################################
-                
+
                 durations = np.array([np.mean(self.interaction_duration_raw[residue][-self.nprot:]) for residue in self.residue_set])
                 duration_arg_idx = np.argsort(durations)[::-1]
                 occupancies = np.array([np.mean(self.interaction_occupancy[residue][-self.nprot:]) for residue in self.residue_set])
@@ -442,7 +442,7 @@ class LipidInteraction():
         ##########################################
         ############ calculate koffs #############
         ##########################################
-        
+
         for residue in self.residue_set:
             duration_raw = np.concatenate(self.interaction_duration_raw[residue])
             if np.sum(duration_raw) > 0:
@@ -465,11 +465,11 @@ class LipidInteraction():
                 durations_raw = np.concatenate(self.interaction_duration_raw[residue])
                 if np.sum(duration_raw) > 0:
                     graph_koff(durations_raw, self.sigmas[residue], self.params[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
- 
+
         ##############################################
         ########## wrapping up dataset ###############
         ##############################################
-        
+
         dataset = pd.DataFrame({"Residue": [residue for residue in self.residue_set],
                                 "Occupancy": np.array([np.mean(self.interaction_occupancy[residue]) \
                                                        for residue in self.residue_set]),
@@ -486,7 +486,7 @@ class LipidInteraction():
                                 "LipidCount_std": np.array([np.std(self.lipid_count[residue]) \
                                                              for residue in self.residue_set]),
                                 "Koff": np.array([self.koff[residue] for residue in self.residue_set])})
-    
+
         dataset.to_csv("{}/Lipid_interactions_{}.csv".format(self.save_dir, self.lipid), index=False)
         self.dataset = dataset
 
@@ -501,7 +501,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 """.format(**{"timeunit": self.timeunit})
         print(reminder)
         print()
-        
+
         if save_dataset:
             dataset_dir = check_dir(self.save_dir, "dataset")
             with open("{}/interaction_duration_{}_corrected.pickle".format(dataset_dir, self.lipid), "wb") as f:
@@ -564,7 +564,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 pickle.dump(subcommunity, filehandler, 2)
             binding_site_id += 1
         f.close()
-        
+
         self.dataset["Binding site"]  = binding_site_identifiers
         self.dataset.to_csv("{}/Lipid_interactions_{}.csv".format(self.save_dir, self.lipid), index=False)
         return
@@ -644,23 +644,23 @@ for lipid in lipid_set:
 ############# session 2 use it as a script  ##############
 ##########################################################
 
-helix_regions = []
-trajfile_list = []
-grofile_list = []
-for num in np.arange(3)+1:
-    trajfile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit.xtc".format(num))
-    grofile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit_firstframe.gro".format(num))
+#helix_regions = []
+#trajfile_list = []
+#grofile_list = []
+#for num in np.arange(3)+1:
+#    trajfile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit.xtc".format(num))
+#    grofile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit_firstframe.gro".format(num))
 
-lipid="POP2"
-lipid_atoms = ["C1", "C2", "C3", "PO4", "P1", "P2"]
-li = LipidInteraction(trajfile_list, grofile_list, stride=1, lipid=lipid, lipid_atoms=lipid_atoms, nprot=1, resi_offset=26, timeunit="us", \
-                      save_dir="/sansom/s121/bioc1467/Work/LIPID/GM1/GCGR_headgroups_biexpo")
-li.cal_interactions()
-li.cal_interaction_network()
-li.plot_interactions(item="Duration raw", helix_regions=helix_regions)
-li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
-li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
-li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
+#lipid="POP2"
+#lipid_atoms = ["C1", "C2", "C3", "PO4", "P1", "P2"]
+#li = LipidInteraction(trajfile_list, grofile_list, stride=1, lipid=lipid, lipid_atoms=lipid_atoms, nprot=1, resi_offset=26, timeunit="us", \
+#                      save_dir="/sansom/s121/bioc1467/Work/LIPID/GM1/GCGR_headgroups_biexpo")
+#li.cal_interactions()
+#li.cal_interaction_network()
+#li.plot_interactions(item="Duration raw", helix_regions=helix_regions)
+#li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
+#li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
+#li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
 
 
 
