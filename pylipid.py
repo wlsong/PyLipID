@@ -519,7 +519,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             save_dir = check_dir(self.save_dir, "interaction_network_{}".format(self.lipid))
         else:
             save_dir = check_dir(save_dir, "interaction_network_{}".format(self.lipid))
-        residue_interaction_strength = np.array((self.dataset["Duration corrected"]))
+        residue_interaction_strength = np.array((self.dataset["Duration corrected"])) if self.timeunit == "ns" else np.array((self.dataset["Duration corrected"])) * 1000
 #        residue_interaction_strength *= 1000 / np.array(residue_interaction_strength)
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
         #### refined network ###
