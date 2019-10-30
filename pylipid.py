@@ -542,16 +542,16 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         residue_network_raw = nx.Graph(covariance_network)
         part = community.best_partition(residue_network_raw, weight='weight')
         values = [part.get(node) for node in residue_network_raw.nodes()]
-        binding_site_identifiers = np.ones(len(self.residue_set)) * 999
+        binding_site_identifiers = np.ones(len(self.residue_set), dtype=int) * 999
         for value in range(max(values)):
             node_list = [k for k,v in part.items() if v == value]
-            binding_site_identifiers[node_list] = value
             if len(node_list) == 1:
                 continue
             int_strength = residue_interaction_strength[node_list]
             subcommunity = nx.subgraph(residue_network_raw, node_list)
             graph_network(subcommunity,'{}/binding_site_{}'.format(save_dir, binding_site_id), \
                         interaction_strength=int_strength, node_labels=self.residue_set[node_list])
+            binding_site_identifiers[node_list] = value
 
             f.write("# Binding site {}\n".format(binding_site_id))
             f.write("{:^15s}{:^15s}{:^20s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration raw", "Duration raw std", \
@@ -644,24 +644,24 @@ for lipid in lipid_set:
 ############# session 2 use it as a script  ##############
 ##########################################################
 
-#helix_regions = []
-#trajfile_list = []
-#grofile_list = []
-#for num in np.arange(3)+1:
-#    trajfile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit.xtc".format(num))
-#    grofile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit_firstframe.gro".format(num))
-#
-#lipid="POP2"
-#lipid_atoms = ["C1", "C2", "C3", "PO4", "P1", "P2"]
-#li = LipidInteraction(trajfile_list, grofile_list, stride=1, lipid=lipid, lipid_atoms=lipid_atoms, nprot=1, resi_offset=26, timeunit="us", \
-#                      save_dir="/sansom/s121/bioc1467/Work/LIPID/GM1/GCGR_headgroups_biexpo")
-#li.cal_interactions()
-#li.cal_interaction_network()
-#li.plot_interactions(item="Duration raw", helix_regions=helix_regions)
-#li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
-#li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
-#li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
-#
+helix_regions = []
+trajfile_list = []
+grofile_list = []
+for num in np.arange(3)+1:
+    trajfile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit.xtc".format(num))
+    grofile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit_firstframe.gro".format(num))
+
+lipid="POP2"
+lipid_atoms = ["C1", "C2", "C3", "PO4", "P1", "P2"]
+li = LipidInteraction(trajfile_list, grofile_list, stride=1, lipid=lipid, lipid_atoms=lipid_atoms, nprot=1, resi_offset=26, timeunit="us", \
+                      save_dir="/sansom/s121/bioc1467/Work/LIPID/GM1/GCGR_headgroups_biexpo")
+li.cal_interactions()
+li.cal_interaction_network()
+li.plot_interactions(item="Duration raw", helix_regions=helix_regions)
+li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
+li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
+li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
+
 
 
 
