@@ -41,7 +41,8 @@ if __name__ == '__main__':
           'mdtraj',
           'networkx',
           'seaborn',
-          'community',
+          'Pillow',
+          "python_louvain",
           'pandas',
           'scipy',
           'matplotlib',
@@ -66,7 +67,7 @@ if __name__ == '__main__':
           classifiers=CLASSIFIERS,
           provides=['PyLipID'],
           packages=find_packages(),
-          requires=['cython', 'mdtraj', 'networkx', 'seaborn', 'community', 'pandas', 'scipy', 'matplotlib',],
+          requires=['numpy', 'cython', 'mdtraj', 'networkx', 'seaborn', 'Pillow', 'community', 'pandas', 'scipy', 'matplotlib',],
           install_requires=install_requires,
           setup_requires=[
               'numpy',
@@ -76,4 +77,3 @@ if __name__ == '__main__':
           zip_safe=False,  # as a zipped egg the *.so files are not found (at
                            # least in Ubuntu/Linux)
     )
-
