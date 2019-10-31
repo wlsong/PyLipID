@@ -57,8 +57,6 @@ parser.add_argument("-natoms_per_protein", default=None,  metavar="None", \
                     help="Number of atoms/beads the protein contains, esp useful when the system has multiple copies \
                     of the protein. If not specificied, the algorithm will deduce it by dividing the num. of atoms in the selection of 'protein' by num. of proteins that \
                     is defined by -nprot.")
-parser.add_argument("-plot_koff", nargs="?", default=True, const=True, metavar="True", help="Plot koff values for each reasidue based on the conglomerate interaction durations from all trajectories. \
-                    This means the koff is an average over all trajectories. A directory koff_{lipid} will be genereated for each lipid species. ")
 parser.add_argument("-save_dataset", nargs="?", default=True, const=True, metavar="True", help="Save dataset in Pickle")
 parser.add_argument("-helix_regions", nargs="*", metavar="8,36", default="",
                     help="Label the helix locations by blue bars in lipid interaction plots.")
@@ -372,7 +370,7 @@ class LipidInteraction():
         return
 
 
-    def cal_interactions(self, save_dir=None, plot_koff=True, save_dataset=True):
+    def cal_interactions(self, save_dir=None, save_dataset=True):
 
         if save_dir == None:
             self.save_dir = check_dir(self.save_dir, "Interaction_{}".format(self.lipid))
@@ -460,12 +458,11 @@ class LipidInteraction():
                 self.interaction_duration[residue] = 0
                 self.params[residue] = [0, 0, 0, 0]
 
-        if plot_koff:
-            koff_dir = check_dir(self.save_dir, "koff_{}".format(self.lipid))
-            for residue in self.residue_set:
-                durations_raw = np.concatenate(self.interaction_duration_raw[residue])
-                if np.sum(duration_raw) > 0:
-                    graph_koff(durations_raw, self.sigmas[residue], self.params[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
+        koff_dir = check_dir(self.save_dir, "koff_{}".format(self.lipid))
+        for residue in self.residue_set:
+            durations_raw = np.concatenate(self.interaction_duration_raw[residue])
+            if np.sum(duration_raw) > 0:
+                graph_koff(durations_raw, self.sigmas[residue], self.params[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
 
         ##############################################
         ########## wrapping up dataset ###############
@@ -633,7 +630,7 @@ cutoff = [float(data) for data in args.cutoffs]
 for lipid in lipid_set:
     li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
                           natoms_per_protein=args.natoms_per_protein, resi_offset=args.resi_offset, save_dir=args.save_dir)
-    li.cal_interactions(plot_koff=args.plot_koff, save_dataset=args.save_dataset)
+    li.cal_interactions(save_dataset=args.save_dataset)
     li.cal_interaction_network()
     if len(args.helix_regions) > 0:
         helix_regions = []
