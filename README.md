@@ -11,7 +11,7 @@ It plots:
 - the calculated lipid koff to each protein residue. 
 - interaction network of lipid binding sites. 
 
-## Requirements:
+## External libraries:
 - [mdtraj](http://mdtraj.org)
 - [networkx](https://networkx.github.io)
 - [seaborn](https://seaborn.pydata.org)
@@ -20,14 +20,22 @@ It plots:
 - [scipy](https://www.scipy.org)
 - [matplotlib](https://matplotlib.org)
 
-[Anaconda](https://www.anaconda.com/distribution/) is recommended to manage python libraries. 
-
+## Installation:
+```
+git clone https://github.com/wlsong/PyLipID.git
+cd PyLipID
+conda create -n PyLipID python=3
+conda activate PyLipID
+python setup.py install
+```
 
 ## Usage:
 
 **-f**: Trajectories to check. Can be a list of trajectories with similar system settings. Read in by mdtraj.load().
 
 **-c**: structural information of the trajectories given to -f. Read in by mdtraj.load(). Supported format include gro, pdb xyz, etc. 
+
+**-stride**: stride through trajectories. Only every stride-th frame will be analyzed.
 
 **-tu**: time unit of all the calculations. Available options include ns and us. 
 
@@ -51,12 +59,13 @@ to Martini force field, as martinize.py shift the residue index of the first res
 
 Usage example: 
 ```
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+conda activate PyLipID
+pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
 ```
 For phospholipids, it's recommended to use only the headgroup atoms to detect lipid binding sites:
 ```
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
 ```
 
