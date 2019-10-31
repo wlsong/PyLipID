@@ -141,7 +141,7 @@ class Durations():
                 pos = locations[0]
                 self.pointer[k][pos] = 1
                 count +=1
-        return count * self.dt
+        return (count - 1) * self.dt
 
 
 def cal_interaction_intensity(contact_residues_low):
@@ -176,7 +176,7 @@ def cal_restime_koff(sigma, initial_guess):
     delta_t_range = list(sigma.keys())
     delta_t_range.sort() # x
     hist_values = [sigma[delta_t] for delta_t in delta_t_range] # y
-    popt, pcov = curve_fit(bi_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=10000)
+    popt, pcov = curve_fit(bi_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=100000)
     ks = [abs(k) for k in popt[:2]]
     koff = np.min(ks)
     restime = 1/koff
@@ -264,6 +264,10 @@ def graph_koff(duration_raw, sigma, params, timeunit, residue, outputfilename):
     return
 
 
+def cal_bootstrap_CV(duration_raw):
+    bootstrapped_mean = [np.mean(np.random.choice(duration_raw, size=len(duration_raw), replace=True)) for dummy in np.arange(50)]
+    return np.std(bootstrapped_mean) / np.mean(bootstrapped_mean)
+
 def identify_helix_region(ax, ylim, helix_regions):
     for (x1, x2) in helix_regions:
         p = patches.Rectangle((x1, ylim*0.9), (x2-x1), ylim*0.07, fill=True, edgecolor=None, linewidth=0, facecolor=sns.xkcd_rgb["azure"], alpha=0.5)
@@ -331,6 +335,7 @@ class LipidInteraction():
         self.koff = {}
         self.sigmas = {}
         self.params = {}
+        self.bootstrap_CV = {}
         self.timeunit = timeunit
         self.interaction_duration_raw = defaultdict(list)
         self.interaction_duration = defaultdict(list)
@@ -451,12 +456,14 @@ class LipidInteraction():
                 self.koff[residue] = koff
                 self.interaction_duration[residue] = restime
                 self.params[residue] = params
+                self.bootstrap_CV[residue] = cal_bootstrap_CV(duration_raw)
             else:
                 delta_t_range = np.arange(0, T_total[traj_idx], 10) if self.timeunit == "ns" else np.arange(0, T_total[traj_idx], 0.01)
                 self.sigmas[residue] = {key:value for key, value in zip(delta_t_range, np.zeros(len(delta_t_range)))}
                 self.koff[residue] = 0
                 self.interaction_duration[residue] = 0
                 self.params[residue] = [0, 0, 0, 0]
+                self.bootstrap_CV[residue] = 0.0
 
         koff_dir = check_dir(self.save_dir, "koff_{}".format(self.lipid))
         for residue in self.residue_set:
@@ -479,6 +486,7 @@ class LipidInteraction():
                                                           for residue in self.residue_set]),
                                 "Duration corrected": np.array([self.interaction_duration[residue] \
                                                                 for residue in self.residue_set]),
+                                "Duration CV": np.array([self.bootstrap_CV[residue] for residue in self.residue_set]), 
                                 "LipidCount": np.array([np.mean(self.lipid_count[residue]) \
                                                          for residue in self.residue_set]),
                                 "LipidCount_std": np.array([np.std(self.lipid_count[residue]) \
@@ -556,10 +564,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             binding_site_identifiers[node_list] = value
 
             f.write("# Binding site {}\n".format(binding_site_id))
-            f.write("{:^15s}{:^15s}{:^20s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration raw", "Duration raw std", \
-                    "Duration corrected", "Occupancy", "Occupancy std", "Lipid Count", "Lipid Count std", "Koff"))
+            f.write("{:^15s}{:^15s}{:^20s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration raw", "Duration raw std", \
+                    "Duration corrected", "Duration CV", "Occupancy", "Occupancy std", "Lipid Count", "Lipid Count std", "Koff"))
             for residue in self.residue_set[node_list]:
-                f.write("{Residue:^15s}{Duration raw:^15.3f}{Duration raw_std:^20.3f}{Duration corrected:^15.3f}{Occupancy:^15.3f}{Occupancy_std:^15.3f}{LipidCount:^15f}{LipidCount_std:^15f}{Koff:^15.5f}\n".format(\
+                f.write("{Residue:^15s}{Duration raw:^15.3f}{Duration raw_std:^20.3f}{Duration corrected:^15.3f}{Duration CV:^15.4f}{Occupancy:^15.3f}{Occupancy_std:^15.3f}{LipidCount:^15f}{LipidCount_std:^15f}{Koff:^15.5f}\n".format(\
                         **self.dataset[self.dataset["Residue"]==residue].to_dict("records")[0] ))
             f.write("\n")
             with open("{}/graph_bindingsite_{}.pickle".format(save_dir, binding_site_id), "wb") as filehandler:
@@ -604,6 +612,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             ylabel = item + " 100% "
         elif item == "LipidCount":
             ylabel = "Num. of Lipids"
+        elif item == "Duration CV":
+            ylabel = "Duration Coef. of Variance"
         ax.set_ylabel(ylabel, fontsize=10, weight="bold")
         for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
             plt.setp(label, fontsize=10, weight="bold")
@@ -644,6 +654,7 @@ for lipid in lipid_set:
     li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
     li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
     li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
+    li.plot_interactions(item="Duration CV", helix_regions=helix_regions)
 
 
 ##########################################################
@@ -667,4 +678,4 @@ for lipid in lipid_set:
 #li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
 #li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
 #li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
-
+#li.plot_interactions(item="Duration CV", helix_regions=helix_regions)
