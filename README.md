@@ -20,8 +20,14 @@ It plots:
 - [scipy](https://www.scipy.org)
 - [matplotlib](https://matplotlib.org)
 
-[Anaconda](https://www.anaconda.com/distribution/) is recommended to manage python libraries. 
-
+## Installation:
+```
+git clone https://github.com/wlsong/PyLipID.git
+cd PyLipID
+conda create -n PyLipID python=3
+conda activate PyLipID
+python setup.py install
+```
 
 ## Usage:
 
@@ -53,12 +59,13 @@ to Martini force field, as martinize.py shift the residue index of the first res
 
 Usage example: 
 ```
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+conda activate PyLipID
+pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
 ```
 For phospholipids, it's recommended to use only the headgroup atoms to detect lipid binding sites:
 ```
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
 ```
 
