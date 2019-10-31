@@ -21,6 +21,7 @@ matplotlib.use('Agg')
 import networkx as nx
 import seaborn as sns
 import matplotlib.patches as patches
+from matplotlib.ticker import MultipleLocator
 from scipy.optimize import curve_fit
 from scipy.sparse import coo_matrix
 from scipy import sparse
@@ -512,9 +513,12 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 pickle.dump(self.interaction_occupancy, f, 2)
             with open("{}/koff_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.koff, f, 2)
+            with open("{}/sigmas_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
+                pickle.dump(self.sigmas, f, 2)
+            with open("{}/curve_fitting_params_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
+                pickle.dump(self.params, f, 2)
 
         return
-
 
 
     def cal_interaction_network(self, save_dir=None):
@@ -522,8 +526,9 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             save_dir = check_dir(self.save_dir, "interaction_network_{}".format(self.lipid))
         else:
             save_dir = check_dir(save_dir, "interaction_network_{}".format(self.lipid))
-        residue_interaction_strength = np.array((self.dataset["Duration corrected"])) if self.timeunit == "ns" else np.array((self.dataset["Duration corrected"])) * 1000
-#        residue_interaction_strength *= 1000 / np.array(residue_interaction_strength)
+        residue_interaction_strength = np.array((self.dataset["Duration corrected"])) 
+        scale_factor = 1 / residue_interaction_strength.max()
+        residue_interaction_strength *= scale_factor
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
         #### refined network ###
         ##### determine cov_cutoff #####
@@ -569,7 +574,6 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         self.dataset.to_csv("{}/Lipid_interactions_{}.csv".format(self.save_dir, self.lipid), index=False)
         return
 
-
     def plot_interactions(self, item="Duration raw", helix_regions=[], save_dir=None):
         if save_dir == None:
             save_dir = self.save_dir
@@ -584,7 +588,12 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         fig, ax = plt.subplots(1, 1, figsize=(4.5,2.8))
         ax.bar(resi, data, width, linewidth=0, color=sns.xkcd_rgb["red"])
         sns.despine(fig, top=True, right=True, trim=False)
-        ax.set_xticks(np.arange(0, len(data) + 1, 50))
+        if len(data) > 1000:
+            ax.xaxis.set_major_locator(MultipleLocator(200))
+            ax.xaxis.set_minor_locator(MultipleLocator(50))
+        elif len(data) <= 1000:
+            ax.xaxis.set_major_locator(MultipleLocator(100))
+            ax.xaxis.set_minor_locator(MultipleLocator(10))
         ax.set_xlabel("Residue", fontsize=10, weight="bold")
         if self.timeunit == "ns":
             timeunit = " (ns) "
@@ -661,7 +670,4 @@ for lipid in lipid_set:
 #li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
 #li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
 #li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
-
-
-
 
