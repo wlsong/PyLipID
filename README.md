@@ -29,6 +29,8 @@ It plots:
 
 **-c**: structural information of the trajectories given to -f. Read in by mdtraj.load(). Supported format include gro, pdb xyz, etc. 
 
+**-stride**: stride through trajectories. Only every stride-th frame will be analyzed.
+
 **-tu**: time unit of all the calculations. Available options include ns and us. 
 
 **-save_dir**: directory where all the results will be located. Will use current working directory if not specified. 
