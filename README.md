@@ -53,19 +53,17 @@ gets closer to the given residue than the smaller cutoff and ends when the lipid
 **-resi_offset**: Shift the residue index of the protein. Can be useful when a protein with missing residues at its N-terminus was martinized 
 to Martini force field, as martinize.py shift the residue index of the first residue to 1 regardless of its original index. 
 
-**-plot_koff**: plot koff values for each residue based on the conglomerate interaction durations from all trajectories. This means the koff is an average over all trajectories. A directory koff_{lipid} will be generated for each lipid species.
-
 **-save_dataset**: save dataset in pickle. 
 
 Usage example: 
 ```
 conda activate PyLipID
 pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
+-cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -save_dataset
 ```
 For phospholipids, it's recommended to use only the headgroup atoms to detect lipid binding sites:
 ```
 pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -plot_koff -save_dataset
+-cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -save_dataset
 ```
 
