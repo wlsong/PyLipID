@@ -11,7 +11,7 @@ It plots:
 - the calculated lipid koff to each protein residue. 
 - interaction network of lipid binding sites. 
 
-## Requirements:
+## External libraries:
 - [mdtraj](http://mdtraj.org)
 - [networkx](https://networkx.github.io)
 - [seaborn](https://seaborn.pydata.org)
