@@ -67,3 +67,9 @@ pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_
 -cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -save_dataset
 ```
 
+## Developers
+- Wanling Song (wlsong)
+- Anna Duncan
+- Robin Corey
+- Bertie Ansell
+
