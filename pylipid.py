@@ -26,7 +26,8 @@ from scipy.optimize import curve_fit
 from scipy.sparse import coo_matrix
 from scipy import sparse
 import community
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 ########################################
 ### Loading calculation parameters  ####
@@ -176,10 +177,15 @@ def cal_restime_koff(sigma, initial_guess):
     delta_t_range = list(sigma.keys())
     delta_t_range.sort() # x
     hist_values = [sigma[delta_t] for delta_t in delta_t_range] # y
-    popt, pcov = curve_fit(bi_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=100000)
-    ks = [abs(k) for k in popt[:2]]
-    koff = np.min(ks)
-    restime = 1/koff
+    try:
+        popt, pcov = curve_fit(bi_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=100000)
+        ks = [abs(k) for k in popt[:2]]
+        koff = np.min(ks)
+        restime = 1/koff
+    except RuntimeError:
+        koff = 0
+        restime = 0
+        popt = [0, 0, 0, 0]
     return restime, koff, popt
 
 def bi_expo(x, k1, k2, A, B):
@@ -351,7 +357,7 @@ class LipidInteraction():
                 self.natoms_per_protein.append(int(len(traj.top.select("protein"))/self.nprot))
 
             assert all(elem == self.natoms_per_protein[0] for elem in self.natoms_per_protein), \
-            "The list of trajectories contains different ssytem setup (\
+            "The list of trajectories contains different system setup (\
             different n. of proteins or different proteins)"
             self.natoms_per_protein = int(self.natoms_per_protein[0])
 
@@ -453,6 +459,8 @@ class LipidInteraction():
                 delta_t_range = np.arange(0, T_total[traj_idx], 10) if self.timeunit == "ns" else np.arange(0, T_total[traj_idx], 0.01)
                 self.sigmas[residue] = cal_sigma(duration_raw, np.mean(num_of_lipids), np.mean(T_total), delta_t_range)
                 restime, koff, params = cal_restime_koff(self.sigmas[residue], initial_guess)
+                if np.sum(params) == 0:
+                    print("Curve-fitting convergence failure: {}".format(residue))
                 self.koff[residue] = koff
                 self.interaction_duration[residue] = restime
                 self.params[residue] = params
@@ -468,8 +476,7 @@ class LipidInteraction():
         koff_dir = check_dir(self.save_dir, "koff_{}".format(self.lipid))
         for residue in self.residue_set:
             durations_raw = np.concatenate(self.interaction_duration_raw[residue])
-            if np.sum(duration_raw) > 0:
-                graph_koff(durations_raw, self.sigmas[residue], self.params[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
+            graph_koff(durations_raw, self.sigmas[residue], self.params[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
 
         ##############################################
         ########## wrapping up dataset ###############
