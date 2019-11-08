@@ -46,7 +46,6 @@ if __name__ == '__main__':
           'pandas',
           'scipy',
           'matplotlib'
-          'pymol',
     ]
 
     setup(name='PyLipID',
@@ -68,7 +67,7 @@ if __name__ == '__main__':
           classifiers=CLASSIFIERS,
           provides=['PyLipID'],
           packages=find_packages(),
-          requires=['numpy', 'cython', 'mdtraj', 'networkx', 'seaborn', 'Pillow', 'community', 'pandas', 'scipy', 'matplotlib',],
+          requires=['numpy', 'cython', 'mdtraj', 'networkx', 'seaborn', 'Pillow', 'community', 'pandas', 'scipy', 'matplotlib'],
           install_requires=install_requires,
           setup_requires=[
               'numpy',
