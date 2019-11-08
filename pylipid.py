@@ -730,4 +730,7 @@ for lipid in lipid_set:
     li.write_to_pdb(item="Duration corrected")
     li.cal_interaction_network(pdb=args.pdb, chain=args.chain)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3d70685d40847704f04ce5670ee41a933300edf0
