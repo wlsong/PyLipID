@@ -496,7 +496,7 @@ class LipidInteraction():
                                                           for residue in self.residue_set]),
                                 "Duration corrected": np.array([self.interaction_duration[residue] \
                                                                 for residue in self.residue_set]),
-                                "Duration CV": np.array([self.bootstrap_CV[residue] for residue in self.residue_set]), 
+                                "Duration CV": np.array([self.bootstrap_CV[residue] for residue in self.residue_set]),
                                 "LipidCount": np.array([np.mean(self.lipid_count[residue]) \
                                                          for residue in self.residue_set]),
                                 "LipidCount_std": np.array([np.std(self.lipid_count[residue]) \
@@ -541,8 +541,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             save_dir = check_dir(self.save_dir, "interaction_network_{}".format(self.lipid))
         else:
             save_dir = check_dir(save_dir, "interaction_network_{}".format(self.lipid))
-                    
-        residue_interaction_strength = np.array((self.dataset["Duration corrected"])) 
+
+        residue_interaction_strength = np.array((self.dataset["Duration corrected"]))
         scale_factor = 10 / residue_interaction_strength.max()
         residue_interaction_strength *= scale_factor
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
@@ -588,10 +588,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
         self.dataset["Binding site"]  = binding_site_identifiers
         self.dataset.to_csv("{}/Lipid_interactions_{}.csv".format(self.save_dir, self.lipid), index=False)
-        
+
         ###### show binding site residues with scaled spheres in pymol #######
         if pdb != None:
-            import pymol 
+            import pymol
             from pymol import cmd
 #            pymol.finish_launching()
             ##### do some pymol settings #####
@@ -606,7 +606,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 prefix = "protein and chain {}".format(chain)
             else:
                 prefix = "protein"
-        
+
             colors = np.array([np.random.choice(range(256), size=3) for dummy in range(binding_site_id)])
             colors /= 255
             for bs_id in np.arange(binding_site_id):
@@ -625,7 +625,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         if save_dir == None:
             save_dir = check_dir(self.save_dir)
         else:
-            save_dir = check_dir(save_dir)        
+            save_dir = check_dir(save_dir)
         data = self.dataset[item]
         resi = np.arange(len(data)) + self.resi_offset + 1
         width = 1
@@ -670,7 +670,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         if save_dir == None:
             save_dir = check_dir(self.save_dir)
         else:
-            save_dir = check_dir(save_dir)        
+            save_dir = check_dir(save_dir)
         ##### load coords ######
         tmp_traj = md.load(self.trajfile_list[0], top=self.grofile_list[0])
         data = self.dataset[item]
@@ -698,7 +698,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                         "BFACTOR": data[idx]}))
             f.write("TER")
         return
-    
+
 
 ######################################################
 ########### Load params and do calculation ############
@@ -730,7 +730,3 @@ for lipid in lipid_set:
     li.write_to_pdb(item="Duration corrected")
     li.cal_interaction_network(pdb=args.pdb, chain=args.chain)
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 3d70685d40847704f04ce5670ee41a933300edf0
