@@ -19,6 +19,7 @@ It plots:
 - [pandas](https://pandas.pydata.org)
 - [scipy](https://www.scipy.org)
 - [matplotlib](https://matplotlib.org)
+- [pymol](https://anaconda.org/samoturk/pymol)
 
 ## Installation:
 ```
