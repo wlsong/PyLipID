@@ -45,7 +45,8 @@ if __name__ == '__main__':
           "python_louvain",
           'pandas',
           'scipy',
-          'matplotlib',
+          'matplotlib'
+          'pymol',
     ]
 
     setup(name='PyLipID',
