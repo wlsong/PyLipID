@@ -29,9 +29,9 @@ import community
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-########################################
-### Loading calculation parameters  ####
-########################################
+###################################
+######  Parameter settings  #######
+###################################
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", nargs="+", metavar="./run/md.xtc", help="List of trajectories, seperated by space, \
@@ -61,7 +61,10 @@ parser.add_argument("-natoms_per_protein", default=None,  metavar="None", \
 parser.add_argument("-save_dataset", nargs="?", default=True, const=True, metavar="True", help="Save dataset in Pickle")
 parser.add_argument("-helix_regions", nargs="*", metavar="8,36", default="",
                     help="Label the helix locations by blue bars in lipid interaction plots.")
-
+parser.add_argument("-pdb", default=None, metavar="None", help="Map the binding site information to the structure provided. Will open a pymol\
+                    session to show residues from each binding site in spheres and scaled according to their interaction durations. No pymol session\
+                    will be initiated if not specified.")
+parser.add_argument("-chain", default=None, metavar="None", help="Select the chain of the structure provided by -pdb to which the binding site information mapped.")
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -533,13 +536,14 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         return
 
 
-    def cal_interaction_network(self, save_dir=None):
+    def cal_interaction_network(self, save_dir=None, pdb=None, chain=None):
         if save_dir == None:
             save_dir = check_dir(self.save_dir, "interaction_network_{}".format(self.lipid))
         else:
             save_dir = check_dir(save_dir, "interaction_network_{}".format(self.lipid))
+                    
         residue_interaction_strength = np.array((self.dataset["Duration corrected"])) 
-        scale_factor = 1 / residue_interaction_strength.max()
+        scale_factor = 10 / residue_interaction_strength.max()
         residue_interaction_strength *= scale_factor
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
         #### refined network ###
@@ -584,15 +588,44 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
         self.dataset["Binding site"]  = binding_site_identifiers
         self.dataset.to_csv("{}/Lipid_interactions_{}.csv".format(self.save_dir, self.lipid), index=False)
+        
+        ###### show binding site residues with scaled spheres in pymol #######
+        if pdb != None:
+            import pymol 
+            from pymol import cmd
+#            pymol.finish_launching()
+            ##### do some pymol settings #####
+            cmd.set("cartoon_oval_length", 1.0)
+            cmd.set("cartoon_oval_width", 0.3)
+            cmd.set("cartoon_color", "white")
+            cmd.set("stick_radius", 0.35)
+            ##################################
+            cmd.load(pdb, "protein")
+            cmd.hide("everything")
+            if chain != None:
+                prefix = "protein and chain {}".format(chain)
+            else:
+                prefix = "protein"
+        
+            colors = np.array([np.random.choice(range(256), size=3) for dummy in range(binding_site_id)])
+            colors /= 255
+            for bs_id in np.arange(binding_site_id):
+                selected_indices = np.where(binding_site_identifiers == bs_id)[0]
+                selected_residues = self.residue_set[selected_indices]
+                selected_resids = [int(residue[:-3]) for residue in selected_residues]
+                cmd.set_color("tmp_{}".format(bs_id), list(colors[bs_id]))
+                cmd.select("BS_{}".format(bs_id), "{} and resid {} and (not name C+O+N)".format(prefix, "+".join(selected_resids)))
+                cmd.show("spheres", "BS_{}".format(bs_id))
+                cmd.color("tmp_{}".format(bs_id), "BS_{}".format(bs_id))
+                for selected_index, selected_resid in zip(selected_indices, selected_resids):
+                    cmd.set("sphere_scale", size=scale_factor[selected_index]*0.15, selection="{} and resid {}".format(prefix, selected_resid))
         return
 
     def plot_interactions(self, item="Duration raw", helix_regions=[], save_dir=None):
         if save_dir == None:
-            save_dir = self.save_dir
+            save_dir = check_dir(self.save_dir)
         else:
-            save_dir = save_dir
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+            save_dir = check_dir(save_dir)        
         data = self.dataset[item]
         resi = np.arange(len(data)) + self.resi_offset + 1
         width = 1
@@ -633,10 +666,42 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         plt.close()
         return
 
-
+    def write_to_pdb(self, item, save_dir=None):
+        if save_dir == None:
+            save_dir = check_dir(self.save_dir)
+        else:
+            save_dir = check_dir(save_dir)        
+        ##### load coords ######
+        tmp_traj = md.load(self.trajfile_list[0], top=self.grofile_list[0])
+        data = self.dataset[item]
+        coords = tmp_traj.xyz[0][:self.natoms_per_protein]
+        atom_idx_set = [tmp_traj.atom(idx).index for idx in np.arange(self.natoms_per_protein)]
+        resid_set = [tmp_traj.atom(idx).residue.index+1+self.resi_offset for idx in np.arange(self.natoms_per_protein)]
+        atom_name_set = [tmp_traj.atom(idx).name for idx in np.arange(self.natoms_per_protein)]
+        resn_set = [tmp_traj.atom(idx).residue.name for idx in np.arange(self.natoms_per_protein)]
+        ######## write out coords ###########
+        fn = "{}/coords_{}.pdb".format(save_dir, "_".join(item.split()))
+        with open(fn, "w") as f:
+            for idx in np.arange(self.natoms_per_protein):
+                f.write('{HEADER:6s}{ATOM_ID:5d}{ATOM_NAME:^4s}{SPARE:1s}{RESN:^3s}{CHAIN_ID:1s}{RESI:4d}{SPARE:1s}{COORDX:8.3f}{COORDY:8.3f}{COORDZ:8.3f}{OCCUP:6.2f}{BFACTOR:6.2f}\n'.format(**{\
+                        "HEADER": "ATOM",
+                        "ATOM_ID": atom_idx_set[idx],
+                        "ATOM_NAME": atom_name_set[idx],
+                        "SPARE": "",
+                        "RESN": resn_set[idx],
+                        "CHAIN_ID": "A",
+                        "RESI": resid_set[idx],
+                        "COORDX": coords[idx, 0] * 10,
+                        "COORDY": coords[idx, 1] * 10,
+                        "COORDZ": coords[idx, 2] * 10,
+                        "OCCUP": 1.0,
+                        "BFACTOR": data[idx]}))
+            f.write("TER")
+        return
+    
 
 ######################################################
-########### session 1 use it as a toolkit ############
+########### Load params and do calculation ############
 ######################################################
 
 trajfile_list = args.f
@@ -648,7 +713,6 @@ for lipid in lipid_set:
     li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
                           natoms_per_protein=args.natoms_per_protein, resi_offset=args.resi_offset, save_dir=args.save_dir)
     li.cal_interactions(save_dataset=args.save_dataset)
-    li.cal_interaction_network()
     if len(args.helix_regions) > 0:
         helix_regions = []
         for pair in args.helix_regions:
@@ -662,27 +726,8 @@ for lipid in lipid_set:
     li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
     li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
     li.plot_interactions(item="Duration CV", helix_regions=helix_regions)
+    li.write_to_pdb(item="Duration raw")
+    li.write_to_pdb(item="Duration corrected")
+    li.cal_interaction_network(pdb=args.pdb, chain=args.chain)
 
 
-##########################################################
-############# session 2 use it as a script  ##############
-##########################################################
-
-#helix_regions = []
-#trajfile_list = []
-#grofile_list = []
-#for num in np.arange(3)+1:
-#    trajfile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit.xtc".format(num))
-#    grofile_list.append("/sansom/s131/wadh4604/Documents/GlucR/complex_GM1_{}/md_fit_firstframe.gro".format(num))
-
-#lipid="POP2"
-#lipid_atoms = ["C1", "C2", "C3", "PO4", "P1", "P2"]
-#li = LipidInteraction(trajfile_list, grofile_list, stride=1, lipid=lipid, lipid_atoms=lipid_atoms, nprot=1, resi_offset=26, timeunit="us", \
-#                      save_dir="/sansom/s121/bioc1467/Work/LIPID/GM1/GCGR_headgroups_biexpo")
-#li.cal_interactions()
-#li.cal_interaction_network()
-#li.plot_interactions(item="Duration raw", helix_regions=helix_regions)
-#li.plot_interactions(item="Duration corrected", helix_regions=helix_regions)
-#li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
-#li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
-#li.plot_interactions(item="Duration CV", helix_regions=helix_regions)
