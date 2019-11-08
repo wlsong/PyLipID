@@ -387,14 +387,14 @@ class LipidInteraction():
     def cal_interactions(self, save_dir=None, save_dataset=True):
 
         if save_dir == None:
-            self.save_dir = check_dir(self.save_dir, "Interaction_{}".format(self.lipid))
+            save_dir = check_dir(self.save_dir, "Interaction_{}".format(self.lipid))
         else:
-            self.save_dir = check_dir(save_dir, "Interaction_{}".format(self.lipid))
+            save_dir = check_dir(save_dir, "Interaction_{}".format(self.lipid))
 
         initial_guess = (1, 1, 1, 1)
         converter = 1/1000000.0 if self.timeunit == "us" else 1/1000.0
 
-        with open("{}/calculation_log_{}.txt".format(self.save_dir, self.lipid), "w") as f:
+        with open("{}/calculation_log_{}.txt".format(save_dir, self.lipid), "w") as f:
             f.write("Lipid to check: {}\n".format(self.lipid))
             ncol_start = 0
             row = []
@@ -476,7 +476,7 @@ class LipidInteraction():
                 self.params[residue] = [0, 0, 0, 0]
                 self.bootstrap_CV[residue] = 0.0
 
-        koff_dir = check_dir(self.save_dir, "koff_{}".format(self.lipid))
+        koff_dir = check_dir(save_dir, "koff_{}".format(self.lipid))
         for residue in self.residue_set:
             durations_raw = np.concatenate(self.interaction_duration_raw[residue])
             graph_koff(durations_raw, self.sigmas[residue], self.params[residue], self.timeunit, residue, "{}/{}_{}.tiff".format(koff_dir, self.lipid, residue))
@@ -503,7 +503,7 @@ class LipidInteraction():
                                                              for residue in self.residue_set]),
                                 "Koff": np.array([self.koff[residue] for residue in self.residue_set])})
 
-        dataset.to_csv("{}/Lipid_interactions_{}.csv".format(self.save_dir, self.lipid), index=False)
+        dataset.to_csv("{}/Lipid_interactions_{}.csv".format(save_dir, self.lipid), index=False)
         self.dataset = dataset
 
         reminder = """
@@ -675,10 +675,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         tmp_traj = md.load(self.trajfile_list[0], top=self.grofile_list[0])
         data = self.dataset[item]
         coords = tmp_traj.xyz[0][:self.natoms_per_protein]
-        atom_idx_set = [tmp_traj.atom(idx).index for idx in np.arange(self.natoms_per_protein)]
-        resid_set = [tmp_traj.atom(idx).residue.index+1+self.resi_offset for idx in np.arange(self.natoms_per_protein)]
-        atom_name_set = [tmp_traj.atom(idx).name for idx in np.arange(self.natoms_per_protein)]
-        resn_set = [tmp_traj.atom(idx).residue.name for idx in np.arange(self.natoms_per_protein)]
+        atom_idx_set = [tmp_traj.top.atom(idx).index for idx in np.arange(self.natoms_per_protein)]
+        resid_set = [tmp_traj.top.atom(idx).residue.index+1+self.resi_offset for idx in np.arange(self.natoms_per_protein)]
+        atom_name_set = [tmp_traj.top.atom(idx).name for idx in np.arange(self.natoms_per_protein)]
+        resn_set = [tmp_traj.top.atom(idx).residue.name for idx in np.arange(self.natoms_per_protein)]
         ######## write out coords ###########
         fn = "{}/coords_{}.pdb".format(save_dir, "_".join(item.split()))
         with open(fn, "w") as f:
