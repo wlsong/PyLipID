@@ -590,10 +590,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             ############ check if pdb has a path to it ##########
             if len(os.path.split(pdb)[0]) == 0:
                 pdb = os.path.join(os.getcwd(), pdb)
-            print(pdb)
             ########### write out a pymol pml file ###############
             Selection = "tmp and chain {}".format(chain) if chain != None else "tmp"
-            print(Selection)
             text = """
 import pandas as pd
 import numpy as np
@@ -608,8 +606,8 @@ binding_site_identifiers = np.array(dataset["Binding site"].tolist())
 
 ##### calculate scale ###############
 residue_interaction_strength = dataset["Residence Time"]
-MIN = residue_interaction_strength.quantile(0.25)
-MAX = residue_interaction_strength.quantile(0.75)
+MIN = residue_interaction_strength.quantile(0.15)
+MAX = residue_interaction_strength.quantile(0.95)
 X = (MAX - residue_interaction_strength)/(MAX - MIN)
 SCALES = (1-np.exp(X))/(1 + np.exp(X)) * 1 + 0.1
 
@@ -648,15 +646,15 @@ for bs_id in np.arange(binding_site_id):
             """
             with open("{}/show_binding_site_info.py".format(self.save_dir), "w") as f:
                 f.write(text)
-            
+
             ##################  Launch a pymol session  #######################
             import pymol
             from pymol import cmd
             pymol.finish_launching()
             ##### do some pymol settings #####
             residue_interaction_strength = self.dataset["Residence Time"]
-            MIN = residue_interaction_strength.quantile(0.25)
-            MAX = residue_interaction_strength.quantile(0.75)
+            MIN = residue_interaction_strength.quantile(0.15)
+            MAX = residue_interaction_strength.quantile(0.95)
             X = (MAX - residue_interaction_strength)/(MAX - MIN)
             SCALES = (1-np.exp(X))/(1 + np.exp(X)) * 1 + 0.1
             ##### do some pymol settings #####
@@ -687,10 +685,10 @@ for bs_id in np.arange(binding_site_id):
                     cmd.set("sphere_scale", SCALES[selected_index], selection="BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
                     cmd.color("tmp_{}".format(bs_id), "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
                 cmd.group("BS_{}".format(bs_id), "BS_{}_*".format(bs_id))
-    
+
         return
-    
-    
+
+
     def plot_interactions(self, item="Duration", helix_regions=[], save_dir=None):
         if save_dir == None:
             save_dir = check_dir(self.save_dir)
@@ -702,10 +700,10 @@ for bs_id in np.arange(binding_site_id):
         sns.set_style("ticks", {'xtick.major.size': 5.0, 'ytick.major.size': 5.0})
         if item == "Residence Time":
             ######## add capped and R2 info to the figure #############
-            fig = plt.figure(figsize=(4.8, 3.8))
-            ax_data = fig.add_axes([0.20, 0.15, 0.9, 0.35])
-            ax_capped = fig.add_axes([0.20, 0.52, 0.9, 0.1])
-            ax_R2 = fig.add_axes([0.20, 0.65, 0.9, 0.15])
+            fig = plt.figure(figsize=(5.0, 3.5))
+            ax_data = fig.add_axes([0.20, 0.15, 0.8, 0.35])
+            ax_capped = fig.add_axes([0.20, 0.52, 0.8, 0.1])
+            ax_R2 = fig.add_axes([0.20, 0.65, 0.8, 0.15])
             sns.despine(ax=ax_data, top=True, right=True, trim=False)
             sns.despine(ax=ax_capped, top=True, bottom=True, right=True)
             sns.despine(ax=ax_R2, top=True, bottom=True, right=True)
@@ -716,25 +714,25 @@ for bs_id in np.arange(binding_site_id):
             elif len(data) <= 1000:
                 ax_data.xaxis.set_major_locator(MultipleLocator(100))
                 ax_data.xaxis.set_minor_locator(MultipleLocator(10))
-            ax_data.set_xlabel("Residue", fontsize=10, weight="bold")   
+            ax_data.set_xlabel("Residue", fontsize=10, weight="bold")
             if self.timeunit == "ns":
                 timeunit = " (ns) "
             elif self.timeunit == "us":
-                timeunit = r" ($\mu s$)"            
+                timeunit = r" ($\mu s$)"
             ax_data.set_ylabel("Res. Time {}".format(timeunit), fontsize=10, weight="bold")
             ax_capped.plot(resi, self.dataset["Capped"]*1, linewidth=0, marker="+", markerfacecolor="#581845", markeredgecolor="#581845", \
                            markersize=2.5)
             ax_capped.set_ylim(0.9, 1.1)
             ax_capped.set_yticks([1.0])
             ax_capped.set_yticklabels(["Capped"])
-            ax_capped.xaxis.set_ticks_position('none') 
+            ax_capped.xaxis.set_ticks_position('none')
             for xlabel in ax_capped.get_xticklabels():
                 xlabel.set_visible(False)
             ax_capped.set_xlim(ax_data.get_xlim())
             mask = self.dataset["R squared"] > 0
             ax_R2.plot(resi[mask], self.dataset["R squared"][mask], linewidth=0, marker="+", markerfacecolor="#0269A4", markeredgecolor="#0269A4", \
                        markersize=2.5)
-            ax_R2.xaxis.set_ticks_position('none') 
+            ax_R2.xaxis.set_ticks_position('none')
             for xlabel in ax_R2.get_xticklabels():
                 xlabel.set_visible(False)
             ax_R2.set_xlim(ax_data.get_xlim())
