@@ -701,9 +701,9 @@ for bs_id in np.arange(binding_site_id):
         if item == "Residence Time":
             ######## add capped and R2 info to the figure #############
             fig = plt.figure(figsize=(5.0, 3.5))
-            ax_data = fig.add_axes([0.20, 0.15, 0.8, 0.35])
-            ax_capped = fig.add_axes([0.20, 0.52, 0.8, 0.1])
-            ax_R2 = fig.add_axes([0.20, 0.65, 0.8, 0.15])
+            ax_data = fig.add_axes([0.18, 0.15, 0.7, 0.35])
+            ax_capped = fig.add_axes([0.18, 0.52, 0.7, 0.1])
+            ax_R2 = fig.add_axes([0.18, 0.65, 0.7, 0.15])
             sns.despine(ax=ax_data, top=True, right=True, trim=False)
             sns.despine(ax=ax_capped, top=True, bottom=True, right=True)
             sns.despine(ax=ax_R2, top=True, bottom=True, right=True)
