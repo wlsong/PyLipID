@@ -26,6 +26,7 @@ from scipy.sparse import coo_matrix
 from scipy import sparse
 import community
 import warnings
+from shutil import copyfile
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 ###################################
@@ -538,8 +539,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             save_dir = check_dir(save_dir, "interaction_network_{}".format(self.lipid))
 
         residue_interaction_strength = self.dataset["Residence Time"]
-        MIN = residue_interaction_strength.quantile(0.25)
-        MAX = residue_interaction_strength.quantile(0.75)
+        MIN = residue_interaction_strength.quantile(0.15)
+        MAX = residue_interaction_strength.quantile(0.95)
         X = (MAX - residue_interaction_strength)/(MAX - MIN)
         residue_interaction_strength = (1-np.exp(X))/(1 + np.exp(X)) * 10 + 1
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
@@ -588,8 +589,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         ###### show binding site residues with scaled spheres in pymol #######
         if pdb != None:
             ############ check if pdb has a path to it ##########
-            if len(os.path.split(pdb)[0]) == 0:
-                pdb = os.path.join(os.getcwd(), pdb)
+            pdb_new_loc = os.path.join(self.save_dir, os.path.basename(pdb))
+            copyfile(pdb, pdb_new_loc)
             ########### write out a pymol pml file ###############
             Selection = "tmp and chain {}".format(chain) if chain != None else "tmp"
             text = """
@@ -619,17 +620,17 @@ cmd.set("cartoon_color", "white")
 cmd.set("stick_radius", 0.35)
 ##################################
 cmd.load("{PDB}", "tmp")
-cmd.extract("Prot", "{SELECTION}")
-prefix = "Prot"
+cmd.extract("Prot_{LIPID}", "{SELECTION}")
+prefix = "Prot_{LIPID}"
 cmd.delete("tmp")
 cmd.hide("everything")
 cmd.show("cartoon", prefix)
-cmd.center("Prot")
-cmd.orient("Prot")
+cmd.center(prefix)
+cmd.orient(prefix)
 colors = np.array([np.random.choice(np.arange(256, dtype=float), size=3) for dummy in range(binding_site_id)])
 colors /= 255.0
 
-            """.format(**{"HOME_DIR": self.save_dir, "LIPID": self.lipid, "BINDING_SITE_ID": binding_site_id, "PDB": pdb, "SELECTION": Selection})
+            """.format(**{"HOME_DIR": self.save_dir, "LIPID": self.lipid, "BINDING_SITE_ID": binding_site_id, "PDB": pdb_new_loc, "SELECTION": Selection})
             text += r"""
 for bs_id in np.arange(binding_site_id):
     selected_indices = np.where(binding_site_identifiers == bs_id)[0]
@@ -638,11 +639,11 @@ for bs_id in np.arange(binding_site_id):
     selected_resns = [residue[-3:] for residue in selected_residues]
     cmd.set_color("tmp_{}".format(bs_id), list(colors[bs_id]))
     for selected_index, selected_resid, selected_resn in zip(selected_indices, selected_resids, selected_resns):
-        cmd.select("BS_{}_{}{}".format(bs_id, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
-        cmd.show("spheres", "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
-        cmd.set("sphere_scale", SCALES[selected_index], selection="BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
-        cmd.color("tmp_{}".format(bs_id), "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
-    cmd.group("BS_{}".format(bs_id), "BS_{}_*".format(bs_id))
+        cmd.select("BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
+        cmd.show("spheres", "BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn))
+        cmd.set("sphere_scale", SCALES[selected_index], selection="BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn))
+        cmd.color("tmp_{}".format(bs_id), "BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn))
+    cmd.group("BS_{}".format(bs_id+1), "BS_{}_*".format(bs_id+1))
             """
             with open("{}/show_binding_site_info.py".format(self.save_dir), "w") as f:
                 f.write(text)
@@ -650,7 +651,7 @@ for bs_id in np.arange(binding_site_id):
             ##################  Launch a pymol session  #######################
             import pymol
             from pymol import cmd
-            pymol.finish_launching()
+            pymol.finish_launching(['pymol', '-q'])
             ##### do some pymol settings #####
             residue_interaction_strength = self.dataset["Residence Time"]
             MIN = residue_interaction_strength.quantile(0.15)
@@ -663,14 +664,14 @@ for bs_id in np.arange(binding_site_id):
             cmd.set("cartoon_color", "white")
             cmd.set("stick_radius", 0.35)
             ##################################
-            cmd.load(pdb, "tmp")
-            cmd.extract("Prot", Selection)
-            prefix = "Prot"
+            cmd.load(pdb_new_loc, "tmp")
+            cmd.extract("Prot_{}".format(self.lipid), Selection)
+            prefix = "Prot_{}".format(self.lipid)
             cmd.delete("tmp")
             cmd.hide("everything")
             cmd.show("cartoon", prefix)
-            cmd.center("Prot")
-            cmd.orient("Prot")
+            cmd.center(prefix)
+            cmd.orient(prefix)
             colors = np.array([np.random.choice(np.arange(256, dtype=float), size=3) for dummy in range(binding_site_id)])
             colors /= 255.0
             for bs_id in np.arange(binding_site_id):
@@ -680,12 +681,11 @@ for bs_id in np.arange(binding_site_id):
                 selected_resns = [residue[-3:] for residue in selected_residues]
                 cmd.set_color("tmp_{}".format(bs_id), list(colors[bs_id]))
                 for selected_index, selected_resid, selected_resn in zip(selected_indices, selected_resids, selected_resns):
-                    cmd.select("BS_{}_{}{}".format(bs_id, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
-                    cmd.show("spheres", "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
-                    cmd.set("sphere_scale", SCALES[selected_index], selection="BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
-                    cmd.color("tmp_{}".format(bs_id), "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
-                cmd.group("BS_{}".format(bs_id), "BS_{}_*".format(bs_id))
-
+                    cmd.select("{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
+                    cmd.show("spheres", "{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn))
+                    cmd.set("sphere_scale", SCALES[selected_index], selection="{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn))
+                    cmd.color("tmp_{}".format(bs_id), "{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn))
+                cmd.group("{}_BS_{}".format(self.lipid, bs_id+1), "{}_BS_{}_*".format(self.lipid, bs_id+1))
         return
 
 
