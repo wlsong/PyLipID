@@ -11,7 +11,7 @@ It plots:
 - the calculated lipid koff to each protein residue. 
 - interaction network of lipid binding sites. 
 
-It can also map the calculated binding sites to a pdb structure you provide through -pdb. Residues belonging to the same binding site are grouped under the same tab and shown in spheres with sizes corresponding to their residence time with the lipid of study.  
+It can also map the calculated binding sites to a pdb structure you provide through -pdb. Residues belonging to the same binding site are grouped under the same tab and shown in spheres with sizes corresponding to their residence time of the lipid of study.  
 
 For definition of residence time, please refer to:
 - García, Angel E.Stiller, Lewis. Computation of the mean residence time of water in the hydration shells of biomolecules. 1993. Journal of Computational Chemistry;
