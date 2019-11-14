@@ -62,7 +62,7 @@ parser.add_argument("-save_dataset", nargs="?", default=True, const=True, metava
 parser.add_argument("-helix_regions", nargs="*", metavar="8,36", default="",
                     help="Label the helix locations by blue bars in lipid interaction plots.")
 parser.add_argument("-pdb", default=None, metavar="None", help="Provide a PDB structure onto which the binding site information will be mapped. \
-                    Using this flag will open a pymol session at the end of binding site calculation, and also save a show_binding_site_info.py file in the -save_dir directory. \
+                    Using this flag will open a pymol session at the end of calculation, and also save a show_binding_site_info.py file in the -save_dir directory. \
                     No pymol session will be opened nor python file written out if not specified. ")
 parser.add_argument("-chain", default=None, metavar="None", help="Select the chain of the structure provided by -pdb to which the binding site information mapped.")
 
@@ -610,7 +610,7 @@ residue_interaction_strength = dataset["Residence Time"]
 MIN = residue_interaction_strength.quantile(0.15)
 MAX = residue_interaction_strength.quantile(0.95)
 X = (MAX - residue_interaction_strength)/(MAX - MIN)
-SCALES = (1-np.exp(X))/(1 + np.exp(X)) * 1 + 0.1
+SCALES = (1-np.exp(X))/(1 + np.exp(X)) + 0.5
 
 ######################################
 ##### do some pymol settings #####
@@ -657,7 +657,7 @@ for bs_id in np.arange(binding_site_id):
             MIN = residue_interaction_strength.quantile(0.15)
             MAX = residue_interaction_strength.quantile(0.95)
             X = (MAX - residue_interaction_strength)/(MAX - MIN)
-            SCALES = (1-np.exp(X))/(1 + np.exp(X)) * 1 + 0.1
+            SCALES = (1-np.exp(X))/(1 + np.exp(X)) + 0.5
             ##### do some pymol settings #####
             cmd.set("cartoon_oval_length", 1.0)
             cmd.set("cartoon_oval_width", 0.3)
