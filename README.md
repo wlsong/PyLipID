@@ -43,7 +43,7 @@ conda activate PyLipID
 ```
 When you want to get back to your default global python env:
 ``` 
-conda deactivate PyLipID
+conda deactivate
 ```
 Remove this env from your system by:
 ```
