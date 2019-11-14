@@ -87,7 +87,7 @@ to Martini force field, as martinize.py shift the residue index of the first res
 
 **-chain**: The chain in the -pdb structure onto which binding site infomation should be mapped. This is useful when the pdb structure you provide by -pdb has multiple chains. 
 
-Usage example: 
+**Usage example**: 
 ```
 conda activate PyLipID
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
