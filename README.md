@@ -3,7 +3,7 @@
 ## Introduction 
 **pylipid.py**: is a toolkit to calculate lipid interactions with membrane proteins. 
 It calculates: 
-- lipid interactions with the proteins in terms of their duration, occupancy, num. of lipids surrounding given residues and koff;
+- lipid interactions with the proteins in terms of their duration, residence time, occupancy, num. of lipids surrounding given residues and koff;
 - lipid binding sites via interaction networks. 
 
 It plots:
@@ -11,23 +11,50 @@ It plots:
 - the calculated lipid koff to each protein residue. 
 - interaction network of lipid binding sites. 
 
-## External libraries:
-- [mdtraj](http://mdtraj.org)
-- [networkx](https://networkx.github.io)
-- [seaborn](https://seaborn.pydata.org)
-- [community](https://python-louvain.readthedocs.io/en/latest/index.html)
-- [pandas](https://pandas.pydata.org)
-- [scipy](https://www.scipy.org)
-- [matplotlib](https://matplotlib.org)
-- [pymol](https://anaconda.org/samoturk/pymol)
+It can also map the calculated binding sites to a pdb structure you provide through -pdb. Residues belonging to the same binding site are grouped under the same tab and shown in spheres with sizes corresponding to their residence time with the lipid of study.  
+
+For definition of residence time, please refer to:
+- García, Angel E.Stiller, Lewis. Computation of the mean residence time of water in the hydration shells of biomolecules. 1993. Journal of Computational Chemistry;
+- Arnarez, C., et al. Evidence for cardiolipin binding sites on the membrane-exposed surface of the cytochrome bc1. 2013. J Am Chem Soc
 
 ## Installation:
+pylipid.py is tested against 
+- python = 3.6
+- mdtraj = 1.9
+- numpy = 1.14
+- pandas = 0.23
+- matplotlib = 3.1
+- seaborn = 0.8
+- networkx = 2.1
+- scipy = 1.1
+- pymol = 1.9
+- networkx = 2.1
+
+To create a compatible python environment and to not mess up with your global python env, we recommend creating an independent environment called PyLipID using [conda](https://www.anaconda.com/distribution/). 
+To create this PyLipID environment, assuming you have installed conda in your system:
 ```
-git clone https://github.com/wlsong/PyLipID.git
-cd PyLipID
-conda create -n PyLipID python=3
+conda create -n PyLipID python=2.6 mdtraj=1.9 numpy=1.14 pandas=0.23 matplotlib=3.1 seaborn=0.8 scipy=1.1 network=2.1
+conda init bash # your shell name. Supported shells include bash, fish,tcsh, zsh etc. See conda init --help for information
+source ~/.bashrc
+```
+To install pymol and community, we need to:
+```
+conda activate PyLipID 
+# now we are in PyLipID env and what we do in the following is only effective to this env
+conda install -c samoturk pymol
+pip install python-louvain
+```
+Now your python env PyLipID is all set. Whenever you want to use the script, activate PyLipID first by
+```
 conda activate PyLipID
-python setup.py install
+```
+When you want to get back to your default global python env:
+``` 
+conda deactivate PyLipID
+```
+Remove this env from your system by:
+```
+conda env remove --name PyLipID
 ```
 
 ## Usage:
@@ -56,21 +83,19 @@ to Martini force field, as martinize.py shift the residue index of the first res
 
 **-save_dataset**: save dataset in pickle. 
 
+**-pdb**: Provide a PDB structure onto which the binding site information will be mapped. Using this flag will open a pymol session at the end of calculation and also save a python file "show_binding_site_info.py" in the -save_dir directory. No pymol session will be opened nor python file written out if not specified.
+
+**-chain**: The chain in the -pdb structure onto which binding site infomation should be mapped. This is useful when the pdb structure you provide by -pdb has multiple chains. 
+
 Usage example: 
 ```
 conda activate PyLipID
-pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -save_dataset
+python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+-cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -save_dataset -pdb XXXX.pdb -chain A
 ```
 For phospholipids, it's recommended to use only the headgroup atoms to detect lipid binding sites:
 ```
-pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -save_dataset
+python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+-cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -save_dataset -pdb XXXX.pdb -chain A
 ```
-
-## Developers
-- Wanling Song (wlsong)
-- Anna Duncan
-- Robin Corey
-- Bertie Ansell
 
