@@ -205,7 +205,7 @@ def graph_network(graph_object,outputfilename, interaction_strength=np.array([0]
     plt.rcParams["font.size"] = 8
     plt.rcParams["font.weight"] = "bold"
     plt.cla()
-    fig = plt.figure(1, figsize=(6,6))
+    plt.figure()
     if layout == 'spring':
         pos=nx.spring_layout(graph_object)
     elif layout == 'circular':
@@ -609,9 +609,9 @@ binding_site_identifiers = np.array(dataset["Binding site"].tolist())
 ##### calculate scale ###############
 residue_interaction_strength = dataset["Residence Time"]
 MIN = residue_interaction_strength.quantile(0.15)
-MAX = residue_interaction_strength.quantile(0.95)
+MAX = residue_interaction_strength.quantile(0.99)
 X = (MAX - residue_interaction_strength)/(MAX - MIN)
-SCALES = (1-np.exp(X))/(1 + np.exp(X)) + 0.5
+SCALES = 1.5 * ((1-np.exp(X))/(1 + np.exp(X))) + 0.5
 
 ######################################
 ##### do some pymol settings #####
@@ -656,9 +656,9 @@ for bs_id in np.arange(binding_site_id):
             ##### do some pymol settings #####
             residue_interaction_strength = self.dataset["Residence Time"]
             MIN = residue_interaction_strength.quantile(0.15)
-            MAX = residue_interaction_strength.quantile(0.95)
+            MAX = residue_interaction_strength.quantile(0.99)
             X = (MAX - residue_interaction_strength)/(MAX - MIN)
-            SCALES = (1-np.exp(X))/(1 + np.exp(X)) + 0.5
+            SCALES = 1.5 * ((1-np.exp(X))/(1 + np.exp(X))) + 0.5
             ##### do some pymol settings #####
             cmd.set("cartoon_oval_length", 1.0)
             cmd.set("cartoon_oval_width", 0.3)
