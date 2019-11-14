@@ -31,18 +31,11 @@ pylipid.py is tested against
 - networkx = 2.1
 
 To create a compatible python environment but not to mess up with your global python settings, we recommend building an independent env called PyLipID using [conda](https://www.anaconda.com/distribution/). 
-To create this PyLipID environment, assuming you have installed conda in your system:
+To create this PyLipID environment using the provided env.yml, assuming you have installed conda in your system:
 ```
-conda create -n PyLipID python=3.6 mdtraj=1.9 numpy=1.14 pandas=0.23 matplotlib=3.1 seaborn=0.8 scipy=1.1 networkx=2.1 pillow=6.2 pmw
+conda create -f env.yml
 conda init bash # your shell name. Supported shells include bash, fish,tcsh, zsh etc. See conda init --help for information
 source ~/.bashrc
-```
-To install pymol and community, we need to:
-```
-conda activate PyLipID 
-# now we are in PyLipID env and what we do in the following is only effective to this env
-conda install -c samoturk pymol
-pip install python-louvain
 ```
 Now your python env PyLipID is all set. Whenever you want to use the script, activate PyLipID first by
 ```
