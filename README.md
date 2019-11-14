@@ -78,7 +78,7 @@ to Martini force field, as martinize.py shift the residue index of the first res
 
 **-pdb**: Provide a PDB structure onto which the binding site information will be mapped. Using this flag will open a pymol session at the end of calculation and also save a python file "show_binding_site_info.py" in the -save_dir directory. No pymol session will be opened nor python file written out if not specified.
 
-**-chain**: The chain in the -pdb structure onto which binding site infomation should be mapped. This is useful when the pdb structure you provide by -pdb has multiple chains. 
+**-chain**: The chain in the -pdb structure onto which binding site infomation should be mapped. This is useful when the pdb structure you provide via -pdb has multiple chains. 
 
 **Usage example**: 
 ```
