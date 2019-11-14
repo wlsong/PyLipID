@@ -223,6 +223,7 @@ def graph_network(graph_object,outputfilename, interaction_strength=np.array([0]
     weights = np.array([data[2]['weight'] for data in graph_object.edges(data=True)])
     nx.draw_networkx_edges(graph_object,pos, width=weights, edge_color="black", alpha=0.6)
     plt.axis('off')
+    plt.tight_layout()
     plt.savefig("{}.tiff".format(outputfilename), dpi=200)
     plt.close()
     return
@@ -516,9 +517,9 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
         if save_dataset:
             dataset_dir = check_dir(self.save_dir, "dataset")
-            with open("{}/interaction_duration_{}_corrected.pickle".format(dataset_dir, self.lipid), "wb") as f:
+            with open("{}/interaction_Res_Time_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_duration, f, 2)
-            with open("{}/interaction_duration_{}_raw.pickle".format(dataset_dir, self.lipid), "wb") as f:
+            with open("{}/interaction_duration_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_duration_raw, f, 2)
             with open("{}/interaction_occupancy_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_occupancy, f, 2)
@@ -542,7 +543,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         MIN = residue_interaction_strength.quantile(0.15)
         MAX = residue_interaction_strength.quantile(0.95)
         X = (MAX - residue_interaction_strength)/(MAX - MIN)
-        residue_interaction_strength = (1-np.exp(X))/(1 + np.exp(X)) * 10 + 1
+        residue_interaction_strength = 10 * ((1-np.exp(X))/(1 + np.exp(X))) + 1
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
         #### refined network ###
         ##### determine cov_cutoff #####
@@ -639,11 +640,11 @@ for bs_id in np.arange(binding_site_id):
     selected_resns = [residue[-3:] for residue in selected_residues]
     cmd.set_color("tmp_{}".format(bs_id), list(colors[bs_id]))
     for selected_index, selected_resid, selected_resn in zip(selected_indices, selected_resids, selected_resns):
-        cmd.select("BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
-        cmd.show("spheres", "BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn))
-        cmd.set("sphere_scale", SCALES[selected_index], selection="BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn))
-        cmd.color("tmp_{}".format(bs_id), "BS_{}_{}{}".format(bs_id+1, selected_resid, selected_resn))
-    cmd.group("BS_{}".format(bs_id+1), "BS_{}_*".format(bs_id+1))
+        cmd.select("BS_{}_{}{}".format(bs_id, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
+        cmd.show("spheres", "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
+        cmd.set("sphere_scale", SCALES[selected_index], selection="BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
+        cmd.color("tmp_{}".format(bs_id), "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
+    cmd.group("BS_{}".format(bs_id), "BS_{}_*".format(bs_id))
             """
             with open("{}/show_binding_site_info.py".format(self.save_dir), "w") as f:
                 f.write(text)
@@ -681,11 +682,11 @@ for bs_id in np.arange(binding_site_id):
                 selected_resns = [residue[-3:] for residue in selected_residues]
                 cmd.set_color("tmp_{}".format(bs_id), list(colors[bs_id]))
                 for selected_index, selected_resid, selected_resn in zip(selected_indices, selected_resids, selected_resns):
-                    cmd.select("{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
-                    cmd.show("spheres", "{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn))
-                    cmd.set("sphere_scale", SCALES[selected_index], selection="{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn))
-                    cmd.color("tmp_{}".format(bs_id), "{}_BS_{}_{}{}".format(self.lipid, bs_id+1, selected_resid, selected_resn))
-                cmd.group("{}_BS_{}".format(self.lipid, bs_id+1), "{}_BS_{}_*".format(self.lipid, bs_id+1))
+                    cmd.select("{}_BS_{}_{}{}".format(self.lipid, bs_id, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
+                    cmd.show("spheres", "{}_BS_{}_{}{}".format(self.lipid, bs_id, selected_resid, selected_resn))
+                    cmd.set("sphere_scale", SCALES[selected_index], selection="{}_BS_{}_{}{}".format(self.lipid, bs_id, selected_resid, selected_resn))
+                    cmd.color("tmp_{}".format(bs_id), "{}_BS_{}_{}{}".format(self.lipid, bs_id, selected_resid, selected_resn))
+                cmd.group("{}_BS_{}".format(self.lipid, bs_id), "{}_BS_{}_*".format(self.lipid, bs_id))
         return
 
 
