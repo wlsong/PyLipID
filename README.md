@@ -33,7 +33,7 @@ pylipid.py is tested against
 To create a compatible python environment and to not mess up with your global python env, we recommend creating an independent environment called PyLipID using [conda](https://www.anaconda.com/distribution/). 
 To create this PyLipID environment, assuming you have installed conda in your system:
 ```
-conda create -n PyLipID python=3.6 mdtraj=1.9 numpy=1.14 pandas=0.23 matplotlib=3.1 seaborn=0.8 scipy=1.1 networkx=2.1
+conda create -n PyLipID python=3.6 mdtraj=1.9 numpy=1.14 pandas=0.23 matplotlib=3.1 seaborn=0.8 scipy=1.1 networkx=2.1 pillow=6.2
 conda init bash # your shell name. Supported shells include bash, fish,tcsh, zsh etc. See conda init --help for information
 source ~/.bashrc
 ```
