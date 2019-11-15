@@ -541,7 +541,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
         residue_interaction_strength = self.dataset["Residence Time"]
         MIN = residue_interaction_strength.quantile(0.15)
-        MAX = residue_interaction_strength.quantile(0.95)
+        MAX = residue_interaction_strength.quantile(0.99)
         X = (MAX - residue_interaction_strength)/(MAX - MIN)
         residue_interaction_strength = 10 * ((1-np.exp(X))/(1 + np.exp(X))) + 1
         interaction_covariance = np.nan_to_num(self.interaction_covariance)
@@ -715,14 +715,14 @@ for bs_id in np.arange(binding_site_id):
             elif len(data) <= 1000:
                 ax_data.xaxis.set_major_locator(MultipleLocator(100))
                 ax_data.xaxis.set_minor_locator(MultipleLocator(10))
-            ax_data.set_xlabel("Residue", fontsize=10, weight="bold")
+            ax_data.set_xlabel("Residue index", fontsize=10, weight="bold")
             if self.timeunit == "ns":
                 timeunit = " (ns) "
             elif self.timeunit == "us":
                 timeunit = r" ($\mu s$)"
             ax_data.set_ylabel("Res. Time {}".format(timeunit), fontsize=10, weight="bold")
             ax_capped.plot(resi, self.dataset["Capped"]*1, linewidth=0, marker="+", markerfacecolor="#581845", markeredgecolor="#581845", \
-                           markersize=2.5)
+                           markersize=2)
             ax_capped.set_ylim(0.9, 1.1)
             ax_capped.set_yticks([1.0])
             ax_capped.set_yticklabels(["Capped"])
@@ -732,7 +732,7 @@ for bs_id in np.arange(binding_site_id):
             ax_capped.set_xlim(ax_data.get_xlim())
             mask = self.dataset["R squared"] > 0
             ax_R2.plot(resi[mask], self.dataset["R squared"][mask], linewidth=0, marker="+", markerfacecolor="#0269A4", markeredgecolor="#0269A4", \
-                       markersize=2.5)
+                       markersize=2)
             ax_R2.xaxis.set_ticks_position('none')
             for xlabel in ax_R2.get_xticklabels():
                 xlabel.set_visible(False)
@@ -751,7 +751,7 @@ for bs_id in np.arange(binding_site_id):
             elif len(data) <= 1000:
                 ax.xaxis.set_major_locator(MultipleLocator(100))
                 ax.xaxis.set_minor_locator(MultipleLocator(10))
-            ax.set_xlabel("Residue", fontsize=10, weight="bold")
+            ax.set_xlabel("Residue Index", fontsize=10, weight="bold")
             if self.timeunit == "ns":
                 timeunit = " (ns) "
             elif self.timeunit == "us":
