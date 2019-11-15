@@ -813,28 +813,30 @@ for bs_id in np.arange(binding_site_id):
 ########### Load params and do calculation ############
 ######################################################
 
-trajfile_list = args.f
-grofile_list = args.c
-lipid_set = args.lipids
-print(args.cutoffs)
-cutoff = [float(data) for data in args.cutoffs]
-for lipid in lipid_set:
-    li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
-                          natoms_per_protein=args.natoms_per_protein, resi_offset=args.resi_offset, save_dir=args.save_dir)
-    li.cal_interactions(save_dataset=args.save_dataset)
-    if len(args.helix_regions) > 0:
-        helix_regions = []
-        for pair in args.helix_regions:
-            helix_regions.append([])
-            for num in pair.split(","):
-                helix_regions[-1].append(int(num))
-    else:
-        helix_regions = []
-    li.plot_interactions(item="Duration", helix_regions=helix_regions)
-    li.plot_interactions(item="Residence Time", helix_regions=helix_regions)
-    li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
-    li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
-    li.write_to_pdb(item="Duration")
-    li.write_to_pdb(item="Residence Time")
-    li.cal_interaction_network(pdb=args.pdb, chain=args.chain)
+if __name__ == '__main__':
+    
+    trajfile_list = args.f
+    grofile_list = args.c
+    lipid_set = args.lipids
+    print(args.cutoffs)
+    cutoff = [float(data) for data in args.cutoffs]
+    for lipid in lipid_set:
+        li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
+                              natoms_per_protein=args.natoms_per_protein, resi_offset=args.resi_offset, save_dir=args.save_dir)
+        li.cal_interactions(save_dataset=args.save_dataset)
+        if len(args.helix_regions) > 0:
+            helix_regions = []
+            for pair in args.helix_regions:
+                helix_regions.append([])
+                for num in pair.split(","):
+                    helix_regions[-1].append(int(num))
+        else:
+            helix_regions = []
+        li.plot_interactions(item="Duration", helix_regions=helix_regions)
+        li.plot_interactions(item="Residence Time", helix_regions=helix_regions)
+        li.plot_interactions(item="Occupancy", helix_regions=helix_regions)
+        li.plot_interactions(item="LipidCount", helix_regions=helix_regions)
+        li.write_to_pdb(item="Duration")
+        li.write_to_pdb(item="Residence Time")
+        li.cal_interaction_network(pdb=args.pdb, chain=args.chain)
 
