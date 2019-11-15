@@ -398,7 +398,7 @@ class LipidInteraction():
             for traj_idx, trajfile in enumerate(self.trajfile_list):
                 print("\n########## Start calculation of {} interaction in \n########## {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
                 f.write("\n###### Start calculation of {} interaction in \n###### {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
-                traj = md.load(trajfile, top=grofile_list[traj_idx], stride=self.stride)
+                traj = md.load(trajfile, top=self.grofile_list[traj_idx], stride=self.stride)
                 lipid_haystack = get_atom_index_for_lipid(self.lipid, traj, part=self.lipid_atoms)
                 lipid_resi_set = atom2residue(lipid_haystack, traj)
                 num_of_lipids.append(len(lipid_resi_set))
