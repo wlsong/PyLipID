@@ -395,6 +395,7 @@ class LipidInteraction():
             col = []
             num_of_lipids = []
             self.T_total = []
+            self.timesteps = []
             for traj_idx, trajfile in enumerate(self.trajfile_list):
                 print("\n########## Start calculation of {} interaction in \n########## {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
                 f.write("\n###### Start calculation of {} interaction in \n###### {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
@@ -403,6 +404,7 @@ class LipidInteraction():
                 lipid_resi_set = atom2residue(lipid_haystack, traj)
                 num_of_lipids.append(len(lipid_resi_set))
                 self.T_total.append(traj.time[-1] * converter)
+                self.timesteps.append(traj.timestep * converter)
                 lipid_mapping = {lipid:lipid_idx for (lipid_idx, lipid) in enumerate(lipid_resi_set)}
                 ncol_per_protein = len(lipid_resi_set) * traj.n_frames
                 for idx_protein in np.arange(self.nprot):
@@ -453,7 +455,7 @@ class LipidInteraction():
         for residue in self.residue_set:
             duration_raw = np.concatenate(self.interaction_duration_raw[residue])
             if np.sum(duration_raw) > 0:
-                delta_t_range = np.arange(0, self.T_total[traj_idx], 10) if self.timeunit == "ns" else np.arange(0, self.T_total[traj_idx], 0.01)
+                delta_t_range = np.arange(0, self.T_total[traj_idx], np.min(self.timesteps))
                 self.sigmas[residue] = cal_sigma(duration_raw, np.mean(num_of_lipids), np.mean(self.T_total), delta_t_range)
                 restime, koff, r_squared, params = cal_restime_koff(self.sigmas[residue], initial_guess)
                 if np.sum(params) == 0:
@@ -463,7 +465,7 @@ class LipidInteraction():
                 self.params[residue] = params
                 self.r_squared[residue] = r_squared
             else:
-                delta_t_range = np.arange(0, self.T_total[traj_idx], 10) if self.timeunit == "ns" else np.arange(0, self.T_total[traj_idx], 0.01)
+                delta_t_range = np.arange(0, self.T_total[traj_idx], np.min(self.timesteps))
                 self.sigmas[residue] = {key:value for key, value in zip(delta_t_range, np.zeros(len(delta_t_range)))}
                 self.koff[residue] = 0
                 self.interaction_duration[residue] = 0
