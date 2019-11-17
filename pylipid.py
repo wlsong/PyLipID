@@ -424,7 +424,7 @@ class LipidInteraction():
                 ###### get some statistics for this traj ######
                 ###############################################
 
-                durations = np.array([np.mean(self.interaction_duration_raw[residue][-self.nprot:]) for residue in self.residue_set])
+                durations = np.array([np.concatenate(self.interaction_duration_raw[residue][-self.nprot:]).mean() for residue in self.residue_set])
                 duration_arg_idx = np.argsort(durations)[::-1]
                 occupancies = np.array([np.mean(self.interaction_occupancy[residue][-self.nprot:]) for residue in self.residue_set])
                 occupancy_arg_idx = np.argsort(occupancies)[::-1]
@@ -575,7 +575,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             binding_site_identifiers[node_list] = binding_site_id
 
             f.write("# Binding site {}\n".format(binding_site_id))
-            f.write("{:^15s}{:^15s}{:^20s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration", "Duration std", \
+            f.write("{:^15s}{:^15s}{:^20s}{:^20s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration", "Duration std", \
                     "Residence Time", "R squared", "Occupancy", "Occupancy std", "Lipid Count", "Lipid Count std", "Koff"))
             for residue in self.residue_set[node_list]:
                 f.write("{Residue:^15s}{Duration:^15.3f}{Duration_std:^20.3f}{Residence Time:^20.3f}{R squared:^15.4f}{Occupancy:^15.3f}{Occupancy_std:^15.3f}{LipidCount:^15f}{LipidCount_std:^15f}{Koff:^15.5f}\n".format(\
@@ -816,7 +816,7 @@ for bs_id in np.arange(binding_site_id):
 ######################################################
 
 if __name__ == '__main__':
-    
+
     trajfile_list = args.f
     grofile_list = args.c
     lipid_set = args.lipids
