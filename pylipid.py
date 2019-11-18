@@ -179,7 +179,7 @@ def cal_restime_koff(sigma, initial_guess):
     """
     delta_t_range = list(sigma.keys())
     delta_t_range.sort() # x
-    hist_values = [sigma[delta_t] for delta_t in delta_t_range] # y
+    hist_values = np.nan_to_num([sigma[delta_t] for delta_t in delta_t_range]) # y
     try:
         popt, pcov = curve_fit(bi_expo, delta_t_range, hist_values, p0=initial_guess, maxfev=100000)
         n_fitted = bi_expo(np.array(delta_t_range), *popt)
