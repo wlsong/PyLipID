@@ -14,9 +14,9 @@ import sys
 from collections import defaultdict
 import pickle
 import os
-import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import networkx as nx
 import seaborn as sns
 import matplotlib.patches as patches
