@@ -237,7 +237,7 @@ def graph_koff(duration_raw, sigma, params, timeunit, residue, outputfilename):
     elif timeunit == "us":
         xlabel = r"Duration ($\mu s$)"
     fig = plt.figure(1, figsize=(6.0, 3.5))
-    left, width = 0.12, 0.35
+    left, width = 0.13, 0.35
     bottom, height = 0.17, 0.75
     left_h = left + width + 0.05
     rect_scatter = [left, bottom, width, height]
