@@ -613,7 +613,7 @@ residue_interaction_strength = dataset["Residence Time"]
 MIN = residue_interaction_strength.quantile(0.15)
 MAX = residue_interaction_strength.quantile(0.99)
 X = (MAX - residue_interaction_strength)/(MAX - MIN)
-SCALES = 1.5 * ((1-np.exp(X))/(1 + np.exp(X))) + 0.5
+SCALES = 1.5 * ((1-np.exp(X))/(1 + np.exp(X))) + 1.0
 
 ######################################
 ##### do some pymol settings #####
@@ -660,7 +660,7 @@ for bs_id in np.arange(binding_site_id):
             MIN = residue_interaction_strength.quantile(0.15)
             MAX = residue_interaction_strength.quantile(0.99)
             X = (MAX - residue_interaction_strength)/(MAX - MIN)
-            SCALES = 1.5 * ((1-np.exp(X))/(1 + np.exp(X))) + 0.5
+            SCALES = 1.5 * ((1-np.exp(X))/(1 + np.exp(X))) + 1.0
             ##### do some pymol settings #####
             cmd.set("cartoon_oval_length", 1.0)
             cmd.set("cartoon_oval_width", 0.3)
