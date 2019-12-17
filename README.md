@@ -18,7 +18,7 @@ For definition of residence time, please refer to:
 - Arnarez, C., et al. Evidence for cardiolipin binding sites on the membrane-exposed surface of the cytochrome bc1. 2013. J Am Chem Soc
 
 ## Installation:
-pylipid.py is tested against 
+pylipid.py is tested on 
 - python = 3.6
 - mdtraj = 1.9
 - numpy = 1.14
