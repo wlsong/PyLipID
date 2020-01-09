@@ -597,21 +597,22 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             mask = (binding_site_identifiers == BS_id)
             restime = self.interaction_duration_BS[BS_id]
             BS_restime[mask] = restime
-            f.write("BS Residence Time: {:10.5f} {:5s}\n".format(restime, self.timeunit))
+            f.write("{:20s} {:10.3f} {:5s} -- R squared: {:7.4f}\n".format(" BS Residence Time:", restime, self.timeunit, self.r_squared_BS[BS_id]))
             duration = np.mean(np.concatenate(self.interaction_duration_raw_BS[BS_id]))
             BS_duration[mask] = duration
-            f.write("BS Duration: {:10.5f} {:5s}\n".format(duration, self.timeunit))
+            f.write("{:20s} {:10.3f} {:5s}\n".format(" BS Duration:", duration, self.timeunit))
             occupancy = np.mean(self.interaction_occupancy_BS[BS_id])
             BS_occupancy[mask] = occupancy
-            f.write("BS Lipid Occupancy: {:10.2f} %\n".format(occupancy))
+            f.write("{:20s} {:10.3f} %\n".format(" BS Lipid Occupancy:", occupancy))
             lipidcount = np.mean(self.lipid_count_BS[BS_id])
             BS_lipidcount[mask] = lipidcount
-            f.write("BS Lipid Count: {:10.2f}\n".format(lipidcount))
+            f.write("{:20s} {:10.3f}\n".format(" BS Lipid Count:", lipidcount))
             f.write("{:^15s}{:^15s}{:^20s}{:^20s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}{:^15s}\n".format("Residue", "Duration", "Duration std", \
                     "Residence Time", "R squared", "Occupancy", "Occupancy std", "Lipid Count", "Lipid Count std", "Koff"))
             for residue in self.residue_set[mask]:
                 f.write("{Residue:^15s}{Duration:^15.3f}{Duration_std:^20.3f}{Residence Time:^20.3f}{R squared:^15.4f}{Occupancy:^15.3f}{Occupancy_std:^15.3f}{LipidCount:^15f}{LipidCount_std:^15f}{Koff:^15.5f}\n".format(\
                         **self.dataset[self.dataset["Residue"]==residue].to_dict("records")[0] ))
+            f.write("\n")
             f.write("\n")
             with open("{}/graph_bindingsite_{}.pickle".format(save_dir, binding_site_id), "wb") as filehandler:
                 pickle.dump(subcommunity, filehandler, 2)
