@@ -387,7 +387,7 @@ class LipidInteraction():
                 self.lipid_haystack_set.append(lipid_haystack)
                 lipid_resi_set = atom2residue(lipid_haystack, traj)
                 self.num_of_lipids.append(len(lipid_resi_set))
-                self.T_total.append(traj.time[-1] * converter)
+                self.T_total.append((traj.time[-1] - traj.time[0]) * converter)
                 self.timesteps.append(traj.timestep * converter)
                 lipid_mapping = {lipid:lipid_idx for (lipid_idx, lipid) in enumerate(lipid_resi_set)}
                 ncol_per_protein = len(lipid_resi_set) * traj.n_frames
@@ -596,19 +596,19 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             duration_raw = np.concatenate(self.interaction_duration_raw_BS[BS_id])
             if np.sum(duration_raw) > 0:
                 delta_t_range = np.arange(0, t_total_max, np.min(self.timesteps))
-                self.sigmas_BS[BS_id] = cal_sigma(duration_raw, np.mean(self.num_of_lipids), t_total_max, delta_t_range)
+                self.sigmas_BS[BS_id].append(cal_sigma(duration_raw, np.mean(self.num_of_lipids), t_total_max, delta_t_range))
                 restime, koff, r_square, params = cal_restime_koff(self.sigmas_BS[BS_id], initial_guess)
-                self.koff_BS[BS_id] = koff
-                self.interaction_duration_BS[BS_id] = restime
-                self.params_BS[BS_id] = params
-                self.r_square_BS[BS_id] = r_square
+                self.koff_BS[BS_id].append(koff)
+                self.interaction_duration_BS[BS_id].append(restime)
+                self.params_BS[BS_id].append(params)
+                self.r_square_BS[BS_id].append(r_square)
             else:
                 delta_t_range = np.arange(0, t_total_max, np.min(self.timesteps))
-                self.sigmas_BS[BS_id] = {key:value for key, value in zip(delta_t_range, np.zeros(len(delta_t_range)))}
-                self.koff_BS[BS_id] = 0
-                self.interaction_duration_BS[BS_id] = 0
-                self.params_BS[BS_id] = [0, 0, 0, 0]
-                self.r_square_BS[BS_id] = 0.0            
+                self.sigmas_BS[BS_id].append({key:value for key, value in zip(delta_t_range, np.zeros(len(delta_t_range)))})
+                self.koff_BS[BS_id].append(0)
+                self.interaction_duration_BS[BS_id].append(0)
+                self.params_BS[BS_id].append([0, 0, 0, 0])
+                self.r_square_BS[BS_id].append(0.0)           
             ############# plot site koff ################
             graph_koff(duration_raw, self.sigmas_BS[BS_id], self.params_BS[BS_id], self.timeunit, "BS id: {}".format(BS_id), "{}/BS_koff_id{}.tiff".format(save_dir, BS_id))
             ############# write out results ###############
