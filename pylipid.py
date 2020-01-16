@@ -266,7 +266,7 @@ def check_dir(save_dir, suffix=None):
     if not os.path.isdir(save_dir):
         print("Creating new director: {}".format(save_dir))
         os.mkdir(save_dir)
-    
+
     return save_dir
 
 def sparse_corrcoef(A, B=None):
@@ -590,7 +590,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                     occupancy, lipidcount = cal_interaction_intensity(contact_BS_low)
                     self.interaction_occupancy_BS[binding_site_id].append(occupancy)
                     self.lipid_count_BS[binding_site_id].append(lipidcount)
-            binding_site_id += 1        
+            binding_site_id += 1
         ########### calculate site koff and write out results ###########
         for BS_id in range(binding_site_id):
             duration_raw = np.concatenate(self.interaction_duration_raw_BS[BS_id])
@@ -608,7 +608,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 self.koff_BS[BS_id].append(0)
                 self.interaction_duration_BS[BS_id].append(0)
                 self.params_BS[BS_id].append([0, 0, 0, 0])
-                self.r_square_BS[BS_id].append(0.0)           
+                self.r_square_BS[BS_id].append(0.0)
             ############# plot site koff ################
             graph_koff(duration_raw, self.sigmas_BS[BS_id], self.params_BS[BS_id], self.timeunit, "BS id: {}".format(BS_id), "{}/BS_koff_id{}.tiff".format(save_dir, BS_id))
             ############# write out results ###############
@@ -722,7 +722,7 @@ for bs_id in np.arange(binding_site_id):
     selected_resns = [residue[-3:] for residue in selected_residues]
     cmd.set_color("tmp_{}".format(bs_id), list(colors[bs_id]))
     for selected_index, selected_resid, selected_resn in zip(selected_indices, selected_resids, selected_resns):
-        cmd.select("BS_{}_{}{}".format(bs_id, selected_resid, selected_resn), "Prot and resid {} and (not name C+O+N)".format(selected_resid))
+        cmd.select("BS_{}_{}{}".format(bs_id, selected_resid, selected_resn), "{} and resid {} and (not name C+O+N)".format(prefix, selected_resid))
         cmd.show("spheres", "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
         cmd.set("sphere_scale", SCALES[selected_index], selection="BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
         cmd.color("tmp_{}".format(bs_id), "BS_{}_{}{}".format(bs_id, selected_resid, selected_resn))
@@ -904,12 +904,12 @@ if __name__ == '__main__':
     cutoff = [float(data) for data in args.cutoffs]
     save_dir = check_dir(args.save_dir)
     ######## write a backup file of params for reproducibility ############
-    fn = os.path.join(save_dir, "pylipid_backup_{}.txt".format(datetime.datetime.now().strftime("%Y_%m_%d_%H%M"))) 
+    fn = os.path.join(save_dir, "pylipid_backup_{}.txt".format(datetime.datetime.now().strftime("%Y_%m_%d_%H%M")))
     with open(fn, "w") as f:
         f.write("##### Record params for reproducibility #####\n")
         f.write("\npython {}\n".format(" ".join(sys.argv)))
     #######################################################################
-    
+
     for lipid in lipid_set:
         li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
                               natoms_per_protein=args.natoms_per_protein, resi_offset=args.resi_offset, save_dir=args.save_dir)
