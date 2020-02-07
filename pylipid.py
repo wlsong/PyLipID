@@ -554,6 +554,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         f.write("\n")
         binding_site_id = 0
         covariance_network =np.copy(interaction_covariance)
+        covariance_network[covariance_network < 0.0] = 0.0
         residue_network_raw = nx.Graph(covariance_network)
         part = community.best_partition(residue_network_raw, weight='weight')
         values = [part.get(node) for node in residue_network_raw.nodes()]
