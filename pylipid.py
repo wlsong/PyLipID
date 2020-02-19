@@ -41,6 +41,10 @@ parser.add_argument("-c", nargs="+", metavar="./run/system.gro", \
                     help="List of coordinates of trajectory, in the same order as -f, required when inputs of -f are xtc trajectories, \
                     Supported format: gro, pdb, etc., Used by mdtraj.load()")
 parser.add_argument("-stride", default=1, metavar=1, help="Striding through trajectories. Only every stride-th will be analized." )
+parser.add_argument("-dt", default=None, metavar="None", help="The time interval between two adjacent frames in the trajectories. \
+                    If not specified, the mdtraj will deduce from the trajectories. This works for trajectories in format of e.g. xtc which \
+                    includes timestep information. For trajectories in dcd format, users have to provide the time interval manually, \
+                    in a time unite consistent with -tu")
 parser.add_argument("-tu", default="us", choices=["ns", "us"], metavar="us", \
                     help="Time unit for interaction duration calculation. Available options: ns, us. This will affect the unit of koff as well.")
 parser.add_argument("-save_dir", default=None, metavar="None", help="The directory where all the generated results will be put in. \
@@ -54,7 +58,8 @@ parser.add_argument("-lipid_atoms", nargs="+", metavar="PO4", default=None, \
 parser.add_argument("-nprot", default=1, metavar="1", \
                     help="num. of protein in the simulation system, compatible with systems containing multiple copies of the same protein")
 parser.add_argument("-resi_offset", default=0, metavar="0", \
-                    help="Shifting the residue index. Usful when using martinize.py for proteins with missing residues at N-terminus.")
+                    help="Shifting the residue index. The default, i.e. -rei_offset 0, is seeing the index of the first residue as 1. \
+                    So it's neccessary to use this when the index of the first residue is not 1.")
 parser.add_argument("-natoms_per_protein", default=None,  metavar="None", \
                     help="Number of atoms/beads the protein contains, esp useful when the system has multiple copies \
                     of the protein. If not specificied, the algorithm will deduce it by dividing the num. of atoms in the selection of 'protein' by num. of proteins that \
@@ -293,7 +298,7 @@ def sparse_corrcoef(A, B=None):
 
 class LipidInteraction():
 
-    def __init__(self, trajfile_list, grofile_list=None, stride=1, cutoff=[0.55, 1.4], \
+    def __init__(self, trajfile_list, grofile_list=None, stride=1, dt=None, cutoff=[0.55, 1.4], \
                  lipid="POPC", lipid_atoms=None, nprot=1, natoms_per_protein=None, resi_offset=0, save_dir=None, timeunit="us"):
         if grofile_list != None:
             assert len(trajfile_list) == len(grofile_list), \
@@ -302,6 +307,7 @@ class LipidInteraction():
         self.save_dir = check_dir(save_dir)
         self.trajfile_list = trajfile_list
         self.grofile_list = grofile_list
+        self.dt = dt
         self.nrepeats = len(self.trajfile_list)
         self.cutoff = np.sort(np.array(cutoff, dtype=float))
         self.lipid = lipid
@@ -357,7 +363,12 @@ class LipidInteraction():
             self.save_dir = check_dir(save_dir, "Interaction_{}".format(self.lipid))
 
         initial_guess = (1, 1, 1, 1)
-        converter = 1/1000000.0 if self.timeunit == "us" else 1/1000.0
+        ############
+        if self.dt == None:
+            converter = 1/1000000.0 if self.timeunit == "us" else 1/1000.0
+        else:
+            converter = self.dt
+        ############
 
         with open("{}/calculation_log_{}.txt".format(self.save_dir, self.lipid), "w") as f:
             f.write("###### Lipid: {}\n".format(self.lipid))
@@ -912,7 +923,7 @@ if __name__ == '__main__':
     #######################################################################
 
     for lipid in lipid_set:
-        li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
+        li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, dt=args.dt, cutoff=cutoff, lipid=lipid, lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, \
                               natoms_per_protein=args.natoms_per_protein, resi_offset=args.resi_offset, save_dir=args.save_dir)
         li.cal_interactions(save_dataset=args.save_dataset)
         if len(args.helix_regions) > 0:
