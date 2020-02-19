@@ -307,7 +307,7 @@ class LipidInteraction():
         self.save_dir = check_dir(save_dir)
         self.trajfile_list = trajfile_list
         self.grofile_list = grofile_list
-        self.dt = float(dt)
+        self.dt = dt
         self.nrepeats = len(self.trajfile_list)
         self.cutoff = np.sort(np.array(cutoff, dtype=float))
         self.lipid = lipid
@@ -392,7 +392,7 @@ class LipidInteraction():
                 if self.dt == None:
                     timestep = traj.timestep/1000000.0 if self.timeunit == "us" else traj.timestep/1000.0
                 else:
-                    timestep = self.dt
+                    timestep = float(self.dt)
                 ####
                 lipid_haystack = get_atom_index_for_lipid(self.lipid, traj, part=self.lipid_atoms)
                 self.lipid_haystack_set.append(lipid_haystack)
@@ -598,7 +598,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 if self.dt == None:
                     timestep = traj.timestep/1000000.0 if self.timeunit == "us" else traj.timestep/1000.0
                 else:
-                    timestep = self.dt
+                    timestep = float(self.dt)
                 ####
                 for idx_protein in np.arange(self.nprot):
                     BS_atom_indices = np.concatenate([self.protein_residue_indices_set[idx_protein][idx_residue] for idx_residue in node_list])
