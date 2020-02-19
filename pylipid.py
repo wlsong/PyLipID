@@ -307,7 +307,7 @@ class LipidInteraction():
         self.save_dir = check_dir(save_dir)
         self.trajfile_list = trajfile_list
         self.grofile_list = grofile_list
-        self.dt = dt
+        self.dt = float(dt)
         self.nrepeats = len(self.trajfile_list)
         self.cutoff = np.sort(np.array(cutoff, dtype=float))
         self.lipid = lipid
@@ -363,12 +363,6 @@ class LipidInteraction():
             self.save_dir = check_dir(save_dir, "Interaction_{}".format(self.lipid))
 
         initial_guess = (1, 1, 1, 1)
-        ############
-        if self.dt == None:
-            converter = 1/1000000.0 if self.timeunit == "us" else 1/1000.0
-        else:
-            converter = self.dt
-        ############
 
         with open("{}/calculation_log_{}.txt".format(self.save_dir, self.lipid), "w") as f:
             f.write("###### Lipid: {}\n".format(self.lipid))
@@ -394,12 +388,18 @@ class LipidInteraction():
                 print("\n########## Start calculation of {} interaction in \n########## {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
                 f.write("\n###### Start calculation of {} interaction in \n###### {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
                 traj = md.load(trajfile, top=self.grofile_list[traj_idx], stride=self.stride)
+                ####
+                if self.dt == None:
+                    timestep = traj.timestep/1000000.0 if self.timeunit == "us" else traj.timestep/1000.0
+                else:
+                    timestep = self.dt
+                ####
                 lipid_haystack = get_atom_index_for_lipid(self.lipid, traj, part=self.lipid_atoms)
                 self.lipid_haystack_set.append(lipid_haystack)
                 lipid_resi_set = atom2residue(lipid_haystack, traj)
                 self.num_of_lipids.append(len(lipid_resi_set))
-                self.T_total.append((traj.time[-1] - traj.time[0]) * converter)
-                self.timesteps.append(traj.timestep * converter)
+                self.T_total.append((traj.n_frames - 1) * timestep)
+                self.timesteps.append(timestep)
                 lipid_mapping = {lipid:lipid_idx for (lipid_idx, lipid) in enumerate(lipid_resi_set)}
                 ncol_per_protein = len(lipid_resi_set) * traj.n_frames
                 for idx_protein in np.arange(self.nprot):
@@ -409,7 +409,7 @@ class LipidInteraction():
                                     for frame_idx in np.arange(traj.n_frames) for contact_lipid in contact_residues_low[frame_idx] \
                                     if len(contact_residues_low[frame_idx]) > 0])
                         row.append([resid for dummy in np.arange(len(col[-1]))])
-                        self.interaction_duration_raw[residue].append(Durations(contact_residues_low, contact_residues_high, traj.timestep*converter).cal_duration())
+                        self.interaction_duration_raw[residue].append(Durations(contact_residues_low, contact_residues_high, timestep).cal_duration())
                         occupancy, lipidcount = cal_interaction_intensity(contact_residues_low)
                         self.interaction_occupancy[residue].append(occupancy)
                         self.lipid_count[residue].append(lipidcount)
@@ -583,7 +583,6 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         BS_lipidcount = np.zeros(len(self.residue_set))
         BS_occupancy = np.zeros(len(self.residue_set))
         BS_rsquare = np.zeros(len(self.residue_set))
-        converter = 1/1000000.0 if self.timeunit == "us" else 1/1000.0
         initial_guess = (1, 1, 1, 1)
         t_total_max = np.max(self.T_total)
         for value in range(max(values)):
@@ -595,10 +594,16 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             ########### cal site koff ############
             for traj_idx, trajfile in enumerate(self.trajfile_list):
                 traj = md.load(trajfile, top=self.grofile_list[traj_idx], stride=self.stride)
+                ####
+                if self.dt == None:
+                    timestep = traj.timestep/1000000.0 if self.timeunit == "us" else traj.timestep/1000.0
+                else:
+                    timestep = self.dt
+                ####
                 for idx_protein in np.arange(self.nprot):
                     BS_atom_indices = np.concatenate([self.protein_residue_indices_set[idx_protein][idx_residue] for idx_residue in node_list])
                     contact_BS_low, contact_BS_high = find_contact(traj, BS_atom_indices, self.lipid_haystack_set[traj_idx], self.cutoff[0], self.cutoff[1])
-                    self.interaction_duration_raw_BS[binding_site_id].append(Durations(contact_BS_low, contact_BS_high, traj.timestep*converter).cal_duration())
+                    self.interaction_duration_raw_BS[binding_site_id].append(Durations(contact_BS_low, contact_BS_high, timestep).cal_duration())
                     occupancy, lipidcount = cal_interaction_intensity(contact_BS_low)
                     self.interaction_occupancy_BS[binding_site_id].append(occupancy)
                     self.lipid_count_BS[binding_site_id].append(lipidcount)
