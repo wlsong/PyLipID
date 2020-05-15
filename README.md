@@ -82,13 +82,14 @@ conda env remove --name PyLipID
 
 **-pdb**: Provide a PDB structure onto which the binding site information will be mapped. Using this flag will generate a 'show_binding_site_info.py' file in the -save_dir directory, which allows users to check the mapped binding site information in PyMol. Users can run the generated script by 'python show_binding_site_info.py' to open such a PyMol session.
 
-**-pymol_gui**: Show the PyMol session of binding site information on the run of the calcution. Need to be used in conjuction with -pdb.
+**-pymol_gui**: Show the PyMol session of binding site information at the end of calculation. Need to be used in conjuction with -pdb.
 
 **-chain**: Select the chain of the structure provided by -pdb to which the binding site information mapped. This option is useful when the pdb structure has multiple chains. 
 
 
+
 ## Application Examples: 
-The standard application that may suits the general use:
+A standard check on lipid interactions:
 ```
 conda activate PyLipID
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
@@ -104,7 +105,7 @@ To specify a couple of regions to do the calculation, use -resi_list:
 python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -chain A -pymol_gui False
 
 ```
-The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and **0.35 0.55** for atomistic simulations. But it's always reccommended for users to do some test on their systems. 
+The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and for atomistic simulations is **0.35 0.55** . But it's always reccommended for users to do some test on their systems. 
 
 
 ## Developers:
