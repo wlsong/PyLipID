@@ -86,17 +86,25 @@ conda env remove --name PyLipID
 
 **-chain**: Select the chain of the structure provided by -pdb to which the binding site information mapped. This option is useful when the pdb structure has multiple chains. 
 
-**Usage example**: 
+
+## Application Examples: 
+The standard application that may suits the general use:
 ```
 conda activate PyLipID
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.4 -lipids POPC CHOL POP2 -nprot 1 -resi_offset 5 -save_dataset -pdb XXXX.pdb -chain A
+-cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset -pdb XXXX.pdb -chain A -pymol_gui False
 ```
 For phospholipids, it's recommended to use only the headgroup atoms to detect lipid binding sites:
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.4 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -resi_offset 5 -save_dataset -pdb XXXX.pdb -chain A
+-cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb -chain A -pymol_gui False
 ```
+To specify a couple of regions to do the calculation, use -resi_list:
+```
+python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -chain A -pymol_gui False
+
+```
+The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and **0.35 0.55** for atomistic simulations. But it's always reccommended for users to do some test on their systems. 
 
 
 ## Developers:
