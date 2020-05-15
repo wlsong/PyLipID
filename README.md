@@ -58,7 +58,7 @@ conda env remove --name PyLipID
 
 **-stride**: Stride through trajectories. Only every stride-th frame will be analyzed.
 
-**-dt**: Define the time interval between two adjacent frames in the trajectories. If not specified, the mdtraj will deduce from the trajectories. This works for trajectories in format of e.g. xtc which include timestep information. For trajectories in dcd format, users have to provide the time interval manually, in a time unite consistent with -tu"
+**-dt**: Define the time interval between two adjacent frames in the trajectories. If not specified, the mdtraj will deduce from the trajectories. This works for trajectories in format of e.g. xtc which include timestep information. For trajectories in dcd format, users have to provide the time interval manually, in a time unite consistent with -tu
 
 **-tu**: Time unit of all the calculations. Available options include ns and us. 
 
