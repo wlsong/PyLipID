@@ -63,7 +63,7 @@ parser.add_argument("-nprot", default=1, metavar="1", \
 parser.add_argument("-resi_offset", default=0, metavar="0", help="Shifting the residue index. It is useful if you need to change the residue \
                     index in your trajectories. For example, to change the residue indeces from 5,6,7,..., to 10,11,12,..., use -resi_offset 4. \
                     All the outputs, including protein sequence and saved coordinates, will be changed by this.")
-parser.add_argument("-resi_list", nargs="?", default=None, metavar="1-10 20-30", help="The indices of residues on which the calculations are done. \
+parser.add_argument("-resi_list", nargs="+", default=[], metavar="1-10 20-30", help="The indices of residues on which the calculations are done. \
                     This option is useful for those proteins with large regions that don't require calculation. Skipping those calculations could \
                     save time and memory. Accepted syntax include 1/ defining a range, like 1-10 (both ends included); 2/ single residue index, \
                     like 25 26 17. All the selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46. The residue indices are \
@@ -984,13 +984,14 @@ if __name__ == '__main__':
     save_dir = check_dir(args.save_dir)
     ###### process resi_list ########
     resi_list = []
-    for item in args.resi_list:
-        if "-" in item:
-            item_list = item.split("-")
-            resi_list.append(np.arange(int(item_list[0]), int(item_list[-1])+1))
-        else:
-            resi_list.append(int(item))
-    resi_list = np.hstack(resi_list)
+    if len(args.resi_list) > 0:
+        for item in args.resi_list:
+            if "-" in item:
+                item_list = item.split("-")
+                resi_list.append(np.arange(int(item_list[0]), int(item_list[-1])+1))
+            else:
+                resi_list.append(int(item))
+        resi_list = np.hstack(resi_list)
     ##################################
     ######## write a backup file of params for reproducibility ############
     fn = os.path.join(save_dir, "pylipid_backup_{}.txt".format(datetime.datetime.now().strftime("%Y_%m_%d_%H%M")))
