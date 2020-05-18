@@ -66,8 +66,9 @@ parser.add_argument("-resi_offset", default=0, metavar="0", help="Shifting the r
 parser.add_argument("-resi_list", nargs="+", default=[], metavar="1-10 20-30", help="The indices of residues on which the calculations are done. \
                     This option is useful for those proteins with large regions that don't require calculation. Skipping those calculations could \
                     save time and memory. Accepted syntax include 1/ defining a range, like 1-10 (both ends included); 2/ single residue index, \
-                    like 25 26 17. All the selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46. The residue indices are \
-                    not affected by -resi_offset, i.e. they should be the indices in your trajectories.")
+                    like 25 26 17. All the selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46 means selecting \
+                    residues 1-10, 20-30, 40, 45 and 46 for calculation. The residue indices are not affected by -resi_offset, i.e. they \
+                    should be consistent with the indices in your trajectories.")
 parser.add_argument("-nbootstrap", default=10, metavar=10, help="The number of samples for bootstrapping the calcultion of koff. \
                     The default is 10. The larger the number, the more time-consuming the calculation will be. The closer the bootstrapped \
                     residence time/koffs are to the original values, the more reliable those original values are. The bootstrapped results \
