@@ -58,7 +58,7 @@ conda env remove --name PyLipID
 
 **-stride**: Stride through trajectories. Only every stride-th frame will be analyzed.
 
-**-dt**: Define the time interval between two adjacent frames in the trajectories. If not specified, the mdtraj will deduce from the trajectories. This works for trajectories in format of e.g. xtc which include timestep information. For trajectories in dcd format, users have to provide the time interval manually, in a time unite consistent with -tu"
+**-dt**: Define the time interval between two adjacent frames in the trajectories. If not specified, the mdtraj will deduce from the trajectories. This works for trajectories in format of e.g. xtc which include timestep information. For trajectories in dcd format, users have to provide the time interval manually, in a time unite consistent with -tu
 
 **-tu**: Time unit of all the calculations. Available options include ns and us. 
 
@@ -93,8 +93,14 @@ A standard check on lipid interactions:
 ```
 conda activate PyLipID
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset -pdb XXXX.pdb -chain A -pymol_gui False
+-cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset 
 ```
+To map the calculated binding site information onto a structure (which should be consistent with your trajectory configuration), use the flag -pdb:
+```
+python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+-cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset -pdb XXXX.pdb
+```
+Replace 'XXXX.pdb' with the pdb file you choose. 
 For phospholipids, it's recommended to use only the headgroup atoms to detect lipid binding sites:
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
