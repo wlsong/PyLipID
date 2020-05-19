@@ -72,9 +72,9 @@ conda env remove --name PyLipID
 
 **-nprot**: num. of proteins (or chains) in the simulation system. The calculated results will be averaged among these proteins (or chains). The proteins (or chains) need to be identical, otherwise the averaging will fail.
 
-**-resi_offset**: Shifting the residue index. It is useful if you need to change the residue index in your trajectories. For example, to change the residue indeces from 5,6,7,..., to 10,11,12,..., use -resi_offset 4. All the outputs, including protein sequence and saved coordinates, will be changed by this.
+**-resi_offset**: Shifting the residue index. It is useful if you need to change the residue index in your trajectories. For example, to change the residue indeces from 5,6,7,..., to 10,11,12,..., use -resi_offset 4. All the outputs, including plotted figures and saved coordinates, will be changed by this.
 
-**-resi_list**: The indices of residues on which the calculations are done. This option is useful for those proteins with large regions that don't require calculation. Skipping those calculations could save time and memory. Accepted syntax include 1/ defining a range, like 1-10 (both ends included); 2/ single residue index, like 25 26 17. All the selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46 means selecting residues 1-10, 20-30, 40, 45 and 46 for calculation. The residue indices are not affected by -resi_offset, i.e. they should be consistent with the indices in your trajectories.
+**-resi_list**: The indices of residues selected for calculation. The calculation will be done only on these selected residues. This option is useful for those proteins with large regions/domains that don't require calculation, and skipping those regions/domains could save time and memory. Accepted syntax include 1/ defining a range of residue indeces, like 1-10 (both ends included); 2/ single residue index, like 25 26 17. The selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46 means selecting residues 1-10, 20-30, 40, 45 and 46 for calculation. The residue indices are not affected by -resi_offset, i.e. they should be consistent with the indices in your trajectories.
 
 **-nbootstrap**: The number of samples for bootstrapping the calcultion of koff. The default is 10. The larger the number, the more time-consuming the calculation will be. The closer the bootstrapped residence time/koffs are to the original values, the more reliable those original values are. The bootstrapped results are ploted in each of the koff plots and plotted apposed to the original values in the figure showing residence time. 
 
@@ -104,14 +104,17 @@ Replace 'XXXX.pdb' with the pdb file you choose.
 For phospholipids, it's recommended to use only the headgroup atoms for a better definition of binding events:
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb -chain A -pymol_gui False
+-cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb -chain A 
+-pymol_gui False
 ```
 To specify a couple of regions to do the calculation, use -resi_list:
 ```
-python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -chain A -pymol_gui False
+python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+-cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -chain A
+-pymol_gui False
 
 ```
-The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and for atomistic simulations is **0.35 0.55** . But it's always reccommended for users to do some test on their systems. 
+The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and that for atomistic simulations is **0.35 0.55** . But it's always reccommended for users to do some tests on their systems. 
 
 
 ## Developers:
