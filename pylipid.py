@@ -62,7 +62,7 @@ parser.add_argument("-nprot", default=1, metavar="1", \
                     (or chains). The proteins (or chains) need to be identical, otherwise the averaging will fail.")
 parser.add_argument("-resi_offset", default=0, metavar="0", help="Shifting the residue index. It is useful if you need to change the residue \
                     index in your trajectories. For example, to change the residue indeces from 5,6,7,..., to 10,11,12,..., use -resi_offset 4. \
-                    All the outputs, including protein sequence and saved coordinates, will be changed by this.")
+                    All the outputs, including plotted figures and saved coordinates, will be changed by this.")
 parser.add_argument("-resi_list", nargs="+", default=[], metavar="1-10 20-30", help="The indices of residues on which the calculations are done. \
                     This option is useful for those proteins with large regions that don't require calculation. Skipping those calculations could \
                     save time and memory. Accepted syntax include 1/ defining a range, like 1-10 (both ends included); 2/ single residue index, \
@@ -1004,7 +1004,7 @@ if __name__ == '__main__':
         li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, dt=args.dt, cutoff=cutoff, lipid=lipid, \
                               lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=args.resi_offset, \
                               resi_list=resi_list, save_dir=args.save_dir)
-        li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nboostrap))
+        li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nbootstrap))
         li.plot_interactions(item="Duration")
         li.plot_interactions(item="Residence Time")
         li.plot_interactions(item="Occupancy")
