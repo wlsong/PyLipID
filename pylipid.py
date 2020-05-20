@@ -1002,7 +1002,7 @@ if __name__ == '__main__':
     #######################################################################
     for lipid in lipid_set:
         li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, dt=args.dt, cutoff=cutoff, lipid=lipid, \
-                              lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=args.resi_offset, \
+                              lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=int(args.resi_offset), \
                               resi_list=resi_list, save_dir=args.save_dir)
         li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nbootstrap))
         li.plot_interactions(item="Duration")
