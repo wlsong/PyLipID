@@ -100,18 +100,17 @@ To map the calculated binding site information onto a structure (which should be
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset -pdb XXXX.pdb
 ```
-Replace 'XXXX.pdb' with the pdb file you chose. 
+Replace 'XXXX.pdb' with the pdb file you chose. By default, a PyMol session with the calculated binding site information will show up at the end of the calculation. To switch off this PyMol GUI, use -pymol_gui False. This binding site information with PyMol display is stored in a python script 'show_binding_site_info.py' which allows users to re-open this PyMol session by the command 'python show_binding_site_info.py'.
 For phospholipids, it's recommended to use only the headgroup atoms for a better definition of binding events:
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb -chain A 
+-cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb 
 -pymol_gui False
 ```
-To specify a couple of regions to do the calculation, use -resi_list:
+To specify a couple of regions for the calculation, use -resi_list:
 ```
 python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -chain A
--pymol_gui False
+-cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -pymol_gui False
 
 ```
 The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and that for atomistic simulations is **0.35 0.55** . But it's always reccommended for users to do some tests on their systems. 
