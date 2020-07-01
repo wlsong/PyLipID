@@ -70,6 +70,8 @@ conda env remove --name PyLipID
 
 **-lipid_atoms**: Lipid atoms to check, seperated by space. Should be consistent with the atom names in your trajectories.
 
+**-radii**: Change/Define the radius of atoms/beads that is used for the calculation of binding site surface area. Supported syntax is BB:0.26, which defines the radius of bead BB as 0.26 nm, or CA:0.12 which defines the radius of atom CA as 0.12 nm. For atomistic simulations, the default radii are taken from mdtraj https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56. For coarse-grained simulations, the script defines the radius of the MARTINI 2 beads of BB as 0.26 nm and SC1/2/3 as 0.23 nm. The users need to specify the radius of the beads in their proteins manually via this flag.  
+
 **-nprot**: num. of proteins (or chains) in the simulation system. The calculated results will be averaged among these proteins (or chains). The proteins (or chains) need to be identical, otherwise the averaging will fail.
 
 **-resi_offset**: Shifting the residue index. It is useful if you need to change the residue index in your trajectories. For example, to change the residue indeces from 5,6,7,..., to 10,11,12,..., use -resi_offset 4. All the outputs, including plotted figures and saved coordinates, will be changed by this.
