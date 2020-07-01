@@ -113,7 +113,6 @@ To specify a couple of regions for the calculation, use -resi_list:
 ```
 python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -pymol_gui False
-
 ```
 The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and that for atomistic simulations is **0.35 0.55** . But it's always reccommended for users to do some tests on their systems. 
 
