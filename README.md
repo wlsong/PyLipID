@@ -76,7 +76,7 @@ conda env remove --name PyLipID
 
 **-resi_list**: The indices of residues selected for calculation. The calculation will be done only on these selected residues. This option is useful for those proteins with large regions/domains that don't require calculation, and skipping those regions/domains could save time and memory. Accepted syntax include 1/ defining a range of residue indeces, like 1-10 (both ends included); 2/ single residue index, like 25 26 17. The selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46 means selecting residues 1-10, 20-30, 40, 45 and 46 for calculation. The residue indices are not affected by -resi_offset, i.e. they should be consistent with the indices in your trajectories.
 
-**-nbootstrap**: The number of samples for bootstrapping the calcultion of koff. The default is 10. The larger the number, the more time-consuming the calculation will be. The closer the bootstrapped residence time/koffs are to the original values, the more reliable those original values are. The bootstrapped results are ploted in each of the koff plots and plotted apposed to the original values in the figure showing residence time. 
+**-nbootstrap**: The number of samples for bootstrapping the calcultion of koff. The default is 10. The larger the number, the more time-consuming the calculation will be. The closer the bootstrapped residence time/koffs are to the original values, the more reliable those original values are. The bootstrapped results are plotted in each of the koff plots and plotted apposed to the original values in the figure showing residence time. 
 
 **-save_dataset**: Save dataset in pickle. Default is True. 
 
@@ -88,7 +88,7 @@ conda env remove --name PyLipID
 
 
 
-## Application Examples: 
+## Examples: 
 A standard check on lipid interactions:
 ```
 conda activate PyLipID
@@ -100,18 +100,17 @@ To map the calculated binding site information onto a structure (which should be
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset -pdb XXXX.pdb
 ```
-Replace 'XXXX.pdb' with the pdb file you choose. 
+Replace 'XXXX.pdb' with the pdb file you chose. By default, a PyMol session with the calculated binding site information will show up at the end of the calculation. To switch off this PyMol GUI, use -pymol_gui False. This binding site information with PyMol display is stored in a python script 'show_binding_site_info.py' which allows users to re-open this PyMol session by the command 'python show_binding_site_info.py'.
 For phospholipids, it's recommended to use only the headgroup atoms for a better definition of binding events:
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb -chain A 
+-cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb 
 -pymol_gui False
 ```
-To specify a couple of regions to do the calculation, use -resi_list:
+To specify a couple of regions for the calculation, use -resi_list:
 ```
 python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -chain A
--pymol_gui False
+-cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -pymol_gui False
 
 ```
 The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and that for atomistic simulations is **0.35 0.55** . But it's always reccommended for users to do some tests on their systems. 
