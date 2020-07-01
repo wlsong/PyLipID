@@ -57,11 +57,12 @@ parser.add_argument("-lipids", nargs="+", metavar="POPC", default="POPC CHOL POP
                     help="Lipid species to check, seperated by space. Should be consistent with residue names in your trajectories.")
 parser.add_argument("-lipid_atoms", nargs="+", metavar="PO4", default=None, \
                     help="Lipid atoms to check, seperated by space. Should be consistent with the atom names in your trajectories.")
-parser.add_argument("-radii", nargs="+", default=None, metavar="BB:0.47 SC1:0.43", help="Change/Define the radius of atoms/beads \
-                    that is used for binding site surface area calculation. Supported syntax is like BB:0.47, which means the radius of \
-                    bead BB is 0.47 nm, or CA:0.12 which means the radius of atom CA is 0.12 nm. For atomistic simulations, the default radius that mdtraj \
-                    uses can be found at https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56. For coarse-grained \
-                    simulations, the radii are defined by MARTINI_CG_radii in the function of cal_interaction_network in this script.")
+parser.add_argument("-radii", nargs="+", default=None, metavar="BB:0.26 SC1:0.23", help="Change/Define the radius of atoms/beads \
+                    that is used for the calculation of binding site surface area. Supported syntax is BB:0.26, which defines the radius of \
+                    bead BB as 0.26 nm, or CA:0.12 which defines the radius of atom CA as 0.12 nm. For atomistic simulations, the default radii are taken from\
+                    mdtraj https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56. For coarse-grained \
+                    simulations, the script defines the radius of the MARTINI 2 beads of BB as 0.47 nm and SC1/2/3 as 0.43 nm. The users need to specify the \
+                    radius of the beads in their proteins manually via this flag.")
 parser.add_argument("-nprot", default=1, metavar="1", \
                     help="num. of proteins (or chains) in the simulation system. The calculated results will be averaged among these proteins \
                     (or chains). The proteins (or chains) need to be identical, otherwise the averaging will fail.")
@@ -586,7 +587,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                                  "ALA": "Hydrophobic", "VAL": "Hydrophobic", "ILE": "Hydrophobic", "LEU": "Hydrophobic", 
                                  "MET": "Hydrophobic", "PHE": "Hydrophobic", "TYR": "Hydrophobic", "TRP": "Hydrophobic"}
         
-        MARTINI_CG_radii = {"BB": 0.47, "SC1": 0.43, "SC2": 0.43, "SC3": 0.43}
+        MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
         
         if radii == None:
             radii_book = MARTINI_CG_radii
