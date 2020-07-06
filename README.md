@@ -18,17 +18,17 @@ For definition of residence time, please refer to:
 - Duncan AL, Corey RA, Sansom MSP. Defining how multiple lipid species interact with inward rectifier potassium (Kir2) channels. 2020. Proc Natl Acad Sci U S A.
 
 ## Installation:
-pylipid.py is tested on 
+pylipid.py requires following packages:
 - python = 3.6
-- mdtraj = 1.9
-- numpy = 1.14
-- pandas = 0.23
-- matplotlib = 3.1
-- seaborn = 0.8
-- networkx = 2.1
-- scipy = 1.1
-- pymol = 1.9
-- networkx = 2.1
+- mdtraj
+- numpy
+- pandas
+- matplotlib
+- seaborn
+- networkx
+- scipy
+- pymol
+- python-louvain
 
 To create a compatible python environment but not to mess up with your global python settings, we recommend building an independent env called PyLipID using [conda](https://www.anaconda.com/distribution/). 
 To create this PyLipID environment using the provided env.yml, assuming you have installed conda in your system:
