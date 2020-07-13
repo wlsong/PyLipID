@@ -34,8 +34,6 @@ To create a compatible python environment but not to mess up with your global py
 To create this PyLipID environment using the provided env.yml, assuming you have installed conda in your system:
 ```
 conda env create -f env.yml
-conda init bash # your shell name. Supported shells include bash, fish,tcsh, zsh etc. See conda init --help for information
-source ~/.bashrc
 ```
 Now your python env PyLipID is all set. Whenever you want to use the script, activate PyLipID first by
 ```
