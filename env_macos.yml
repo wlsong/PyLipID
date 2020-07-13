@@ -1,0 +1,13 @@
+name: PyLipID
+channels:
+  - conda-forge
+  - defaults
+  - schrodinger 
+dependencies:
+  - python
+  - mdtraj
+  - matplotlib
+  - seaborn
+  - networkx
+  - python-louvain
+  - pymol
