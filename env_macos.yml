@@ -11,3 +11,4 @@ dependencies:
   - networkx
   - python-louvain
   - pymol
+  - pillow
