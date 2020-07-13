@@ -1,0 +1,13 @@
+name: PyLipID
+channels:
+  - conda-forge
+  - defaults
+  - awacha  
+dependencies:
+  - python
+  - mdtraj
+  - matplotlib
+  - seaborn
+  - networkx
+  - python-louvain
+  - pymol-open-source
