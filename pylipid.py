@@ -61,8 +61,7 @@ parser.add_argument("-radii", nargs="+", default=None, metavar="BB:0.26 SC1:0.23
                     that is used for the calculation of binding site surface area. Supported syntax is BB:0.26, which defines the radius of \
                     bead BB as 0.26 nm, or CA:0.12 which defines the radius of atom CA as 0.12 nm. For atomistic simulations, the default radii are taken from\
                     mdtraj https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56. For coarse-grained \
-                    simulations, the script defines the radius of the MARTINI 2 beads of BB as 0.47 nm and SC1/2/3 as 0.43 nm. The users need to specify the \
-                    radius of the beads in their proteins manually via this flag.")
+                    simulations, this script defines the radius of the MARTINI 2 beads of BB as 0.26 nm and SC1/2/3 as 0.23 nm.")
 parser.add_argument("-nprot", default=1, metavar="1", \
                     help="num. of proteins (or chains) in the simulation system. The calculated results will be averaged among these proteins \
                     (or chains). The proteins (or chains) need to be identical, otherwise the averaging will fail.")
@@ -579,21 +578,21 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
 
     def cal_interaction_network(self, save_dir=None, pdb=None, chain=None, pymol_gui=True, save_dataset=True, nbootstrap=10, radii=None):
-        
+
         Residue_property_book = {"ARG": "Pos. Charge", "HIS": "Pos. Charge", "LYS": "Pos. Charge",
-                                 "ASP": "Neg. Charge", "GLU": "Neg. Charge", 
+                                 "ASP": "Neg. Charge", "GLU": "Neg. Charge",
                                  "SER": "Polar", "THR": "Polar", "ASN": "Polar", "GLN": "Polar",
                                  "CYS": "Special", "SEC": "Special", "GLY": "Special", "PRO": "Special",
-                                 "ALA": "Hydrophobic", "VAL": "Hydrophobic", "ILE": "Hydrophobic", "LEU": "Hydrophobic", 
+                                 "ALA": "Hydrophobic", "VAL": "Hydrophobic", "ILE": "Hydrophobic", "LEU": "Hydrophobic",
                                  "MET": "Hydrophobic", "PHE": "Hydrophobic", "TYR": "Hydrophobic", "TRP": "Hydrophobic"}
-        
+
         MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
-        
+
         if radii == None:
             radii_book = MARTINI_CG_radii
         else:
             radii_book = {**MARTINI_CG_radii, **radii}
-            
+
         if save_dir == None:
             save_dir = check_dir(self.save_dir, "Binding_Sites_{}".format(self.lipid))
         else:
@@ -639,9 +638,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         BS_duration = np.zeros(len(self.residue_set))
         BS_lipidcount = np.zeros(len(self.residue_set))
         BS_occupancy = np.zeros(len(self.residue_set))
-        #####
         BS_area = defaultdict(list)
-        #####
         BS_koff_b = np.zeros(len(self.residue_set))
         BS_koff_b_cv = np.zeros(len(self.residue_set))
         BS_restime_b = np.zeros(len(self.residue_set))
@@ -677,7 +674,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                     selected_protein_atom_idx = traj.top.select("protein")[idx_protein*self.natoms_per_protein:(idx_protein+1)*self.natoms_per_protein]
                     for frame in traj.xyz:
                         new_frame = frame[selected_protein_atom_idx]
-                        new_xyz.append(new_frame)    
+                        new_xyz.append(new_frame)
                     reduced_frame = traj[0].atom_slice(selected_protein_atom_idx)
                     reduced_top = reduced_frame.top
                     new_traj = md.Trajectory(new_xyz, reduced_top, time=traj.time, unitcell_lengths=traj.unitcell_lengths, unitcell_angles=traj.unitcell_angles)
@@ -717,7 +714,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             lipidcount = np.mean(self.lipid_count_BS[binding_site_id])
             BS_lipidcount[mask] = lipidcount
             f.write("{:20s} {:10.3f}\n".format(" BS Lipid Count:", lipidcount))
-            f.write("{:20s} {:10.3f} +- {:10.3f}\n".format(" BS area", np.concatenate(BS_area[binding_site_id]).mean(), np.concatenate(BS_area[binding_site_id]).std()))
+            f.write("{:20s} {:10.3f} +- {:10.3f}\n".format(" BS Surface Area:", np.concatenate(BS_area[binding_site_id]).mean(), np.concatenate(BS_area[binding_site_id]).std()))
             #######
             res_stats = {"Pos. Charge": 0, "Neg. Charge": 0, "Polar": 0, "Special": 0, "Hydrophobic": 0}
             for residue in self.residue_set[mask]:
@@ -737,7 +734,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             f.write("\n")
             f.write("\n")
         f.close()
-        
+
         ######################## plot area stats ##########################
         bs_id_set = []
         bs_area_set = []
@@ -746,7 +743,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             bs_id_set.append([binding_site_id for dummy in np.arange(len(np.concatenate(BS_area[binding_site_id])))])
         d_area = pd.DataFrame({"BS id": np.concatenate(bs_id_set), "Area (nm^2)": np.concatenate(bs_area_set)})
         plt.rcParams["font.size"] = 8
-        plt.rcParams["font.weight"] = "bold"        
+        plt.rcParams["font.weight"] = "bold"
         if len(BS_area.keys()) <= 8:
             fig, ax = plt.subplots(figsize=(4.5, 2.8))
         elif len(BS_area.keys()) > 8 and len(BS_area.keys()) <= 15:
@@ -759,8 +756,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         ax.set_title("{} Binding Site Surface Area".format(self.lipid), fontsize=8, weight="bold")
         plt.tight_layout()
         plt.savefig("{}/BS_surface_area.tiff".format(save_dir), dpi=200)
-        plt.close()    
-        
+        plt.close()
+
         ################ update dataset ########################
         self.dataset["Binding site"]  = binding_site_identifiers
         self.dataset["BS Residence Time"] = BS_restime
@@ -1079,7 +1076,7 @@ if __name__ == '__main__':
         f.write("python {}\n".format(" ".join(sys.argv)))
     #######################################################################
     ############################ change of radii ##########################
-    ##### mdtraj default radii: 
+    ##### mdtraj default radii:
     ##### https://github.com/mdtraj/mdtraj/blob/b28df2cd6e5c35fa006fe3c24728857880793abb/mdtraj/geometry/sasa.py#L56
     if args.radii == None:
         radii_book = None
