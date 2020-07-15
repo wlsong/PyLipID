@@ -191,7 +191,8 @@ def cal_sigma(durations, num_of_lipids, T_total, delta_t_range):
 
 def cal_restime_koff(sigma, initial_guess):
     """
-    fit the exponential curve y=Ae^(-kx)
+    fit the exponential curve y=Ae^(-k1x)+Be^(-k2x)
+    koff = min(k1, k2)
     """
     delta_t_range = list(sigma.keys())
     delta_t_range.sort() # x
