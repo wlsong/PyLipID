@@ -27,8 +27,10 @@ pylipid.py requires following packages:
 - seaborn
 - networkx
 - scipy
-- pymol
+- pymol (if -pymol_gui True)
 - python-louvain
+- logomaker
+- rmsd
 
 To create a compatible python environment but not to mess up with your global python settings, we recommend building an independent env called PyLipID using [conda](https://www.anaconda.com/distribution/). 
 To create this PyLipID environment using the provided env.yml, assuming you have installed conda in your system:
