@@ -12,3 +12,5 @@ dependencies:
   - python-louvain
   - pymol-open-source
   - pillow
+  - logomaker
+  - rmsd
