@@ -2,7 +2,8 @@ name: PyLipID
 channels:
   - conda-forge
   - defaults
-  - awacha  
+  - awacha 
+  - bioconda
 dependencies:
   - python
   - mdtraj
