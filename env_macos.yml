@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
   - schrodinger 
+  - bioconda
 dependencies:
   - python
   - mdtraj
