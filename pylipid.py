@@ -1099,6 +1099,7 @@ for bs_id in np.arange(binding_site_id):
                 ax.xaxis.set_major_locator(MultipleLocator(20))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
                 ax.set_xlim(idx*100, (idx+1)*100)
+                ax.set_ylim(0, data.max()*1.2)
                 ax.set_ylabel("Res. Time {}".format(timeunit), fontsize=8, weight="bold", va="center")
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, size=8, weight="bold")
@@ -1151,6 +1152,7 @@ for bs_id in np.arange(binding_site_id):
                 ax.xaxis.set_major_locator(MultipleLocator(20))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
                 ax.set_xlim(idx*100, (idx+1)*100)
+                ax.set_ylim(0, data.max()*1.2)
                 ax.set_ylabel(ylabel, fontsize=8, weight="bold", va="center")
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, fontsize=8, weight="bold")
