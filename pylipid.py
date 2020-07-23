@@ -271,8 +271,9 @@ class LipidInteraction():
         self.resi_offset = resi_offset
 
         traj = md.load(self.trajfile_list[0], top=self.grofile_list[0], stride=self.stride)
-        self.natoms_per_protein = int(len(traj.top.select("protein"))/self.nprot)
-        self.prot_atom_indices = traj.top.select("protein")[:self.natoms_per_protein]
+        all_protein_atom_indices = traj.top.select("protein")
+        self.natoms_per_protein = int(len(all_protein_atom_indices)/self.nprot)
+        self.prot_atom_indices = all_protein_atom_indices[:self.natoms_per_protein]
         self.nresi_per_protein = traj.top.atom(self.prot_atom_indices[-1]).residue.index - \
                                  traj.top.atom(self.prot_atom_indices[0]).residue.index + 1
         self._protein_ref = traj[0].atom_slice(self.prot_atom_indices)
@@ -291,9 +292,9 @@ class LipidInteraction():
             self.residue_set = np.array(residue_set, dtype=str) # residue id in structure instead of builtin index in mdtraj
             self.protein_residue_indices_set = [] # atom indices for each residue
             for protein_idx in range(self.nprot):
-                self.protein_residue_indices_set.append(np.arange(protein_idx*self.nresi_per_protein, \
-                                                                  (protein_idx+1)*self.nresi_per_protein) + \
-                                                        traj.top.atom(self.prot_atom_indices[0]).residue.index)
+                self.protein_residue_indices_set.append(np.unique([traj.top.atom(atom_idx).residue.index \
+                                                                   for atom_idx in \
+                                                                   all_protein_atom_indices[protein_idx*self.natoms_per_protein:(protein_idx+1)*self.natoms_per_protein]]))
         elif len(resi_list) > 0:
             resi_list = np.sort(np.array(np.hstack(resi_list), dtype=int))
             selected_residues_per_protein = np.unique([traj.top.atom(atom_idx).residue.index for atom_idx in self.prot_atom_indices \
@@ -303,8 +304,8 @@ class LipidInteraction():
             self.residue_set = np.array(residue_set, dtype=str)
             self.protein_residue_indices_set = []
             for protein_idx in range(self.nprot):
-                self.protein_residue_indices_set.append([resi \
-                                                          for resi in selected_residues_per_protein + protein_idx*self.nresi_per_protein])
+                self.protein_residue_indices_set.append(np.array([resi \
+                                                          for resi in selected_residues_per_protein + protein_idx*self.nresi_per_protein]))
         
         return
 
@@ -710,22 +711,25 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                         self.interaction_occupancy_BS[binding_site_id].append(occupancy)
                         self.lipid_count_BS[binding_site_id].append(lipidcount)
                         ########### store lipid binding poses ############
-                        protein_indices = self.natoms_per_protein * idx_protein + self.prot_atom_indices
+                        protein_indices = traj.top.select("protein")[idx_protein*self.natoms_per_protein:(idx_protein+1)*self.natoms_per_protein]
                         ref_coords = np.copy(self._protein_ref.xyz[0])
-                        ref_centroid = ref_coords.mean(axis=0)
+                        if len(self._protein_ref.top.select("protein and name CA")) > 0:
+                            alignment_indices = len(self._protein_ref.top.select("protein and name CA"))
+                        else:
+                            alignment_indices = np.arange(len(protein_indices))
+                        ref_centroid = ref_coords[alignment_indices].mean(axis=0)
                         ref_coords_centered = ref_coords - ref_centroid
                         if gen_binding_poses > 0:
                             position_set = set()
                             lipid_index_set = column_id_set_low % self.num_of_lipids[traj_idx]
-                            ### remove duplicates ###
                             for framd_id, lipid_index in zip(frame_id_set_low, lipid_index_set):
-                                position_set.add((frame_id, lipid_index))
+                                position_set.add((frame_id, lipid_index)) ### remove duplicates ###
                             for frmae_id, lipid_index in position_set:
                                 lipid_id = self._lipid_resi_indices_set[traj_idx][lipid_index]
                                 lipid_indices = np.sort([atom.index for atom in traj.top.residue(lipid_id).atoms])
                                 selected_coords = np.copy(traj.xyz[frame_id, np.hstack([protein_indices, lipid_indices])])
-                                selected_coords_centered = selected_coords - selected_coords[:len(protein_indices)].mean(axis=0)
-                                rotation_matrix = rmsd.kabsch(selected_coords_centered[:len(protein_indices)], ref_coords_centered)
+                                selected_coords_centered = selected_coords - selected_coords[alignment_indices].mean(axis=0)
+                                rotation_matrix = rmsd.kabsch(selected_coords_centered[alignment_indices], ref_coords_centered[alignment_indices])
                                 selected_coords_aligned = np.dot(selected_coords_centered, rotation_matrix) + ref_centroid
                                 self._coordinate_pool[binding_site_id].append(selected_coords_aligned) 
                     ### calculate area ###
@@ -855,24 +859,27 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             for binding_site_id in binding_site_id_set:
                 num_of_poses = gen_binding_poses if gen_binding_poses <= len(self._coordinate_pool[binding_site_id]) \
                     else len(self._coordinate_pool[binding_site_id])
-                self._coordinate_pool_per_atom = defaultdict(list)
-                for coords in self._coordinate_pool[binding_site_id]:
-                    for idx in np.arange(self._lipid_ref.n_atoms):
-                        self._coordinate_pool_per_atom[idx].append(coords[idx-self._lipid_ref.n_atoms])
+                self._lipid_pool_per_atom = [np.array(self._coordinate_pool[binding_site_id])[:, idx-self._lipid_ref.n_atoms, :] \
+                                             for idx in np.arange(self._lipid_ref.n_atoms)]
                 self._kde_funcs = {}
-                for atom_idx, coords_pool in self._coordinate_pool_per_atom.items():
-                    self._kde_funcs[atom_idx] = stats.gaussian_kde(np.array(coords_pool).T)
+                for atom_idx in np.arange(self._lipid_ref.n_atoms):
+                    self._kde_funcs[atom_idx] = stats.gaussian_kde(self._lipid_pool_per_atom[atom_idx].T)
                 ### evaluate binding poses ###
-                scores_set = []
-                for coords in self._coordinate_pool[binding_site_id]:
-                    score = 0
-                    for idx in np.arange(self._lipid_ref.n_atoms):
-                        score += self._kde_funcs[idx].evaluate(coords[idx-self._lipid_ref.n_atoms].T) * weights[lipid_atom_map[idx]]
-                    scores_set.append(score)
-                scores_set = np.concatenate(scores_set)
+                failed = False
+                try: 
+                    scores = np.sum([weights[lipid_atom_map[idx]] * self._kde_funcs[idx].evaluate(self._lipid_pool_per_atom[idx].T) \
+                                     for idx in np.arange(self._lipid_ref.n_atoms)], axis=0)
+                except np.linalg.LinAlgError:
+                    failed = True
                 ### write binding poses ###
+                if failed:
+                    with open("{}/Errors.txt".format(coords_save_dir), "a") as f:
+                        f.write("Error! PDF calculation showed error at Binding Site {}, probably due to insufficient number of binding events. \n")
+                    selected_indices = np.arange(num_of_poses)
+                else:
+                    selected_indices = np.argsort(scores)[::-1][:num_of_poses]
+                ###############################
                 joined_top = self._protein_ref.top.join(self._lipid_ref.top)
-                selected_indices = np.argsort(scores_set)[::-1][:num_of_poses]
                 for pose_id in np.arange(num_of_poses, dtype=int):
                     new_traj = md.Trajectory(self._coordinate_pool[binding_site_id][selected_indices[pose_id]], joined_top, \
                                              time=self._protein_ref.time, unitcell_lengths=self._protein_ref.unitcell_lengths, \
@@ -1079,13 +1086,22 @@ for bs_id in np.arange(binding_site_id):
             SL_resn = [single_letter[residue[-3:]] for residue in self.residue_set]
             df = pd.DataFrame({"Resid": resi, "Resn": SL_resn, "Data": data})
             matrix = df.pivot(index="Resid", columns='Resn', values="Data").fillna(0)
-            fig, ax = plt.subplots(1, 1, figsize=(0.05*len(data), 2))
-            logomaker.Logo(matrix, color_scheme="chemistry", ax=ax)
-            ax.xaxis.set_major_locator(MultipleLocator(50))
-            ax.xaxis.set_minor_locator(MultipleLocator(10))
-            ax.set_ylabel("Res. Time {}".format(timeunit), fontsize=8, weight="bold", va="center")
-            ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
-            plt.tight_layout()
+            n_rows = 1+resi[-1]//100
+            length = 100 - resi[0]
+            fig, axes = plt.subplots(n_rows, 1, figsize=(4.5, 1.3*n_rows), sharey=True)
+            plt.subplots_adjust(hspace=0.5)
+            for idx, ax in enumerate(axes):
+                if idx == (n_rows - 1):
+                    logomaker.Logo(matrix[idx*length:], color_scheme="chemistry", ax=ax)
+                    ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
+                else:
+                    logomaker.Logo(matrix[idx*length:(idx+1)*length], color_scheme="chemistry", ax=ax)
+                ax.xaxis.set_major_locator(MultipleLocator(20))
+                ax.xaxis.set_minor_locator(MultipleLocator(1))
+                ax.set_xlim(idx*100, (idx+1)*100)
+                ax.set_ylabel("Res. Time {}".format(timeunit), fontsize=8, weight="bold", va="center")
+                for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
+                    plt.setp(label, size=8, weight="bold")
             plt.savefig("{}/{}_logo_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
             
 
@@ -1122,13 +1138,22 @@ for bs_id in np.arange(binding_site_id):
             SL_resn = [single_letter[residue[-3:]] for residue in self.residue_set]
             df = pd.DataFrame({"Resid": resi, "Resn": SL_resn, "Data": data})
             matrix = df.pivot(index="Resid", columns='Resn', values="Data").fillna(0)
-            fig, ax = plt.subplots(1, 1, figsize=(0.05*len(data), 2))
-            logomaker.Logo(matrix, color_scheme="chemistry", ax=ax)
-            ax.xaxis.set_major_locator(MultipleLocator(50))
-            ax.xaxis.set_minor_locator(MultipleLocator(10))
-            ax.set_ylabel(ylabel, fontsize=8, weight="bold", va="center")
-            ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
-            plt.tight_layout()
+            n_rows = 1+resi[-1]//100
+            length = 100 - resi[0]
+            fig, axes = plt.subplots(n_rows, 1, figsize=(4.5, 1.3*n_rows), sharey=True)
+            plt.subplots_adjust(hspace=0.5)
+            for idx, ax in enumerate(axes):
+                if idx == (n_rows - 1):
+                    logomaker.Logo(matrix[idx*length:], color_scheme="chemistry", ax=ax)
+                    ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
+                else:
+                    logomaker.Logo(matrix[idx*length:(idx+1)*length], color_scheme="chemistry", ax=ax)
+                ax.xaxis.set_major_locator(MultipleLocator(20))
+                ax.xaxis.set_minor_locator(MultipleLocator(1))
+                ax.set_xlim(idx*100, (idx+1)*100)
+                ax.set_ylabel(ylabel, fontsize=8, weight="bold", va="center")
+                for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
+                    plt.setp(label, fontsize=8, weight="bold")
             plt.savefig("{}/{}_logo_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
             
         return
