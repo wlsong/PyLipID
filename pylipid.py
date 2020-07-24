@@ -32,6 +32,7 @@ from itertools import product
 import logomaker
 import rmsd
 warnings.simplefilter(action='ignore', category=FutureWarning)
+np.seterr(all='ignore')
 
 ###################################
 ######  Parameter settings  #######
@@ -92,6 +93,9 @@ parser.add_argument("-save_pose_format", default="gro", metavar="gro", help="The
 parser.add_argument("-score_weights", default=None, metavar="PO4:1 C1:1", help="The weight of each of the lipid atom/bead contributes to the scoring function. \
                     Top-rated lipid binding poses can be generated based on users' specification. The bounds poses of each binding site are scored based \
                     on the scoring function Score = sum(PDF(atom_i) * Weight(atom_i)) for atom_i in the lipid molecule.")
+parser.add_argument("-letter_map", default=None, metavar="ARG:K GLY:G", help="Map the three-letter amino acids to one letter. This map is \
+                    used in making logomaker figures (https://logomaker.readthedocs.io/en/latest/). The common 20 amino acids are defined \
+                    by this script. Users need to use this flag to define maps for uncommon amino acids in their systems.")              
 parser.add_argument("-pdb", default=None, metavar="None", help="Provide a PDB structure onto which the binding site information will be mapped. \
                     Using this flag will generate a 'show_binding_site_info.py' file in the -save_dir directory, which allows users to check the \
                     mapped binding site information in PyMol. Users can run the generated script by 'python show_binding_site_info.py' \
@@ -993,7 +997,7 @@ for bs_id in np.arange(binding_site_id):
         return
 
 
-    def plot_interactions(self, item="Duration",  save_dir=None):
+    def plot_interactions(self, item="Duration",  save_dir=None, letter_map=None):
 
         if save_dir == None:
             save_dir = check_dir(self.save_dir, "Figures_{}".format(self.lipid))
@@ -1004,7 +1008,9 @@ for bs_id in np.arange(binding_site_id):
                          'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
                          'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
                          'ALA': 'A', 'VAL':'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
-
+        if letter_map != None:
+            single_letter.update(letter_map)
+        
         plt.rcParams["font.size"] = 8
         plt.rcParams["font.weight"] = "bold"
 
@@ -1251,15 +1257,22 @@ if __name__ == '__main__':
             weight = item.split(":")
             score_weights[weight[0]] = float(weight[1])
     #######################################################################
+    ################# map three letter to single letter ###################
+    letter_map = None
+    if args.letter_map != None:
+        letter_map = {}
+        for item in args.letter_map:
+            letter_map[item.split(":")[0]] = item.split(":")[1]
+    #######################################################################
     for lipid in lipid_set:
         li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, dt=args.dt, cutoff=cutoff, lipid=lipid, \
                               lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=int(args.resi_offset), \
                               resi_list=resi_list, save_dir=args.save_dir)
         li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nbootstrap))
-        li.plot_interactions(item="Duration")
-        li.plot_interactions(item="Residence Time")
-        li.plot_interactions(item="Occupancy")
-        li.plot_interactions(item="LipidCount")
+        li.plot_interactions(item="Duration", letter_map=letter_map)
+        li.plot_interactions(item="Residence Time", letter_map=letter_map)
+        li.plot_interactions(item="Occupancy", letter_map=letter_map)
+        li.plot_interactions(item="LipidCount", letter_map=letter_map)
         li.write_to_pdb(item="Duration")
         li.write_to_pdb(item="Residence Time")
         li.write_to_pdb(item="Occupancy")
