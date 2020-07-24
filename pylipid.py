@@ -682,7 +682,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         node_list_set = []
         for value in range(max(values)):
             node_list = [k for k,v in part.items() if v == value]
-            if len(node_list) > 1:
+            if len(node_list) > 2:
                 binding_site_identifiers[node_list] = binding_site_id
                 node_list_set.append(node_list)
                 binding_site_id += 1
@@ -1087,7 +1087,7 @@ for bs_id in np.arange(binding_site_id):
                 ax.yaxis.set_label_coords(-0.15, 0.5, transform=ax.transAxes)
             plt.savefig("{}/{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
             plt.close()
-            
+        
             ###### logomater #####
             SL_resn = [single_letter[residue[-3:]] for residue in self.residue_set]
             df = pd.DataFrame({"Resid": resi, "Resn": SL_resn, "Data": data})
@@ -1105,7 +1105,7 @@ for bs_id in np.arange(binding_site_id):
                 ax.xaxis.set_major_locator(MultipleLocator(20))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
                 ax.set_xlim(idx*100, (idx+1)*100)
-                ax.set_ylim(0, data.max()*1.2)
+                ax.set_ylim(0, data.max()*1.1)
                 ax.set_ylabel("Res. Time {}".format(timeunit), fontsize=8, weight="bold", va="center")
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, size=8, weight="bold")
@@ -1158,7 +1158,7 @@ for bs_id in np.arange(binding_site_id):
                 ax.xaxis.set_major_locator(MultipleLocator(20))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
                 ax.set_xlim(idx*100, (idx+1)*100)
-                ax.set_ylim(0, data.max()*1.2)
+                ax.set_ylim(0, data.max()*1.1)
                 ax.set_ylabel(ylabel, fontsize=8, weight="bold", va="center")
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, fontsize=8, weight="bold")
