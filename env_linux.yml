@@ -4,6 +4,7 @@ channels:
   - defaults
   - awacha 
   - bioconda
+  - rangsiman
 dependencies:
   - python
   - mdtraj
