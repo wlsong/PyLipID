@@ -4,6 +4,7 @@ channels:
   - defaults
   - schrodinger 
   - bioconda
+  - rangsiman
 dependencies:
   - python
   - mdtraj
