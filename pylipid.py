@@ -1145,20 +1145,23 @@ for bs_id in np.arange(binding_site_id):
             SL_resn = [single_letter[residue[-3:]] for residue in self.residue_set]
             df = pd.DataFrame({"Resid": resi, "Resn": SL_resn, "Data": data})
             matrix = df.pivot(index="Resid", columns='Resn', values="Data").fillna(0)
-            n_rows = 1+resi[-1]//100
-            length = 100 - resi[0]
+            n_rows = 1 + resi[-1]//100 - resi[0]//100
+            start = (resi[0]//100)*100
+            length = start + 100 - resi[0]
             fig, axes = plt.subplots(n_rows, 1, figsize=(4.5, 1.3*n_rows), sharey=True)
             plt.subplots_adjust(hspace=0.5)
             for idx, ax in enumerate(axes):
                 if idx == (n_rows - 1):
-                    logomaker.Logo(matrix[idx*length:], color_scheme="chemistry", ax=ax)
+                    logomaker.Logo(matrix[(idx-1)*100 + length:], color_scheme="chemistry", ax=ax)
                     ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
+                elif idx == 0:
+                    logomaker.Logo(matrix[:length], color_scheme="chemistry", ax=ax)
                 else:
-                    logomaker.Logo(matrix[idx*length:(idx+1)*length], color_scheme="chemistry", ax=ax)
+                    logomaker.Logo(matrix[(idx-1)*100+length:idx*100+length], color_scheme="chemistry", ax=ax)
                 ax.xaxis.set_major_locator(MultipleLocator(20))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
-                ax.set_xlim(idx*100, (idx+1)*100)
-                ax.set_ylim(0, data.max()*1.1)
+                ax.set_xlim(idx*100+start, (idx+1)*100+start)
+                ax.set_ylim(0, data.max()*1.05)
                 ax.set_ylabel(ylabel, fontsize=8, weight="bold", va="center")
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, fontsize=8, weight="bold")
