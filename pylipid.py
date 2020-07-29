@@ -32,6 +32,7 @@ from itertools import product
 import logomaker
 import rmsd
 warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.filterwarnings('ignore')
 np.seterr(all='ignore')
 
 ###################################
@@ -63,8 +64,9 @@ parser.add_argument("-lipids", nargs="+", metavar="POPC", default="POPC CHOL POP
 parser.add_argument("-lipid_atoms", nargs="+", metavar="PO4", default=None, \
                     help="Lipid atoms to check, seperated by space. Should be consistent with the atom names in your trajectories.")
 parser.add_argument("-radii", nargs="+", default=None, metavar="BB:0.26 SC1:0.23", help="Change/Define the radius of atoms/beads \
-                    that is used for the calculation of binding site surface area. Supported syntax is BB:0.26, which defines the radius of \
-                    bead BB as 0.26 nm, or CA:0.12 which defines the radius of atom CA as 0.12 nm. For atomistic simulations, the default radii are taken from\
+                    that is used for the calculation of binding site surface area. Values need to be in the unit of nm. Supported syntax is \
+                    BB:0.26, which defines the radius of bead BB as 0.26 nm, or CA:0.12 which defines the radius of atom CA as 0.12 nm. For \
+                    atomistic simulations, the default radii are taken from \
                     mdtraj https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56. For coarse-grained \
                     simulations, this script defines the radius of the MARTINI 2 beads of BB as 0.26 nm and SC1/2/3 as 0.23 nm.")
 parser.add_argument("-nprot", default=1, metavar="1", \
@@ -90,10 +92,10 @@ parser.add_argument("-gen_binding_poses", default=5, metavar=0, help="The num. o
                     is specified by the flag -score_weights.")
 parser.add_argument("-save_pose_format", default="gro", metavar="gro", help="The format the generated lipid binding poses are written into. This function \
                     is carried out by mdtraj.save(), hence supports the formats that are included by mdtraj. ")
-parser.add_argument("-score_weights", default=None, metavar="PO4:1 C1:1", help="The weight of each of the lipid atom/bead contributes to the scoring function. \
+parser.add_argument("-score_weights", nargs="+", default=None, metavar="PO4:1 C1:1", help="The weight of each of the lipid atom/bead contributes to the scoring function. \
                     Top-rated lipid binding poses can be generated based on users' specification. The bounds poses of each binding site are scored based \
                     on the scoring function Score = sum(PDF(atom_i) * Weight(atom_i)) for atom_i in the lipid molecule.")
-parser.add_argument("-letter_map", default=None, metavar="ARG:K GLY:G", help="Map the three-letter amino acids to one letter. This map is \
+parser.add_argument("-letter_map", nargs="+", default=None, metavar="ARG:K GLY:G", help="Map the three-letter amino acids to one letter. This map is \
                     used in making logomaker figures (https://logomaker.readthedocs.io/en/latest/). The common 20 amino acids are defined \
                     by this script. Users need to use this flag to define maps for uncommon amino acids in their systems.")              
 parser.add_argument("-pdb", default=None, metavar="None", help="Provide a PDB structure onto which the binding site information will be mapped. \
@@ -524,7 +526,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         """
         bootstrap durations to calculate koffs, return bootstrapped values
         """
-        initial_guess = (1, 1, 1, 1)
+        initial_guess = (1., 1., 1., 1.)
         ##### prep for plotting ######
         plt.rcParams["font.size"] = 10
         plt.rcParams["font.weight"] = "bold"
@@ -817,7 +819,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             fig, ax = plt.subplots(figsize=(9.5, 3))
         sns.violinplot(x="BS id", y="Area (nm^2)", data=d_area, palette="Set3", bw=.2, cut=1, linewidth=1, ax=ax)
         ax.set_xlabel("BS id", fontsize=8, weight="bold")
-        ax.set_ylabel(r"Surface Area (unit$^2$)", fontsize=8, weight="bold")
+        ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=8, weight="bold")
         ax.set_title("{} Binding Site Surface Area".format(self.lipid), fontsize=8, weight="bold")
         plt.tight_layout()
         plt.savefig("{}/BS_surface_area.pdf".format(save_dir), dpi=300)
@@ -1110,6 +1112,7 @@ for bs_id in np.arange(binding_site_id):
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, size=8, weight="bold")
             plt.savefig("{}/{}_logo_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
+            plt.close()
             
 
         else:
@@ -1166,6 +1169,7 @@ for bs_id in np.arange(binding_site_id):
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, fontsize=8, weight="bold")
             plt.savefig("{}/{}_logo_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
+            plt.close()
             
         return
 
@@ -1193,6 +1197,7 @@ for bs_id in np.arange(binding_site_id):
         ######## write out coords ###########
         fn = "{}/Coords_{}.pdb".format(save_dir, "_".join(item.split()))
         with open(fn, "w") as f:
+            
             for idx in np.arange(len(self.prot_atom_indices)):
                 f.write("{HEADER:6s}{ATOM_ID:5d} {ATOM_NAME:^4s}{SPARE:1s}{RESN:3s} {CHAIN_ID:1s}{RESI:4d}{SPARE:1s}   {COORDX:8.3f}{COORDY:8.3f}{COORDZ:8.3f}{OCCUP:6.2f}{BFACTOR:6.2f}\n".format(**{\
                         "HEADER": "ATOM",
@@ -1267,7 +1272,7 @@ if __name__ == '__main__':
             letter_map[item.split(":")[0]] = item.split(":")[1]
     #######################################################################
     for lipid in lipid_set:
-        li = LipidInteraction(trajfile_list, grofile_list, stride=args.stride, dt=args.dt, cutoff=cutoff, lipid=lipid, \
+        li = LipidInteraction(trajfile_list, grofile_list, stride=int(args.stride), dt=args.dt, cutoff=cutoff, lipid=lipid, \
                               lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=int(args.resi_offset), \
                               resi_list=resi_list, save_dir=args.save_dir)
         li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nbootstrap))
