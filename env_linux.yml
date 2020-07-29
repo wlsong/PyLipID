@@ -2,11 +2,11 @@ name: PyLipID
 channels:
   - conda-forge
   - defaults
-  - awacha 
+  - tpeulen 
   - bioconda
   - rangsiman
 dependencies:
-  - python
+  - python=3.7
   - mdtraj
   - matplotlib
   - seaborn
