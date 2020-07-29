@@ -1194,8 +1194,7 @@ for bs_id in np.arange(binding_site_id):
         fn = "{}/Coords_{}.pdb".format(save_dir, "_".join(item.split()))
         with open(fn, "w") as f:
             for idx in np.arange(len(self.prot_atom_indices)):
-                f.write("{HEADER:6s}{ATOM_ID:5d} {ATOM_NAME:^4s}{SPARE:1s}{RESN:3s} {CHAIN_ID:1s}{RESI:4d}{SPARE:1s}   \
-                        {COORDX:8.3f}{COORDY:8.3f}{COORDZ:8.3f}{OCCUP:6.2f}{BFACTOR:6.2f}\n".format(**{\
+                f.write("{HEADER:6s}{ATOM_ID:5d} {ATOM_NAME:^4s}{SPARE:1s}{RESN:3s} {CHAIN_ID:1s}{RESI:4d}{SPARE:1s}   {COORDX:8.3f}{COORDY:8.3f}{COORDZ:8.3f}{OCCUP:6.2f}{BFACTOR:6.2f}\n".format(**{\
                         "HEADER": "ATOM",
                         "ATOM_ID": atom_idx_set[idx],
                         "ATOM_NAME": atom_name_set[idx],
