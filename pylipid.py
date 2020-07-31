@@ -242,7 +242,7 @@ def cal_rmsd(conf_pool):
     rmsd_vector = [rmsd.rmsd(conf_pool[i], conf_pool[j]) for i in np.arange(length-1) 
                    for j in np.arange(i+1, length)]
     rmsd_set = squareform(rmsd_vector)
-    return np.sum(rmsd_set, axis=1).min()
+    return np.mean(rmsd_set, axis=1).min()
 
 #####################################
 ####### Main Class object ###########
@@ -834,7 +834,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             BS_lipidcount[mask] = lipidcount
             f.write("{:20s} {:10.3f}\n".format(" BS Lipid Count:", lipidcount))
             f.write("{:20s} {:10.3f} nm^2 +- {:10.3f}\n".format(" BS Surface Area:", bs_area, np.concatenate(surface_area_all[binding_site_id]).std()))
-            f.write("{:20s} {:10.3f} nm\n".format("BS pose RMSD:", pose_rmsd))
+            f.write("{:20s} {:10.3f} nm\n".format(" BS pose RMSD:", pose_rmsd))
             res_stats = {"Pos. Charge": 0, "Neg. Charge": 0, "Polar": 0, "Special": 0, "Hydrophobic": 0}
             for residue in self.residue_set[mask]:
                 res_stats[Residue_property_book[residue[-3:]]] += 1
