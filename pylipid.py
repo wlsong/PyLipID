@@ -24,6 +24,7 @@ from scipy.optimize import curve_fit
 from scipy.sparse import coo_matrix
 from scipy import sparse
 from scipy import stats
+from scipy.spatial.distance import squareform
 import community
 import warnings
 from shutil import copyfile
@@ -237,9 +238,11 @@ def sparse_corrcoef(A, B=None):
 
 
 def cal_rmsd(conf_pool):
-    rmsd_set = [[rmsd.rmsd(conf_a, conf_b) for conf_b in conf_pool] for conf_a in conf_pool]
+    length = len(conf_pool)
+    rmsd_vector = [rmsd.rmsd(conf_pool[i], conf_pool[j]) for i in np.arange(length-1) 
+                   for j in np.arange(i+1, length)]
+    rmsd_set = squareform(rmsd_vector)
     return np.sum(rmsd_set, axis=1).min()
-
 
 #####################################
 ####### Main Class object ###########
@@ -810,7 +813,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             BS_rsquared_b[mask] = bootstrap_results["r_squared_b_avg"]
             bs_area = np.concatenate(surface_area_all[binding_site_id]).mean()
             BS_surface_area[mask] = bs_area
-            pose_rmsd = cal_rmsd(self._coordinate_pool[binding_site_id])
+            pose_rmsd = cal_rmsd([conf[-self._lipid_ref.n_atoms:] for conf in self._coordinate_pool[binding_site_id]])
             BS_pose_rmsd[mask] = pose_rmsd
             ############# write results ###############
             f.write("# Binding site {}\n".format(binding_site_id))
