@@ -122,3 +122,10 @@ The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0**, and 
 - Anna Duncan
 - Robin Corey
 - Bertie Ansell
+
+## Thanks for reading to the end, much respect!
+Doing science is about solving one problem after another. 
+Writing scripts is about fixing one bug after another.
+Be brave, be real and keep going, homie!
+![Github Logo](https://github.com/wlsong/PyLipID/blob/master/dino.gif)
+
