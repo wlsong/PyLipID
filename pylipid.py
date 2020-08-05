@@ -1270,7 +1270,6 @@ for bs_id in np.arange(binding_site_id):
             f.write("TER")
         return
 
-
 ######################################################
 ########### Load params and do calculation ###########
 ######################################################
