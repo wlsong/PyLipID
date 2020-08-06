@@ -6,8 +6,8 @@ It calculates:
 - lipid interactions with the proteins in terms of their duration, residence time, occupancy, num. of lipids surrounding given residues and koff;
 - lipid binding sites via interaction networks. 
 - various binding kinetics, e.g. lipid residence time, koff, etc, for each binding site. 
-- lipid binding sites surface via Shrake-Rupley algorithm (Shrake, A; Rupley, JA. (1973) J Mol Biol 79 (2): 351–71)
-- probablity densities of lipid binding poses and generates the most representative binding poses at each binding site. 
+- lipid binding site surface via Shrake-Rupley algorithm (Shrake, A; Rupley, JA. (1973) J Mol Biol 79 (2): 351–71)
+- probablity densities of lipid binding poses and generates representative binding poses at each binding site. 
 
 It plots:
 - lipid interactions (in terms of duration, residence time, occupancy, and num. of surroudning lipids) with the protein as a function of protein residue indeces. 
