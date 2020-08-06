@@ -19,7 +19,7 @@ It generates:
 - protein coordinates in pdb formate in which suchb data as residuence time, koff, duration and occupancy are recorded in the b factor column. 
 - representative binding poses for each binding site based on scoring functions that use probability density functions of the bound lipids. 
 
-It can also map the calculated binding sites to a pdb structure you provide through -pdb in a PyMol session. In Such a PyMol session, residues that belong to the same binding site are grouped under the same tab and shown in spheres with sizes corresponding to their residence time of the lipid of study. The -pymol_gui flag allows users to launch such a PyMol session at the end the calculation automatically. 
+It can also map in a PyMol session the calculated binding sites to a pdb structure users provide through -pdb. In Such a PyMol session, residues that belong to the same binding site are grouped under the same tab and shown in spheres with sizes corresponding to their residence time of the lipid of study. The -pymol_gui flag allows users to launch such a PyMol session at the end the calculation automatically. 
 
 For definition of residence time, please refer to:
 - García, Angel E.Stiller, Lewis. Computation of the mean residence time of water in the hydration shells of biomolecules. 1993. Journal of Computational Chemistry;
