@@ -116,5 +116,5 @@ Writing scripts is about fixing one bug after another.
 *Nothing in life is promised except death. -- Kayne West*
 
 Be brave, be real and keep going, homie!
-![Github Logo](https://github.com/wlsong/PyLipID/blob/master/dino.gif)
+![Github Logo](https://github.com/wlsong/wlsong/blob/master/resources/dino.gif)
 
