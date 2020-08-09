@@ -2,6 +2,7 @@
 
 ## Introduction 
 **pylipid.py**: is a toolkit to calculate lipid interactions with membrane proteins. 
+
 It calculates: 
 - lipid interactions with the proteins in terms of their duration, residence time, occupancy, num. of lipids surrounding given residues and koff;
 - lipid binding sites via interaction networks. 
