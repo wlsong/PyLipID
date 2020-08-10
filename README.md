@@ -7,8 +7,8 @@ It calculates:
 - lipid interactions with the proteins in terms of their duration, residence time, occupancy, num. of lipids surrounding given residues and koff;
 - lipid binding sites via interaction networks. 
 - various binding kinetics, e.g. lipid residence time, koff, etc, for each binding site. 
-- lipid binding site surface via Shrake-Rupley algorithm (Shrake, A; Rupley, JA. (1973) J Mol Biol 79 (2): 351–71)
-- probablity densities of lipid binding poses and generates representative binding poses at each binding site. 
+- lipid binding site surface area via Shrake-Rupley algorithm (Shrake, A; Rupley, JA. (1973) J Mol Biol 79 (2): 351–71)
+- probablity density functions of bound lipid coordinates and generates representative binding poses at each binding site. 
 
 It plots:
 - lipid interactions (in terms of duration, residence time, occupancy, and num. of surroudning lipids) with the protein as a function of protein residue indeces. 
@@ -17,7 +17,7 @@ It plots:
 - surface area for each binding site. 
 
 It generates:
-- protein coordinates in pdb formate in which suchb data as residuence time, koff, duration and occupancy are recorded in the b factor column. 
+- protein coordinates in pdb formate in which such data as residuence time, koff, duration and occupancy are recorded in the b factor column. 
 - representative binding poses for each binding site based on scoring functions that use probability density functions of the bound lipids. 
 
 It can also map in a PyMol session the calculated binding sites to a pdb structure users provide through -pdb. In Such a PyMol session, residues that belong to the same binding site are grouped under the same tab and shown in spheres with sizes corresponding to their residence time of the lipid of study. The -pymol_gui flag allows users to launch such a PyMol session at the end the calculation automatically. 
@@ -26,7 +26,7 @@ For definition of residence time, please refer to:
 - García, Angel E.Stiller, Lewis. Computation of the mean residence time of water in the hydration shells of biomolecules. 1993. Journal of Computational Chemistry;
 - Duncan AL, Corey RA, Sansom MSP. Defining how multiple lipid species interact with inward rectifier potassium (Kir2) channels. 2020. Proc Natl Acad Sci U S A.
 
-To alleviate the 'cage-rattling' phenomenon of the beads dynamics in coarse-grained simulations, pylipid uses a dual-cutoff scheme. This scheme defines the start of a continuous interaction of a lipid molecule with a given object when any atom/bead of the lipid molecule moves within the distance of the smaller cutoff; and the end of such a contunuous interaction when all of the atoms/beas of the lipid molecule move out of the distance of the larger cutoff. Such a dual-cutoff scheme can also be applied to atomistic simulations. The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0** nm, and that for atomistic simulations is **0.35 0.55** nm. But it's reccommended for users to do some tests on their systems. Users can use the same value for both cutoffs for a single cutoff scheme. 
+To alleviate the 'cage-rattling' phenomenon of the beads dynamics in coarse-grained simulations, pylipid uses a dual-cutoff scheme. This scheme defines the start of a continuous interaction of a lipid molecule with a given object when any atom/bead of the lipid molecule moves within the smaller cutoff; and the end of such a contunuous interaction when all of the atoms/beas of the lipid molecule move out of the larger cutoff. Such a dual-cutoff scheme can also be applied to atomistic simulations. The recommended dual-cutoff for coarse-grained simulations is **0.55 1.0** nm, and that for atomistic simulations is **0.35 0.55** nm. But it's reccommended for users to do some tests on their systems. Users can use the same value for both cutoffs to achieve a single cutoff scheme. 
 
 
 ## Installation:
@@ -113,8 +113,6 @@ python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro 
 
 ## Thanks for reading to the end, much respect!
 Writing scripts is about fixing one bug after another.
-
-*Nothing in life is promised except death. -- Kayne West*
 
 Be brave, be real and keep going, homie!
 ![Github Logo](https://github.com/wlsong/wlsong/blob/master/resources/dino.gif)
