@@ -297,9 +297,19 @@ class LipidInteraction():
         for atom in lipid_atom_indices:
             lipid_resi_indices.add(traj.top.atom(atom).residue.index)
         num_of_lipids = len(lipid_resi_indices)
-        
         lipid_resi_indices = list(lipid_resi_indices)
         lipid_resi_indices.sort()
+        
+        if self._lipid_ref == None:
+            one_lipid_indices = []
+            for lipid_id in np.sort(traj.top.select("resn {}".format(self.lipid))):
+                if len(one_lipid_indices) == 0:
+                    one_lipid_indices.append(lipid_id)
+                elif traj.top.atom(lipid_id).residue.index != traj.top.atom(one_lipid_indices[-1]).residue.index:
+                    break
+                else:
+                    one_lipid_indices.append(lipid_id)
+            self._lipid_ref = traj[0].atom_slice(np.unique(one_lipid_indices))
         
         if lipid_atoms != None:
             lipid_haystack = get_atom_index_for_lipid(lipid, traj, part=lipid_atoms)
@@ -314,7 +324,6 @@ class LipidInteraction():
                                      unitcell_angles=traj.unitcell_angles)
             lipid_resi_indices = [new_traj.top.atom(new_traj.top.select("protein")[-1]).residue.index+1+idx \
                                   for idx in np.arange(num_of_lipids)]
-               
         else:
             new_traj = traj        
         all_protein_atom_indices = new_traj.top.select("protein")
@@ -345,18 +354,9 @@ class LipidInteraction():
                                                                    for atom_idx in \
                                                                    protein_atom_indices[protein_idx*natoms_per_protein:(protein_idx+1)*natoms_per_protein] \
                                                                    if new_traj.top.atom(atom_idx).residue.resSeq in resi_list]))         
+
         if self._protein_ref == None:
             self._protein_ref = new_traj[0].atom_slice(prot_atom_indices)
-        if self._lipid_ref == None:
-            one_lipid_indices = []
-            for lipid_id in np.sort(new_traj.top.select("resn {}".format(self.lipid))):
-                if len(one_lipid_indices) == 0:
-                    one_lipid_indices.append(lipid_id)
-                elif new_traj.top.atom(lipid_id).residue.index != new_traj.top.atom(one_lipid_indices[-1]).residue.index:
-                    break
-                else:
-                    one_lipid_indices.append(lipid_id)
-            self._lipid_ref = new_traj[0].atom_slice(np.unique(one_lipid_indices))
 
         return new_traj, {"natoms_per_protein": natoms_per_protein, "nresi_per_protein": nresi_per_protein, 
                           "selected_protein_resi_set": selected_protein_resi_set, 
