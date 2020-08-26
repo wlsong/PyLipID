@@ -15,4 +15,4 @@ dependencies:
   - pymol-open-source
   - pillow
   - logomaker
-  - rmsd
+  - statsmodels
