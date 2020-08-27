@@ -923,7 +923,6 @@ import numpy as np
 import mdtraj as md
 import pymol
 from pymol import cmd
-cmd.set("retain_order", 1)
 pymol.finish_launching()
 
 dataset = pd.read_csv("{HOME_DIR}/Interactions_{LIPID}.csv")
@@ -933,15 +932,15 @@ binding_site_identifiers = np.array(dataset["Binding site"].tolist())
 struct_ref = md.load("{PDB}")
 
 ######### calculate scale ###############
-residue_interaction_strength = dataset["Residence Time"]
 residue_idx_set = dataset["Residue idx"]
-MIN = residue_interaction_strength.quantile(0.15)
-MAX = residue_interaction_strength.quantile(0.99)
-X = 5 * (residue_interaction_strength - MIN) / (MAX - MIN)
-SCALES = 1.5 / (1 + np.exp(-X))
-
+interactions = np.zeros(residue_idx_set.max()+1)
+values_to_check = dataset["Residence Time"]
+interactions[residue_idx_set] = values_to_check
+MID = values_to_check.quantile(0.5)
+SCALES = 3 / 5 + np.exp(-30 * (interactions - MID))
 ######################################
 ######## some pymol settings #########
+cmd.set("retain_order", 1)
 cmd.set("cartoon_oval_length", 1.0)
 cmd.set("cartoon_oval_width", 0.3)
 cmd.set("cartoon_color", "white")
@@ -978,16 +977,16 @@ for bs_id in np.arange(binding_site_id):
             if pymol_gui:
                 import pymol
                 from pymol import cmd
-                cmd.set("retain_order", 1)
                 pymol.finish_launching(['pymol', '-q'])
                 ##### do some pymol settings #####
-                residue_interaction_strength = self.dataset["Residence Time"]
                 residue_idx_set = self.dataset["Residue idx"]
-                MIN = residue_interaction_strength.quantile(0.15)
-                MAX = residue_interaction_strength.quantile(0.99)
-                X = 5 * (residue_interaction_strength - MIN) / (MAX - MIN)
-                SCALES = 1.5 / (1 + np.exp(-X))
+                interactions = np.zeros(residue_idx_set.max()+1)
+                values_to_check = self.dataset["Residence Time"]
+                interactions[residue_idx_set] = values_to_check
+                MID = values_to_check.quantile(0.5)
+                SCALES = 3 / 5 + np.exp(-30 * (interactions - MID))
                 ##### do some pymol settings #####
+                cmd.set("retain_order", 1)
                 cmd.set("cartoon_oval_length", 1.0)
                 cmd.set("cartoon_oval_width", 0.3)
                 cmd.set("cartoon_color", "white")
