@@ -42,7 +42,7 @@ pylipid.py requires following packages:
 - pymol (if -pymol_gui True)
 - python-louvain
 - logomaker
-- rmsd
+- statsmodels
 
 To create a compatible python environment but not to mess up with your global python settings, we recommend building an independent env called PyLipID using [conda](https://www.anaconda.com/distribution/). 
 To create this PyLipID environment using the provided env.yml, assuming you have installed conda in your system:
@@ -64,7 +64,9 @@ conda env remove --name PyLipID
 
 
 ## Examples: 
-A standard check on lipid interactions:
+All the pylipid.py flags can be checked via 'python pylipid.py -h'.
+
+A standard calculation on lipid interactions:
 ```
 conda activate PyLipID
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
@@ -91,13 +93,13 @@ python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 10-30 50-70 100-130 -save_dataset -pdb XXXX.pdb -pymol_gui False
 ```
 
-The script calculates the surface area of each binding site. By default, the script uses atom radii defined by mdtraj (https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56) for calculation, and defines the radii of MARTINI coarse-grained beads BB as 0.26 nm and SC1/2/3 as 0.23 nm. To change or define radii of atoms/beads, use -radii and specify radius in unit of nm. For example, to change the radius of MARINI coarse-grained beads BB to 0.28 nm and SC1 to 0.22 nm: 
+pylipid.py calculates the surface area of each binding site. By default, the script uses atom radii defined by mdtraj (https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56) for calculation, and defines the radii of MARTINI coarse-grained beads BB as 0.26 nm and SC1/2/3 as 0.23 nm. To change or define radii of atoms/beads, use -radii and specify radius in unit of nm. For example, to change the radius of MARINI coarse-grained beads BB to 0.28 nm and SC1 to 0.22 nm: 
 ```
 python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -radii BB:0.28 SC1:0.22
 ```
 
-The script calculates the probability density functions of bound lipids and generates reprentative binding poses. By default, the script will generate 5 most representative binding poses for each binding site, but users can use -gen_binding_poses to change how many binding poses to be generated. The script writes the lipid binding pose along with the receptor coordinates that the pose binds to in the pdb formate by default. But the users can change the coordinate formate to those that are suported by mdtraj via -save_pose_format. For phospholipids, it's recommended to give higher weights to lipid headgroups in the scoring functions. Use -score_weights to change the weights. The following example shows how to generate 10 binding poses for each binding site, to save the binding poses in gro format and to give higher weight to the headgroup beads of PIP2 in the MARTINI force field:
+pylipid.py calculates the probability density functions of bound lipids and uses such functions to score all the bound lipid poses in the trajectories. Then pylipid.py ranks the binding poses based on the calculated scores and writes out the top ranking lipid binding poses along with the receptor coordinates that the pose binds to. By default, pylipid.py writes 5 top ranking lipid poses for each binding site, but users can use -gen_binding_poses to change how many to be generated. pylipid.py writes the binding pose coordinates in pdb format by default, but users can change the coordinate formate to those that are suported by mdtraj via -save_pose_format. For phospholipids, it's recommended to give higher weights to lipid headgroups in the scoring functions. Use -score_weights to change the weights. The following example shows how to generate 10 top ranking poses for each binding site, to save the binding poses in gro format and to give higher weight to the headgroup beads of PIP2 in the MARTINI force field:
 ```
 python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POP2 -nprot 1 -gen_binding_poses 10 -save_pose_format gro -score_weights PO4:10 P1:10:P2:10 C1:10 C2:10 C3:10
