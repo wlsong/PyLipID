@@ -745,7 +745,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                             lipid_indices = np.sort([atom.index for atom in traj.top.residue(lipid_index).atoms])
                             self._coordinate_pool[binding_site_id].append([np.copy(traj.xyz[frame_id, np.hstack([protein_indices, lipid_indices])]), \
                                                                             np.copy(traj.unitcell_angles[frame_id]), \
-                                                                            np.copy(traj.unitcell_lengths[frame_id])])    
+                                                                            np.copy(traj.unitcell_lengths[frame_id])])
                     ### calculate area ###
                     new_xyz = []
                     for frame in traj.xyz:
@@ -872,7 +872,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             if score_weights != None:
                 weights.update(score_weights)
             binding_site_id_set = np.arange(len(self._coordinate_pool))
-            if len(self.resi_list) == 0: 
+            if len(self.resi_list) == 0:
                 selected_protein_atoms = [[atom.index for atom in residue.atoms] for residue in self._protein_ref.top.residues]
             else:
                 selected_protein_atoms = [[atom.index for atom in residue.atoms] for residue in self._protein_ref.top.residues \
@@ -890,7 +890,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                                           unitcell_lengths=[frame[2] for frame in self._coordinate_pool[binding_site_id]])
                 dist_per_atom = [[md.compute_distances(new_traj, list(product([lipid_atoms[idx]], selected_protein_atoms[resi])), periodic=True).min(axis=1) \
                                   for resi in node_list] for idx in np.arange(self._lipid_ref.n_atoms)]
-                                    
+
                 kde_funcs = {}
                 var_type = ""
                 for idx in range(len(dist_per_atom[0])):
@@ -937,7 +937,7 @@ interactions = np.zeros(residue_idx_set.max()+1)
 values_to_check = dataset["Residence Time"]
 interactions[residue_idx_set] = values_to_check
 MID = values_to_check.quantile(0.5)
-SCALES = 3 / 5 + np.exp(-30 * (interactions - MID))
+SCALES = 1.5 / 5 + np.exp(-30 * (interactions - MID))
 ######################################
 ######## some pymol settings #########
 cmd.set("retain_order", 1)
@@ -984,7 +984,7 @@ for bs_id in np.arange(binding_site_id):
                 values_to_check = self.dataset["Residence Time"]
                 interactions[residue_idx_set] = values_to_check
                 MID = values_to_check.quantile(0.5)
-                SCALES = 3 / 5 + np.exp(-30 * (interactions - MID))
+                SCALES = 1.5 / 5 + np.exp(-30 * (interactions - MID))
                 ##### do some pymol settings #####
                 cmd.set("retain_order", 1)
                 cmd.set("cartoon_oval_length", 1.0)
