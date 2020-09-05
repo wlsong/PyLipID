@@ -734,7 +734,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                         contact_BS_low = [np.unique(contact) for contact in contact_BS_low_prev]
                         contact_BS_high = [np.unique(contact) for contact in contact_BS_high_prev]
                         self.interaction_duration_BS[binding_site_id].append(Durations(contact_BS_low, contact_BS_high, timestep).cal_duration())
-                        occupancy, lipidcount = cal_interaction_intensity(contact_BS_low)
+                        occupancy, lipidcount = cal_interaction_intensity(contact_BS_high)
                         self.interaction_occupancy_BS[binding_site_id].append(occupancy)
                         self.lipid_count_BS[binding_site_id].append(lipidcount)
                         ########### store lipid binding poses ############
