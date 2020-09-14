@@ -8,7 +8,7 @@ It calculates:
 - lipid binding sites via interaction networks. 
 - various binding kinetics, e.g. lipid residence time, koff, etc, for each binding site. 
 - lipid binding site surface area via Shrake-Rupley algorithm (Shrake, A; Rupley, JA. (1973) J Mol Biol 79 (2): 351–71)
-- probablity density functions of bound lipid coordinates and generates representative binding poses at each binding site. 
+- probablity density functions of bound lipid and generates representative binding poses for each binding site based on the calcuated PDF. 
 
 It plots:
 - lipid interactions (in terms of duration, residence time, occupancy, and num. of surroudning lipids) with the protein as a function of protein residue indeces. 
@@ -45,7 +45,7 @@ pylipid.py requires following packages:
 - statsmodels
 
 To create a compatible python environment but not to mess up with your global python settings, we recommend building an independent env called PyLipID using [conda](https://www.anaconda.com/distribution/). 
-To create this PyLipID environment using the provided env.yml, assuming you have installed conda in your system:
+To create this PyLipID environment using the provided env.yml, assuming you have installed [conda](https://www.anaconda.com/distribution/) in your system:
 ```
 conda env create -f env.yml
 ```
@@ -53,7 +53,7 @@ Now your python env PyLipID is all set. Whenever you want to use the script, act
 ```
 conda activate PyLipID
 ```
-When you want to get back to your default global python env:
+To get back to your default global python env:
 ``` 
 conda deactivate
 ```
@@ -66,7 +66,7 @@ conda env remove --name PyLipID
 ## Examples: 
 All the pylipid.py flags can be checked via 'python pylipid.py -h'.
 
-A standard calculation on lipid interactions:
+A standard calculation of lipid interactions using pylipid.py:
 ```
 conda activate PyLipID
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
