@@ -434,13 +434,13 @@ class LipidInteraction():
                 occupancy_arg_idx = np.argsort(occupancies)[::-1]
                 lipidcounts =  np.array([np.mean(self.lipid_count[residue][-self.nprot:]) for residue in traj_stats["residue_set"]])
                 lipidcount_arg_idx = np.argsort(lipidcounts)[::-1]
-                log_text = "10 residues that showed longest interaction (and their raw interaction durations):\n".format(int(idx_protein))
+                log_text = "10 residues that showed longest average interaction durations ({}):\n".format(self.timeunit)
                 for residue, duration in zip(traj_stats["residue_set"][duration_arg_idx][:10], durations[duration_arg_idx][:10]):
                     log_text += "{:^8s} -- {:^8.3f}\n".format(residue, duration)
-                log_text += "10 residues that showed highest lipid occupancy:\n"
+                log_text += "10 residues that showed highest lipid occupancy (100%):\n"
                 for residue, occupancy in zip(traj_stats["residue_set"][occupancy_arg_idx][:10], occupancies[occupancy_arg_idx][:10]):
                     log_text += "{:^8s} -- {:^8.2f}\n".format(residue, occupancy)
-                log_text += "10 residues that have the largest number of surrounding lipids:\n"
+                log_text += "10 residues that have the largest number of surrounding lipids (count):\n"
                 for residue, lipidcount in zip(traj_stats["residue_set"][lipidcount_arg_idx][:10], lipidcounts[lipidcount_arg_idx][:10]):
                     log_text += "{:^8s} -- {:^8.2f}\n".format(residue, lipidcount)
                 print(log_text)
@@ -574,7 +574,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         restime_sampled_set = []
         r_squared_sampled_set = []
         for duration_sampled in duration_sampled_set:
-            sigma_sampled = cal_sigma(duration_sampled, np.mean(self.num_of_lipids), np.max(self.T_total), delta_t_range)
+            sigma_sampled = cal_sigma(duration_sampled, len(duration_sampled), np.max(self.T_total), delta_t_range)
             hist_values_sampled = np.array([sigma_sampled[delta_t] for delta_t in delta_t_range])
             axHisty.plot(delta_t_range, hist_values_sampled, color="gray", alpha=0.5)
             restime_sampled, koff_sampled, r_squared_sampled, params_sampled = cal_restime_koff(sigma_sampled, initial_guess)
@@ -587,7 +587,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             restime_sampled_set.append(restime_sampled)
             r_squared_sampled_set.append(r_squared_sampled)
         ######## plot original data #########
-        sigma = cal_sigma(durations, np.mean(self.num_of_lipids), np.max(self.T_total), delta_t_range)
+        sigma = cal_sigma(durations, len(durations), np.max(self.T_total), delta_t_range)
         x = np.sort(durations)
         y = np.arange(len(x)) + 1
         axScatter.scatter(x[::-1], y, label=label, s=10)
@@ -895,17 +895,21 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 var_type = ""
                 for idx in range(len(dist_per_atom[0])):
                     var_type += "c"
-                for atom_idx in np.arange(self._lipid_ref.n_atoms):
-                    kde_funcs[atom_idx] = KDEMultivariate(data=np.array(dist_per_atom[atom_idx]).T, \
-                                                                var_type=var_type, bw='normal_reference')
-                ### evaluate binding poses ###
-                scores = np.sum([weights[lipid_atom_map[idx]] * kde_funcs[idx].pdf() \
-                                for idx in np.arange(self._lipid_ref.n_atoms)], axis=0)
-                selected_indices = np.argsort(scores)[::-1][:num_of_poses]
-                ###############################
-                for pose_id in np.arange(num_of_poses, dtype=int):
-                    new_traj[selected_indices[pose_id]].save("{}/BSid{}_No{}.{}".format(coords_save_dir, \
-                                                                                        binding_site_id, pose_id, save_pose_format))
+                try:
+                    for atom_idx in np.arange(self._lipid_ref.n_atoms):
+                        kde_funcs[atom_idx] = KDEMultivariate(data=np.array(dist_per_atom[atom_idx]).T, \
+                                                                    var_type=var_type, bw='normal_reference')
+                    ### evaluate binding poses ###
+                    scores = np.sum([weights[lipid_atom_map[idx]] * kde_funcs[idx].pdf() \
+                                    for idx in np.arange(self._lipid_ref.n_atoms)], axis=0)
+                    selected_indices = np.argsort(scores)[::-1][:num_of_poses]
+                    ###############################
+                    for pose_id in np.arange(num_of_poses, dtype=int):
+                        new_traj[selected_indices[pose_id]].save("{}/BSid{}_No{}.{}".format(coords_save_dir, \
+                                                                                            binding_site_id, pose_id, save_pose_format))
+                except ValueError:
+                    with open("{}/Error.txt".format(coords_save_dir), "a+") as error_file:
+                        error_file.write("BSid {}: Pose generation error -- possibly due to insufficient number of binding event.\n".format(binding_site_id))
 
         ######################################################################
         ###### show binding site residues with scaled spheres in pymol #######
