@@ -276,7 +276,8 @@ class LipidInteraction():
         self.interaction_duration = defaultdict(list)
         self.interaction_occupancy = defaultdict(list)
         self.lipid_count = defaultdict(list)
-        self.dist_matrix_set = []
+        self.contact_residues_high = defaultdict(list)
+        self.contact_residues_low = defaultdict(list)
         self.stride = int(stride)
         self.resi_offset = resi_offset
         self.resi_list = resi_list
@@ -402,25 +403,27 @@ class LipidInteraction():
                 self.residue_set = traj_stats["residue_set"] if len(traj_stats["residue_set"]) > len(self.residue_set) else self.residue_set
                 ncol_per_protein = traj_stats["num_of_lipids"] * new_traj.n_frames
                 for idx_protein in np.arange(self.nprot):
-                    pairs = list(product(traj_stats["selected_protein_resi_set"][idx_protein], traj_stats["lipid_resi_indices"]))
-                    contact_dist_matrix, _ = md.compute_contacts(new_traj, pairs, scheme="closest", periodic=True)
-                    self.dist_matrix_set.append(contact_dist_matrix)
-                    for resid, residue in enumerate(traj_stats["residue_set"]):
-                        dist_matrix_resi = contact_dist_matrix[:, resid*traj_stats["num_of_lipids"]:(resid+1)*traj_stats["num_of_lipids"]]
+                    for resid, (residue_index, residue) in enumerate(zip(traj_stats["selected_protein_resi_set"][idx_protein], traj_stats["residue_set"])):
+                        pairs = list(product([residue_index], traj_stats["lipid_resi_indices"]))
+                        dist_matrix_resi, _ = md.compute_contacts(new_traj, pairs, scheme="closest", periodic=True)
                         contact_residues_low = [[] for dummy in np.arange(new_traj.n_frames)]
                         contact_residues_high = [[] for dummy in np.arange(new_traj.n_frames)]
                         frame_id_set_low, lipid_id_set_low = np.where(dist_matrix_resi <= self.cutoff[0])
                         frame_id_set_high, lipid_id_set_high = np.where(dist_matrix_resi <= self.cutoff[1])
                         for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low):
-                            contact_residues_low[frame_id].append(lipid_id)
+                            contact_residues_low[frame_id].append(int(lipid_id))
                         for frame_id, lipid_id in zip(frame_id_set_high, lipid_id_set_high):
-                            contact_residues_high[frame_id].append(lipid_id)
+                            contact_residues_high[frame_id].append(int(lipid_id))
                         col.append([ncol_start + ncol_per_protein*idx_protein + lipid_id*new_traj.n_frames + \
                                     frame_id for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low)])
+                        contact_low = [np.array(contact, dtype=int) for contact in contact_residues_low]
+                        contact_high = [np.array(contact, dtype=int) for contact in contact_residues_high]
                         row.append([resid for dummy in np.arange(len(frame_id_set_low))])
                         data.append(dist_matrix_resi[frame_id_set_low, lipid_id_set_low])
-                        self.interaction_duration[residue].append(Durations(contact_residues_low, contact_residues_high, timestep).cal_duration())
-                        occupancy, lipidcount = cal_interaction_intensity(contact_residues_high)
+                        self.contact_residues_high[resid].append(contact_high)
+                        self.contact_residues_low[resid].append(contact_low)
+                        self.interaction_duration[residue].append(Durations(contact_low, contact_high, timestep).cal_duration())
+                        occupancy, lipidcount = cal_interaction_intensity(contact_high)
                         self.interaction_occupancy[residue].append(occupancy)
                         self.lipid_count[residue].append(lipidcount)
                 ncol_start += ncol_per_protein * self.nprot
@@ -637,7 +640,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
 
     def cal_interaction_network(self, save_dir=None, pdb=None, pymol_gui=True, save_dataset=True, nbootstrap=10, \
-                                radii=None, gen_binding_poses=5, score_weights=None, save_pose_format="pdb"):
+                                radii=None, gen_binding_poses=5, score_weights=None, save_pose_format="pdb", kde_bw=0.15):
 
         Residue_property_book = {"ARG": "Pos. Charge", "HIS": "Pos. Charge", "LYS": "Pos. Charge",
                                  "ASP": "Neg. Charge", "GLU": "Neg. Charge",
@@ -718,34 +721,28 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 protein_indices_all = traj.top.select("protein")
                 natoms_per_protein = int(len(protein_indices_all)/self.nprot)
                 for idx_protein in np.arange(self.nprot):
-                    dist_matrix_prot = self.dist_matrix_set[traj_idx*self.nprot+idx_protein]
                     protein_indices = protein_indices_all[idx_protein*natoms_per_protein:(idx_protein+1)*natoms_per_protein]
                     for binding_site_id, node_list in enumerate(node_list_set):
-                        BS_dist_matrix = np.column_stack([dist_matrix_prot[:, node*self.num_of_lipids[traj_idx]:(node+1)*self.num_of_lipids[traj_idx]] \
-                                                          for node in node_list])
-                        contact_BS_low_prev = [[] for dummy in np.arange(traj.n_frames)]
-                        contact_BS_high_prev = [[] for dummy in np.arange(traj.n_frames)]
-                        frame_id_set_low, column_id_set_low = np.where(BS_dist_matrix <= self.cutoff[0])
-                        frame_id_set_high, column_id_set_high = np.where(BS_dist_matrix <= self.cutoff[1])
-                        for frame_id, column_id in zip(frame_id_set_low, column_id_set_low):
-                            contact_BS_low_prev[frame_id].append(column_id%self.num_of_lipids[traj_idx])
-                        for frame_id, column_id in zip(frame_id_set_high, column_id_set_high):
-                            contact_BS_high_prev[frame_id].append(column_id%self.num_of_lipids[traj_idx])
-                        contact_BS_low = [np.unique(contact) for contact in contact_BS_low_prev]
-                        contact_BS_high = [np.unique(contact) for contact in contact_BS_high_prev]
+                        contact_BS_low = []
+                        contact_BS_high = []
+                        list_to_take = traj_idx*self.nprot+idx_protein
+                        for frame_idx in range(len(self.contact_residues_high[node_list[0]][list_to_take])):
+                            contact_high_frame = np.unique(np.concatenate([self.contact_residues_high[node][list_to_take][frame_idx] for node in node_list]))
+                            contact_low_frame = np.unique(np.concatenate([self.contact_residues_low[node][list_to_take][frame_idx] for node in node_list]))
+                            contact_BS_high.append(contact_high_frame)
+                            contact_BS_low.append(contact_low_frame)
                         self.interaction_duration_BS[binding_site_id].append(Durations(contact_BS_low, contact_BS_high, timestep).cal_duration())
                         occupancy, lipidcount = cal_interaction_intensity(contact_BS_high)
                         self.interaction_occupancy_BS[binding_site_id].append(occupancy)
                         self.lipid_count_BS[binding_site_id].append(lipidcount)
                         ########### store lipid binding poses ############
-                        selected_lipid_indices = column_id_set_low % self.num_of_lipids[traj_idx]
-                        position_set = set([(frame_id, self.lipid_resi_set[traj_idx][lipid_index]) \
-                                            for frame_id, lipid_index in zip(frame_id_set_low, selected_lipid_indices)])
-                        for frame_id, lipid_index in position_set:
-                            lipid_indices = np.sort([atom.index for atom in traj.top.residue(lipid_index).atoms])
-                            self._coordinate_pool[binding_site_id].append([np.copy(traj.xyz[frame_id, np.hstack([protein_indices, lipid_indices])]), \
-                                                                            np.copy(traj.unitcell_angles[frame_id]), \
-                                                                            np.copy(traj.unitcell_lengths[frame_id])])
+                        for frame_id in range(len(contact_BS_low)):
+                            for lipid_id in contact_BS_low[frame_id]:
+                                lipid_index = self.lipid_resi_set[traj_idx][lipid_id]
+                                lipid_indices = np.sort([atom.index for atom in traj.top.residue(lipid_index).atoms])
+                                self._coordinate_pool[binding_site_id].append([np.copy(traj.xyz[frame_id, np.hstack([protein_indices, lipid_indices])]), \
+                                                                               np.copy(traj.unitcell_angles[frame_id]), \
+                                                                               np.copy(traj.unitcell_lengths[frame_id])])
                     ### calculate area ###
                     new_xyz = []
                     for frame in traj.xyz:
@@ -893,12 +890,14 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
 
                 kde_funcs = {}
                 var_type = ""
+                bw = []
                 for idx in range(len(dist_per_atom[0])):
                     var_type += "c"
+                    bw.append(kde_bw)
                 try:
                     for atom_idx in np.arange(self._lipid_ref.n_atoms):
                         kde_funcs[atom_idx] = KDEMultivariate(data=np.array(dist_per_atom[atom_idx]).T, \
-                                                                    var_type=var_type, bw='normal_reference')
+                                                                    var_type=var_type, bw=bw)
                     ### evaluate binding poses ###
                     scores = np.sum([weights[lipid_atom_map[idx]] * kde_funcs[idx].pdf() \
                                     for idx in np.arange(self._lipid_ref.n_atoms)], axis=0)
