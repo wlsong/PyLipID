@@ -5,6 +5,7 @@ channels:
   - tpeulen 
   - bioconda
   - rangsiman
+  - anaconda  
 dependencies:
   - python=3.7
   - mdtraj
@@ -16,3 +17,4 @@ dependencies:
   - pillow
   - logomaker
   - statsmodels
+  - scikit-learn
