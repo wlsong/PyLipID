@@ -24,6 +24,7 @@ from scipy.optimize import curve_fit
 from scipy.sparse import coo_matrix
 from scipy import sparse
 from statsmodels.nonparametric.kernel_density import KDEMultivariate
+from sklearn.decomposition import PCA
 import community
 import warnings
 from shutil import copyfile
@@ -889,14 +890,15 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                                   for resi in node_list] for idx in np.arange(self._lipid_ref.n_atoms)]
 
                 kde_funcs = {}
-                var_type = ""
-                bw = []
-                for idx in range(len(dist_per_atom[0])):
-                    var_type += "c"
-                    bw.append(kde_bw)
                 try:
                     for atom_idx in np.arange(self._lipid_ref.n_atoms):
-                        kde_funcs[atom_idx] = KDEMultivariate(data=np.array(dist_per_atom[atom_idx]).T, \
+                        transformed_data = PCA(n_components=0.99).fit_transform(np.array(dist_per_atom[atom_idx]).T)
+                        var_type = ""
+                        bw = []
+                        for dummy in range(len(transformed_data[0])):
+                            var_type += "c"
+                            bw.append(kde_bw)
+                        kde_funcs[atom_idx] = KDEMultivariate(data=transformed_data, \
                                                                     var_type=var_type, bw=bw)
                     ### evaluate binding poses ###
                     scores = np.sum([weights[lipid_atom_map[idx]] * kde_funcs[idx].pdf() \
