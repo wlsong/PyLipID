@@ -501,7 +501,7 @@ class LipidInteraction():
         Res_Time_B[Capped] = T_max
         dataset = pd.DataFrame({"Residue": [residue for residue in self.residue_set],
                                 "Residue idx": self.protein_resi_rank,
-                                "Occupancy": np.array([np.mean(self.interaction_occupancy[residue]) \
+                                "Occupancy": np.array([np.mean(self.interaction_occupancy[resid]) \
                                                        for resid in np.arange(self.nresi_per_protein)]),
                                 "Occupancy_std": np.array([np.std(self.interaction_occupancy[resid]) \
                                                            for resid in np.arange(self.nresi_per_protein)]),
