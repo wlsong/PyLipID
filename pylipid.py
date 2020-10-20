@@ -1141,7 +1141,7 @@ for bs_id in np.arange(binding_site_id):
                 plt.close()
 
             else:
-                fig, ax = plt.subplots(1, 1, figsize=(4.5,2.8))
+                fig, ax = plt.subplots(1, 1, figsize=(4, 2.2))
                 ax.bar(resi, data, width, linewidth=0, color=sns.xkcd_rgb["red"])
                 sns.despine(fig, top=True, right=True, trim=False)
                 if len(data) > 1000:
