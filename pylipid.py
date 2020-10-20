@@ -1227,7 +1227,7 @@ for bs_id in np.arange(binding_site_id):
         chainID = [chr(65+int(idx)) for idx in table.chainID]
         data_expanded = np.zeros(len(table))
         residue_indices = np.array([atom.residue.index for atom in self._protein_ref.top.atoms])
-        for value, selected_residue_index in zip(data, self._selected_residue_indices):
+        for value, selected_residue_index in zip(data, self.protein_resi_rank):
             locations = np.where(residue_indices == selected_residue_index)[0]
             data_expanded[locations] = value
         ######## write out coords ###########
