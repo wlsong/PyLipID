@@ -378,7 +378,7 @@ class LipidInteraction():
             self.lipid_resi_set = []
             self.T_total = []
             self.timesteps = []
-            self.protein_resi_rank = None
+            self.protein_resi_rank = []
             ncol_start = 0
             for traj_idx, trajfile in enumerate(self.trajfile_list):
                 print("\n########## Start calculation of {} interaction in \n########## {} \n".format(self.lipid, self.trajfile_list[traj_idx]))
@@ -391,7 +391,7 @@ class LipidInteraction():
                 self.T_total.append((traj.n_frames - 1) * timestep)
                 self.timesteps.append(timestep)
                 new_traj, traj_stats = self._get_traj_stats(traj, self.lipid, self.lipid_atoms)
-                if self.protein_resi_rank == None:
+                if len(self.protein_resi_rank) == 0:
                     self.protein_resi_rank = traj_stats["protein_resi_rank"]
                 self.lipid_resi_set.append(traj_stats["lipid_resi_indices_original"])
                 if self.residue_set == None:
