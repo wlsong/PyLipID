@@ -280,7 +280,7 @@ class LipidInteraction():
         self.stride = int(stride)
         self.resi_offset = resi_offset
         self.resi_list = resi_list
-        self.residue_set = None
+        self.residue_set = []
         self._protein_ref = None
         self._lipid_ref = None
 
@@ -394,8 +394,8 @@ class LipidInteraction():
                 if len(self.protein_resi_rank) == 0:
                     self.protein_resi_rank = traj_stats["protein_resi_rank"]
                 self.lipid_resi_set.append(traj_stats["lipid_resi_indices_original"])
-                if self.residue_set == None:
-                    self.residue_set = traj_stats["residue_set"]
+                if len(self.residue_set) == 0:
+                    self.residue_set = traj_stats["residue_set"] 
                     self.nresi_per_protein = len(self.residue_set)
                 elif len(traj_stats["residue_set"]) != len(self.residue_set):
                     raise IndexError("Protein configurations are different among repeats. Different number of residues detected!")
@@ -936,7 +936,7 @@ binding_site_id = {BINDING_SITE_ID}
 fn_data = "{HOME_DIR}/Interactions_{LIPID}.csv"
 with open(fn_data, "r") as f:
     data_lines = f.readlines()
-
+    
 column_names = data_lines[0].strip().split(",")
 for column_idx, column_name in enumerate(column_names):
     if column_name == "Residue":
@@ -964,11 +964,11 @@ pdb_file = "{PDB}"
 with open(pdb_file, "r") as f:
     pdb_lines = f.readlines()
 
-residue_identifiers = set()
+residue_identifiers = set()    
 for line in pdb_lines:
     if line.strip()[:4] == "ATOM":
         residue_identifiers.add((line.strip()[22:26].strip(), line.strip()[17:20].strip(), line.strip()[21].strip()))
-##                                    residue index,              resname,                     chain id
+##                                    residue index,              resname,                     chain id     
 
 ######### calculate scale ###############
 values_to_show = np.array(values_to_show)
@@ -1006,12 +1006,12 @@ for bs_id in np.arange(binding_site_id):
         selected_residue_rank = residue_rank_set[entry_id]
         identifier_from_pdb = residue_identifiers[selected_residue_rank]
         if re.findall("[a-zA-Z]+$", selected_residue)[0] != identifier_from_pdb[1]:
-            raise IndexError("The {}th residue in the provided pdb file ({}{}) is different from that in the simulations ({})!".format(entry_id+1,
-                                                                                                                                     identifier_from_pdb[0],
+            raise IndexError("The {}th residue in the provided pdb file ({}{}) is different from that in the simulations ({})!".format(entry_id+1, 
+                                                                                                                                     identifier_from_pdb[0], 
                                                                                                                                      identifier_from_pdb[1],
                                                                                                                                      selected_residue))
         if identifier_from_pdb[2] != " ":
-            cmd.select("BSid{}_{}".format(bs_id, selected_residue), "chain {} and resid {} and (not name C+O+N)".format(identifier_from_pdb[2],
+            cmd.select("BSid{}_{}".format(bs_id, selected_residue), "chain {} and resid {} and (not name C+O+N)".format(identifier_from_pdb[2], 
                                                                                                                       identifier_from_pdb[0]))
         else:
             cmd.select("BSid{}_{}".format(bs_id, selected_residue), "resid {} and (not name C+O+N)".format(identifier_from_pdb[0]))
@@ -1019,9 +1019,9 @@ for bs_id in np.arange(binding_site_id):
         cmd.set("sphere_scale", SCALES[entry_id], selection="BSid{}_{}".format(bs_id, selected_residue))
         cmd.color("tmp_{}".format(bs_id), "BSid{}_{}".format(bs_id, selected_residue))
     cmd.group("BSid{}".format(bs_id), "BSid{}_*".format(bs_id))
-
+            
             """
-            with open("{}/show_binding_site_info.py".format(self.save_dir), "w") as f:
+            with open("{}/show_binding_sites_info.py".format(self.save_dir), "w") as f:
                 f.write(text)
 
         return
@@ -1171,7 +1171,7 @@ for bs_id in np.arange(binding_site_id):
                 else:
                     plt.savefig("{}/{}_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(point_idx)), dpi=300)
                 plt.close()
-
+            
             ###### logomater #####
             if item == "Residence Time":
                 ylabel = "Res. Time {}".format(timeunit)
