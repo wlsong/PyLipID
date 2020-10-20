@@ -1181,7 +1181,7 @@ for bs_id in np.arange(binding_site_id):
             start = (resi[0]//100)*100
             length = start + 100 - resi[0]
             fig, axes = plt.subplots(n_rows, 1, figsize=(4.5, 1.3*n_rows), sharey=True)
-            plt.subplots_adjust(hspace=0.5)
+            plt.subplots_adjust(hspace=0.5, left=0.2)
             for idx, ax in enumerate(np.atleast_1d(axes)):
                 try:
                     if idx == (n_rows - 1):
