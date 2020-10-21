@@ -943,7 +943,7 @@ for column_idx, column_name in enumerate(column_names):
         column_id_residue_set = column_idx
     elif column_name == "Residue idx":
         column_id_residue_index = column_idx
-    elif column_name == "Binding_site":
+    elif column_name == "Binding site":
         column_id_BS = column_idx
     elif column_name == value_to_show:
         column_id_value_to_show = column_idx
@@ -963,19 +963,22 @@ for line in data_lines[1:]:
 pdb_file = "{PDB}"
 with open(pdb_file, "r") as f:
     pdb_lines = f.readlines()
-
-residue_identifiers = set()    
+residue_identifiers = []
 for line in pdb_lines:
     if line.strip()[:4] == "ATOM":
-        residue_identifiers.add((line.strip()[22:26].strip(), line.strip()[17:20].strip(), line.strip()[21].strip()))
-##                                    residue index,              resname,                     chain id     
-
+        identifier = (line.strip()[22:26].strip(), line.strip()[17:20].strip(), line.strip()[21].strip())
+##                           residue index,              resname,                     chain id
+        if len(residue_identifiers) == 0:
+            residue_identifiers.append(identifier)
+        elif identifier != residue_identifiers[-1]:
+            residue_identifiers.append(identifier)
+            
 ######### calculate scale ###############
-values_to_show = np.array(values_to_show)
-MIN = np.percentile(values_to_show, 0)
+values_to_show = np.array(values_to_show, dtype=str)
+MIN = np.percentile(values_to_show, 15)
 MAX = np.percentile(values_to_show, 100)
 X = (values_to_show - np.percentile(values_to_show, 50))/(MAX - MIN)
-SCALES = 2.5/(1 + np.exp(-X * 10))
+SCALES = 1.5/(1.5 + np.exp(-X * 5))
 
 ######## some pymol settings #########
 cmd.set("retain_order", 1)
