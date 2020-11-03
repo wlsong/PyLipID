@@ -395,7 +395,7 @@ class LipidInteraction():
                     self.protein_resi_rank = traj_stats["protein_resi_rank"]
                 self.lipid_resi_set.append(traj_stats["lipid_resi_indices_original"])
                 if len(self.residue_set) == 0:
-                    self.residue_set = traj_stats["residue_set"] 
+                    self.residue_set = traj_stats["residue_set"]
                     self.nresi_per_protein = len(self.residue_set)
                 elif len(traj_stats["residue_set"]) != len(self.residue_set):
                     raise IndexError("Protein configurations are different among repeats. Different number of residues detected!")
@@ -936,7 +936,7 @@ binding_site_id = {BINDING_SITE_ID}
 fn_data = "{HOME_DIR}/Interactions_{LIPID}.csv"
 with open(fn_data, "r") as f:
     data_lines = f.readlines()
-    
+
 column_names = data_lines[0].strip().split(",")
 for column_idx, column_name in enumerate(column_names):
     if column_name == "Residue":
@@ -972,9 +972,9 @@ for line in pdb_lines:
             residue_identifiers.append(identifier)
         elif identifier != residue_identifiers[-1]:
             residue_identifiers.append(identifier)
-            
+
 ######### calculate scale ###############
-values_to_show = np.array(values_to_show, dtype=str)
+values_to_show = np.array(values_to_show, dtype=float)
 MIN = np.percentile(values_to_show, 15)
 MAX = np.percentile(values_to_show, 100)
 X = (values_to_show - np.percentile(values_to_show, 50))/(MAX - MIN)
@@ -1009,12 +1009,12 @@ for bs_id in np.arange(binding_site_id):
         selected_residue_rank = residue_rank_set[entry_id]
         identifier_from_pdb = residue_identifiers[selected_residue_rank]
         if re.findall("[a-zA-Z]+$", selected_residue)[0] != identifier_from_pdb[1]:
-            raise IndexError("The {}th residue in the provided pdb file ({}{}) is different from that in the simulations ({})!".format(entry_id+1, 
-                                                                                                                                     identifier_from_pdb[0], 
+            raise IndexError("The {}th residue in the provided pdb file ({}{}) is different from that in the simulations ({})!".format(entry_id+1,
+                                                                                                                                     identifier_from_pdb[0],
                                                                                                                                      identifier_from_pdb[1],
                                                                                                                                      selected_residue))
         if identifier_from_pdb[2] != " ":
-            cmd.select("BSid{}_{}".format(bs_id, selected_residue), "chain {} and resid {} and (not name C+O+N)".format(identifier_from_pdb[2], 
+            cmd.select("BSid{}_{}".format(bs_id, selected_residue), "chain {} and resid {} and (not name C+O+N)".format(identifier_from_pdb[2],
                                                                                                                       identifier_from_pdb[0]))
         else:
             cmd.select("BSid{}_{}".format(bs_id, selected_residue), "resid {} and (not name C+O+N)".format(identifier_from_pdb[0]))
@@ -1022,7 +1022,7 @@ for bs_id in np.arange(binding_site_id):
         cmd.set("sphere_scale", SCALES[entry_id], selection="BSid{}_{}".format(bs_id, selected_residue))
         cmd.color("tmp_{}".format(bs_id), "BSid{}_{}".format(bs_id, selected_residue))
     cmd.group("BSid{}".format(bs_id), "BSid{}_*".format(bs_id))
-            
+
             """
             with open("{}/show_binding_sites_info.py".format(self.save_dir), "w") as f:
                 f.write(text)
@@ -1174,7 +1174,7 @@ for bs_id in np.arange(binding_site_id):
                 else:
                     plt.savefig("{}/{}_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(point_idx)), dpi=300)
                 plt.close()
-            
+
             ###### logomater #####
             if item == "Residence Time":
                 ylabel = "Res. Time {}".format(timeunit)
