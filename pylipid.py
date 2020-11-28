@@ -975,13 +975,13 @@ for line in pdb_lines:
 
 ######### calculate scale ###############
 values_to_show = np.array(values_to_show, dtype=float)
-MIN = np.percentile(values_to_show, 15)
-MAX = np.percentile(values_to_show, 100)
-X = (values_to_show - np.percentile(values_to_show, 50))/(MAX - MIN)
-SCALES = 1.5/(1.5 + np.exp(-X * 5))
+MIN = np.percentile(np.unique(values_to_show), 5)
+MAX = np.percentile(np.unique(values_to_show), 100)
+X = (values_to_show - np.percentile(np.unique(values_to_show), 50))/(MAX - MIN)
+SCALES = 1.5/(0.5 + np.exp(-X * 5))
 
 ######## some pymol settings #########
-cmd.set("retain_order", 1)
+cstr)md.set("retain_order", 1)
 cmd.set("cartoon_oval_length", 1.0)
 cmd.set("cartoon_oval_width", 0.3)
 cmd.set("cartoon_color", "white")
