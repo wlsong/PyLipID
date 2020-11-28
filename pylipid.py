@@ -978,7 +978,7 @@ values_to_show = np.array(values_to_show, dtype=float)
 MIN = np.percentile(np.unique(values_to_show), 5)
 MAX = np.percentile(np.unique(values_to_show), 100)
 X = (values_to_show - np.percentile(np.unique(values_to_show), 50))/(MAX - MIN)
-SCALES = 1.5/(0.5 + np.exp(-X * 5))
+SCALES = 1/(0.5 + np.exp(-X * 5))
 
 ######## some pymol settings #########
 cstr)md.set("retain_order", 1)
