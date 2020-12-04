@@ -981,7 +981,7 @@ X = (values_to_show - np.percentile(np.unique(values_to_show), 50))/(MAX - MIN)
 SCALES = 1/(0.5 + np.exp(-X * 5))
 
 ######## some pymol settings #########
-cstr)md.set("retain_order", 1)
+cmd.set("retain_order", 1)
 cmd.set("cartoon_oval_length", 1.0)
 cmd.set("cartoon_oval_width", 0.3)
 cmd.set("cartoon_color", "white")
