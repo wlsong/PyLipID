@@ -67,25 +67,32 @@ conda env remove --name PyLipID
 ## Examples: 
 Information regarding **pylipid.py** flags can be checked via 'python pylipid.py -h'.
 
-A standard calculation of lipid interactions using **pylipid.py**:
+A standard check on lipid interactions using **pylipid.py**, which suits most of the cases:
 ```
 conda activate PyLipID
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset 
 ```
 
-**pylipid.py** uses graph theory and community analysis to calcualte lipid binding sites. The script also allows users to view the calculated binding sites in PyMol via generating a python script, a process that is evoked by providing a protein atomistic structure (preferably in pdb format) to the flag -pdb. For the coarse-grained simulations, either provide the atomistic protein structure before coarse-graining or use an atomistic structure that is converted back from coarse-grained models. Users need to make sure that the provided protein coordinates are consistent with the configuration in the simulations in terms of the residue indices and ordering of the protein. An example of using the flag -pdb: 
+Due to the smoothened energy potentials, coarse-grained force fields often render the tails of phosphalipids too flexible, which could lead to poor characterisation of binding sites. When behaviours of the tails are not the main focus, it's better to focus on the binding of headgroups. Users can use the flag -lipid_atoms to specify lipid atoms/beads for calculation. An example of calculating the binding of PIP2 in MARTINI 2 (named as POP2 in this force field) using only the headgroup beads: 
+```
+python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+-cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb 
+```
+
+**pylipid.py** uses graph theory and community analysis to calcualte lipid binding sites. The Binding Site information are wrapped up in the BindingSites_info_{LIPID}.txt in the "Binding_Sites_{LIPID}" directory. For each binding site, pylipid.py can write out top-rated binding poses sampled in the simulations. pylipid.py rates the bound lipid poses of each binding site via a scoring function that is based on the probability density of bound lipids at that binding site. The written coordinate of the lipid poses include that of the bound lipid and the receptor that the pose bound to. By default, pylipid.py writes out the top 5 ranking lipid poses for each binding site in the 'gro' format (the Gromacs coordinate format). Users can use -save_pose_format to change the coordinate format to any that is supported by [mdtraj](http://mdtraj.org). For phospholipids, it's recommended to give higher weights to lipid headgroups in the scoring functions. Users can use -score_weights to change the weights. The flag -n_binding_poses specify how many lipid poses to be generated for each binding site. The following example shows how to generate 10 top ranking poses for each binding site, to save the binding poses in the 'gro' format and to give higher weight to the headgroup beads of PIP2 in the MARTINI force field:
+```
+python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+-cutoffs 0.55 1.0 -lipids POP2 -nprot 1 -save_pose_format gro -score_weights PO4:10 P1:10:P2:10 C1:10 C2:10 C3:10 -n_binding_poses 10
+```
+The calculation of lipid probability density uses the function of [KDEMultivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kernel_density.KDEMultivariate.html) in statsmodels. This calculation can take some time (up to one hour) for atomistic simulations or long coarse-grained simulations where the collected binding data are large (either due to higher granularity or a larger number of binding events). To speed up the calculation, users can decrease the volume of data by using the flag -stride to stride throught trajectories, i.e. analyse only every X-th of the trajectory frame. In addition, if getting the bound lipid coordinates is not the focus, users can use -n_binding_poses 0 to switch off the binding pose generation process. 
+
+The script also allows users to view the calculated binding sites in PyMol via generating a python script, a process that is evoked by providing a protein atomistic structure (preferably in pdb format) to the flag -pdb. For the coarse-grained simulations, either provide the atomistic protein structure before coarse-graining or use an atomistic structure that is converted back from coarse-grained models. Users need to make sure that the provided protein coordinates are consistent with the configuration in the simulations in terms of the residue indices and ordering of the protein. An example of using the flag -pdb: 
 ```
 python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset -pdb XXXX.pdb
 ```
 Replace 'XXXX.pdb' with the pdb file of your chose. Running the generated python script by the comment 'python show_binding_site_info.py' will open a PyMol session displaying binding site information. 
-
-Due to the smoothened energy potentials, coarse-grained force fields often render the tails of phosphalipids too flexible, which could lead to poor characterisation of binding sites. When behaviours of the tails are not the main focus, it's better to just check the binding of headgroups for better results. Users can use the flag -lipid_atoms to specify lipid atoms/beads for calculation. An example of calculating the binding of PIP2 in MARTINI 2 (named as POP2 in this force field) using only the headgroup beads: 
-```
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset -pdb XXXX.pdb 
-```
 
 **pylipid.py** allows user to specify a couple of regions for calculation via the flag -resi_list. Supported syntax include: 1/ use "-" to indicate a range of the protein residue index (both ends included); or 2/ specify individual residue index seperated by space: 
 ```
@@ -98,13 +105,6 @@ python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro 
 python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -radii BB:0.28 SC1:0.22
 ```
-
-**pylipid.py** can write out top-rated binding poses sampled in the simulations. pylipid.py rates all the bound lipid poses of each binding site via a scoring function that is based on the probability density of bound lipids at that binding site. The written coordinates include that of the bound lipid pose and the receptor that the pose binds to. By default, pylipid.py writes out the top 5 ranking lipid poses for each binding site in the 'pdb' format. Users can use -gen_binding_poses to change how many to be generated and use -save_pose_format to change the coordinate format to any that is supported by [mdtraj](http://mdtraj.org). For phospholipids, it's recommended to give higher weights to lipid headgroups in the scoring functions. Use -score_weights to change the weights. The following example shows how to generate 10 top ranking poses for each binding site, to save the binding poses in the 'gro' format and to give higher weight to the headgroup beads of PIP2 in the MARTINI force field:
-```
-python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POP2 -nprot 1 -gen_binding_poses 10 -save_pose_format gro -score_weights PO4:10 P1:10:P2:10 C1:10 C2:10 C3:10
-```
-The calculation of probability density uses the function of [KDEMultivariate](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.kernel_density.KDEMultivariate.html) in statsmodels. This calculation can take some time (a couple of hours) for atomistic simulations or long coarse-grained simulations where the collected binding data are large (either due to higher granularity or a larger number of binding events). To speed up the calculation, users can decrease the volume of data by using the flag -stride to stride throught trajectories, i.e. analyse only every X-th of the trajectory frame. In addition, if getting the bound lipid coordinates is not the focus, users can use -gen_binding_poses 0 to switch off the binding pose generation process. 
 
 
 ## Developers:
