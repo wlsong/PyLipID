@@ -65,7 +65,7 @@ conda env remove --name PyLipID
 
 
 ## Examples: 
-All the **pylipid.py** flags can be checked via 'python pylipid.py -h'.
+Information regarding **pylipid.py** flags can be checked via 'python pylipid.py -h'.
 
 A standard calculation of lipid interactions using **pylipid.py**:
 ```
