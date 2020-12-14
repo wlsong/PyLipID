@@ -1083,15 +1083,15 @@ for bs_id in np.arange(num_of_binding_site):
             df = data[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
             resi_selected = residue_index_set[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
             if len(df) <= 50:
-                fig, ax = plt.subplots(1, 1, figsize=(3.5, 1.8))
+                fig, ax = plt.subplots(1, 1, figsize=(3.5, 1.5))
                 ax.xaxis.set_major_locator(MultipleLocator(10))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
             elif len(df) <= 500 and len(df) > 50:
-                fig, ax = plt.subplots(1, 1, figsize=(5.5, 2.1))
+                fig, ax = plt.subplots(1, 1, figsize=(5.5, 1.8))
                 ax.xaxis.set_major_locator(MultipleLocator(50))
                 ax.xaxis.set_minor_locator(MultipleLocator(10))
             elif len(df) > 500:
-                fig, ax = plt.subplots(1, 1, figsize=(7.5, 3.3))
+                fig, ax = plt.subplots(1, 1, figsize=(7.5, 2.3))
                 ax.xaxis.set_major_locator(MultipleLocator(200))
                 ax.xaxis.set_minor_locator(MultipleLocator(50))
             ax.bar(resi_selected, df, 1.0, linewidth=0, color=color)
