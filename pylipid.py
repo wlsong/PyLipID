@@ -262,8 +262,6 @@ class LipidInteraction():
         self.nprot = int(nprot)
         self.timeunit = timeunit
         self.koff = {}
-        self.sigmas = {}
-        self.params = {}
         self.r_squared = {}
         self.res_time = {}
         self.koff_b = {}
@@ -457,7 +455,7 @@ class LipidInteraction():
         ###################################################
         koff_dir = check_dir(self.save_dir, "Koffs_{}".format(self.lipid))
         if len(set(self.residue_set)) != len(self.residue_set):
-            residue_name_set = ["{}_{}".format(residue, resi_rank) for residue, resi_rank in zip(self.residue_set, self.protein_resi_rank)]
+            residue_name_set = ["{}_ri{}".format(residue, resi_rank) for residue, resi_rank in zip(self.residue_set, self.protein_resi_rank)]
         else:
             residue_name_set = self.residue_set
         for resid in trange(len(residue_name_set), desc="PLOT RESIDUE RESIDENCE TIME"):
@@ -466,10 +464,8 @@ class LipidInteraction():
             if np.sum(duration_raw) > 0:
                 bootstrap_results = self.bootstrap(duration_raw, residue, "{}/{}_{}.pdf".format(koff_dir, self.lipid, residue), \
                                                    nbootstrap=nbootstrap)
-                self.sigmas[resid] = bootstrap_results["sigma"]
                 self.koff[resid] = bootstrap_results["koff"]
                 self.res_time[resid] = bootstrap_results["restime"]
-                self.params[resid] = bootstrap_results["params"]
                 self.r_squared[resid] = bootstrap_results["r_squared"]
                 self.koff_b[resid] = bootstrap_results["koff_b_avg"]
                 self.koff_b_cv[resid] = bootstrap_results["koff_b_cv"]
@@ -477,11 +473,8 @@ class LipidInteraction():
                 self.res_time_b_cv[resid] = bootstrap_results["res_time_b_cv"]
                 self.r_squared_b[resid] = bootstrap_results["r_squared_b_avg"]
             else:
-                delta_t_range = np.arange(0, self.T_total[traj_idx], np.min(self.timesteps))
-                self.sigmas[resid] = {key:value for key, value in zip(delta_t_range, np.zeros(len(delta_t_range)))}
                 self.koff[resid] = 0
                 self.res_time[resid] = 0
-                self.params[resid] = [0, 0, 0, 0]
                 self.r_squared[resid] = 0.0
                 self.koff_b[resid] = 0
                 self.koff_b_cv[resid] = 0
@@ -542,12 +535,20 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             dataset_dir = check_dir(self.save_dir, "Dataset")
             with open("{}/interaction_durations_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_duration, f, 2)
-            with open("{}/sigmas_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
-                pickle.dump(self.sigmas, f, 2)
-            with open("{}/curve_fitting_params_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
-                pickle.dump(self.params, f, 2)
             with open("{}/interaction_covariance_matrix_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_covariance, f, 2)
+        ##### free memory ######
+        self.interaction_occupancy = None
+        self.interaction_duration = None
+        self.r_squared = None
+        self.koff = None
+        self.res_time_b_cv = None
+        self.koff_b = None
+        self.koff_b_cv = None
+        self.lipid_count = None
+        self.res_time_b = None
+        self.res_time = None
+        
         return
 
 
@@ -638,10 +639,9 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         plt.savefig(fig_fn, dpi=300)
         plt.close()
 
-        return {"koff": koff, "restime": restime, "sigma": sigma, "params": params, "r_squared": r_squared,
+        return {"koff": koff, "restime": restime, "r_squared": r_squared, "r_squared_b_avg": np.mean(r_squared_sampled_set),
                 "koff_b_avg": np.mean(koff1_sampled_set), "koff_b_cv": np.std(koff1_sampled_set)/np.mean(koff1_sampled_set),
-                "res_time_b_avg": np.mean(restime_sampled_set), "res_time_b_cv": np.std(restime_sampled_set)/np.mean(restime_sampled_set),
-                "r_squared_b_avg": np.mean(r_squared_sampled_set)}
+                "res_time_b_avg": np.mean(restime_sampled_set), "res_time_b_cv": np.std(restime_sampled_set)/np.mean(restime_sampled_set)}
 
 
     def cal_interaction_network(self, save_dir=None, pdb=None, save_dataset=True, nbootstrap=10, BS_size=4,\
@@ -691,8 +691,6 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         self.interaction_duration_BS = defaultdict(list)
         self.interaction_occupancy_BS = defaultdict(list)
         self.lipid_count_BS = defaultdict(list)
-        self.sigmas_BS = {}
-        self.params_BS = {}
         BS_restime = np.zeros(self.nresi_per_protein)
         BS_koff = np.zeros(self.nresi_per_protein)
         BS_rsquared = np.zeros(self.nresi_per_protein)
@@ -768,8 +766,6 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 duration_raw = np.concatenate(self.interaction_duration_BS[binding_site_id])
                 mask = (binding_site_identifiers == binding_site_id)
                 bootstrap_results = self.bootstrap(duration_raw, "BS id: {}".format(binding_site_id), "{}/BS_koff_id{}.pdf".format(save_dir, binding_site_id), nbootstrap=nbootstrap)
-                self.sigmas_BS[binding_site_id] = bootstrap_results["sigma"]
-                self.params_BS[binding_site_id] = bootstrap_results["params"]
                 BS_restime[mask] = bootstrap_results["restime"]
                 BS_koff[mask] = bootstrap_results["koff"]
                 BS_rsquared[mask] = bootstrap_results["r_squared"]
@@ -860,10 +856,6 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             dataset_dir = check_dir(self.save_dir, "Dataset")
             with open("{}/BS_interaction_duration_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(self.interaction_duration_BS, f, 2)
-            with open("{}/BS_sigmas_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
-                pickle.dump(self.sigmas_BS, f, 2)
-            with open("{}/BS_curve_fitting_params_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
-                pickle.dump(self.params_BS, f, 2)
             with open("{}/BS_surface_area_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(surface_area_all, f, 2)
         ################## generate binding poses ################
