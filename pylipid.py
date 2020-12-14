@@ -1248,9 +1248,6 @@ if __name__ == '__main__':
         for item in args.letter_map:
             letter_map[item.split(":")[0]] = item.split(":")[1]
     #######################################################################
-    ################# process chain breaks ################################
-    chain_breaks = [] if len(args.chain_breaks) == 0 else [int(num)-1 for num in args.chain_breaks]
-    #######################################################################
     for lipid in lipid_set:
         li = LipidInteraction(trajfile_list, grofile_list, stride=int(args.stride), dt=args.dt, cutoff=cutoff, lipid=lipid, \
                               lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=int(args.resi_offset), \
