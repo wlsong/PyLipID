@@ -32,6 +32,7 @@ import datetime
 from itertools import product
 import logomaker
 import re
+from tqdm import trange
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore')
 np.seterr(all='ignore')
@@ -42,34 +43,37 @@ np.seterr(all='ignore')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", nargs="+", metavar="./run/md.xtc", help="List of trajectories, seperated by space, \
-                     Supports xtc, gro format. Used by mdtraj.load()")
+                     Used by mdtraj.load(). Supports trajectory formats e.g. xtc, pdb, dcd, dtr, etc that are supported by mdtraj.")
 parser.add_argument("-c", nargs="+", metavar="./run/system.gro", \
-                    help="List of coordinates of trajectory, in the same order as -f, required when inputs of -f are xtc trajectories, \
-                    Supported format: gro, pdb, etc., Used by mdtraj.load()")
+                    help="List of topology files. Most trajectory formats do not contain topology information, thus PyLipID needs topology\
+                    files to obtain such information. The order of listed topology files should be consistent with the trajectory list \
+                    provided by -f.")
 parser.add_argument("-stride", default=1, metavar=1, help="Striding through trajectories. Only every stride-th will be analized." )
-parser.add_argument("-dt", default=None, metavar="None", help="The time interval between two adjacent frames in the trajectories. \
-                    If not specified, the mdtraj will deduce from the trajectories. This works for trajectories in format of e.g. xtc which \
-                    include timestep information. For trajectories in dcd format, users have to provide the time interval manually, \
-                    in a time unite consistent with -tu")
+parser.add_argument("-dt", default=None, metavar="None", help="The time interval between two adjacent frames in trajectories. \
+                    If not specified, the mdtraj will deduce from the trajectories. This is requierd for trajectories that do not \
+                    have time stamps.") 
 parser.add_argument("-tu", default="us", choices=["ns", "us"], metavar="us", \
-                    help="Time unit for interaction duration calculation. Available options: ns, us. This will affect the unit of koff as well.")
-parser.add_argument("-save_dir", default=None, metavar="None", help="The directory where all the generated results will be put in. \
-                    The directory will be created if not existing. Using the current working directory if not specified.")
+                    help="Time unit. It will convert all the calculated values to the specified time unit.")
+parser.add_argument("-save_dir", default=None, metavar="None", help="Directory to put all the generated results. \
+                    The directory will be created if not existing. PyLipID will use the current working directory \
+                    if not specified.")
 parser.add_argument("-cutoffs", nargs=2, default=(0.55, 1.0), metavar=(0.55, 1.0), \
-                    help="Double cutoff seperated by space. In unit of nm. Default is 0.55 1.0. The double cutoffs are used to define lipid \
-                    interactions. A continuous lipid contact with a given residue starts when the lipid moves to the given residue \
-                    closer than the smaller cutoff; and ends when the lipid moves farther than the larger cutoff. The standard single \
-                    cutoff can be acheived by setting the same value for both cutoffs.")
+                    help="Two cutoffs seperated by space. In unit of nm. Default is 0.55 1.0. The double cutoffs are used to define \
+                    the start and the end of a continuous lipid interaction. A continuous lipid contact with a given residue \
+                    starts when the lipid moves to the given residue closer than the smaller cutoff; and ends when the lipid \
+                    moves farther than the larger cutoff. The standard single cutoff can be acheived by setting the same value \
+                    for both cutoffs.")
 parser.add_argument("-lipids", nargs="+", metavar="POPC", default="POPC CHOL POP2", \
                     help="Lipid species to check, seperated by space. Should be consistent with residue names in your trajectories.")
 parser.add_argument("-lipid_atoms", nargs="+", metavar="PO4", default=None, \
-                    help="Lipid atoms to check, seperated by space. Should be consistent with the atom names in your trajectories.")
-parser.add_argument("-radii", nargs="+", default=None, metavar="BB:0.26 SC1:0.23", help="Change/Define the radius of atoms/beads \
-                    that is used for the calculation of binding site surface area. Values need to be in the unit of nm. Supported syntax is \
-                    BB:0.26, which defines the radius of bead BB as 0.26 nm, or CA:0.12 which defines the radius of atom CA as 0.12 nm. For \
-                    atomistic simulations, the default radii are taken from \
+                    help="Lipid atoms to define binding interactions, seperated by space. Should be consistent with the atom names \
+                    in your trajectories.")
+parser.add_argument("-radii", nargs="+", default=None, metavar="BB:0.26 SC1:0.23", help="Change/Define the radii of atoms/beads \
+                    that are used for the calculation of binding site surface area. Values need to be in the unit of nm. The supported syntax is \
+                    ATOM_NAME:RADIUS, e.g. BB:0.26, which defines the radius of BEAD BB as 0.26 nm; or CA:0.12 which defines \
+                    the radius of ATOM CA as 0.12 nm. For atomistic simulations, the default radii are taken from \
                     mdtraj https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56. For coarse-grained \
-                    simulations, this script defines the radius of the MARTINI 2 beads of BB as 0.26 nm and SC1/2/3 as 0.23 nm.")
+                    simulations, PyLIpID defines the radius of the MARTINI 2 beads of BB as 0.26 nm and SC1/2/3 as 0.23 nm.")
 parser.add_argument("-nprot", default=1, metavar="1", \
                     help="num. of proteins (or chains) in the simulation system. The calculated results will be averaged among these proteins \
                     (or chains). The proteins (or chains) need to be identical, otherwise the averaging will fail.")
@@ -79,29 +83,22 @@ parser.add_argument("-resi_offset", default=0, metavar="0", help="Shifting the r
 parser.add_argument("-resi_list", nargs="+", default=[], metavar="1-10 20-30", help="The indices of residues on which the calculations are done. \
                     This option is useful for those proteins with large regions that don't require calculation. Skipping those calculations could \
                     save time and memory. Accepted syntax include 1/ defining a range, like 1-10 (both ends included); 2/ single residue index, \
-                    like 25 26 17. All the selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46 means selecting \
+                    like 25 26 17. The selections are seperated by space. For example, -resi_list 1-10 20-30 40 45 46 means selecting \
                     residues 1-10, 20-30, 40, 45 and 46 for calculation. The residue indices are not affected by -resi_offset, i.e. they \
                     should be consistent with the indices in your trajectories.")
-parser.add_argument("-chain_breaks", nargs="+", default=[], metavar="100 281 420", help="Start a new chain at the X-th residue (starting at 1) in \
-                    the trajectory topology. This identifier is independent of the residue index but checks the residue order in the topology. \
-                    Multiple chain breaks are supported. This option is useful when the simulation system contains \
-                    multiple differnt chains, or users want to see the difference between chains even if these chains are identical. Using this flag \
-                    will generate seperate figures for each of the chains. But the binding site detection will still treat the proteins in the \
-                    system collectively, i.e. those binding sites that cover at multiple chains will be identified.")
-parser.add_argument("-nbootstrap", default=10, metavar=10, help="The number of samples for bootstrapping the calcultion of koff. \
-                    The default is 10. The larger the number, the more time-consuming the calculation will be. The closer the bootstrapped \
-                    residence time/koffs are to the original values, the more reliable those original values are. The bootstrapped results \
-                    are ploted in each of the koff plots and plotted apposed to the original values in the figure showing residence time. ")
+parser.add_argument("-nbootstrap", default=10, metavar=10, help="The number of bootstrappings for koff calculation. \
+                    The default is 10. The larger the number, the more time-consuming the calculation will be. The bootstrapping results \
+                    are ploted in gray lines in the koff plots.")
 parser.add_argument("-save_dataset", nargs="?", default=True, const=True, metavar="True", help="Save dataset in Pickle. Default is True")
-parser.add_argument("-gen_binding_poses", default=5, metavar=5, help="The num. of top-scored lipid binding poses to be generated for each binding \
-                    site. The default is 5. A scoring function is generated for each binding site based on the sum of the probability density function of each atom/bead \
-                    the lipid molecule. Score = sum(PDF(atom_i) * Weight(atom_i)) for atom_i in the lipid molecule. The weight function Weight(atom_i) \
-                    is specified by the flag -score_weights.")
-parser.add_argument("-save_pose_format", default="gro", metavar="gro", help="The format the generated lipid binding poses are written into. This function \
-                    is carried out by mdtraj.save(), hence supports the formats that are included by mdtraj. ")
-parser.add_argument("-score_weights", nargs="+", default=None, metavar="PO4:1 C1:1", help="The weight of each of the lipid atom/bead contributes to the scoring function. \
-                    Top-rated lipid binding poses can be generated based on users' specification. The bounds poses of each binding site are scored based \
-                    on the scoring function Score = sum(PDF(atom_i) * Weight(atom_i)) for atom_i in the lipid molecule.")
+parser.add_argument("-n_binding_poses", default=5, metavar=5, help="The num. of top-scored lipid binding poses to be written out for each binding \
+                    site. The default is 5. A scoring function is generated for each binding site based on the probability density functions (PDF) of \
+                    lipid atoms/beads. Score = sum(PDF(atom_i) * Weight(atom_i)) for atom_i in the lipid molecule. The atom/bead weights Weight(atom_i) \
+                    are specified via the flag -score_weights.")
+parser.add_argument("-save_pose_format", default="gro", metavar="gro", help="The format the generated lipid binding poses are written in. This operation \
+                    saving poses is carried out by mdtraj.save(), thus supports the formats that are supported by mdtraj. ")
+parser.add_argument("-score_weights", nargs="+", default=None, metavar="PO4:1 C1:1", help="The weight of lipdi atoms/beads in the scoring function. \
+                    The bounds poses of each binding site are scored based on the scoring function Score = sum(PDF(atom_i) * Weight(atom_i)) \
+                    for atom_i in the lipid molecule.")
 parser.add_argument("-letter_map", nargs="+", default=None, metavar="ARG:K GLY:G", help="Map the three-letter amino acids to one letter. This map is \
                     used in making logomaker figures (https://logomaker.readthedocs.io/en/latest/). The common 20 amino acids are defined \
                     by this script. Users need to use this flag to define maps for uncommon amino acids in their systems.")
@@ -109,6 +106,8 @@ parser.add_argument("-pdb", default=None, metavar="None", help="Provide a PDB st
                     Using this flag will generate a 'show_binding_site_info.py' file in the -save_dir directory, which allows users to check the \
                     mapped binding site information in PyMol. Users can run the generated script by 'python show_binding_site_info.py' \
                     to open such a PyMol session.")
+parser.add_argument("-BS_size", default=4, metavar=4, help="Size of binding sites, i.e. at least how many number of residues should be included to define a binding site. \
+                    Only binding sites of number of residues equal or more than the provided value will be recorded. The default is 4.")
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -461,7 +460,8 @@ class LipidInteraction():
             residue_name_set = ["{}_{}".format(residue, resi_rank) for residue, resi_rank in zip(self.residue_set, self.protein_resi_rank)]
         else:
             residue_name_set = self.residue_set
-        for resid, residue in enumerate(residue_name_set):
+        for resid in trange(len(residue_name_set), desc="PLOT RESIDUE RESIDENCE TIME"):
+            residue = residue_name_set[resid]
             duration_raw = np.concatenate(self.interaction_duration[resid])
             if np.sum(duration_raw) > 0:
                 bootstrap_results = self.bootstrap(duration_raw, residue, "{}/{}_{}.pdf".format(koff_dir, self.lipid, residue), \
@@ -578,10 +578,13 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         koff2_sampled_set = []
         restime_sampled_set = []
         r_squared_sampled_set = []
-        for duration_sampled in duration_sampled_set:
+        for sample_idx, duration_sampled in enumerate(duration_sampled_set):
             sigma_sampled = cal_sigma(duration_sampled, len(duration_sampled), np.max(self.T_total), delta_t_range)
             hist_values_sampled = np.array([sigma_sampled[delta_t] for delta_t in delta_t_range])
-            axHisty.plot(delta_t_range, hist_values_sampled, color="gray", alpha=0.5)
+            if sample_idx == 0:
+                axHisty.plot(delta_t_range, hist_values_sampled, color="gray", alpha=0.5, label="Boostrapping")
+            else:
+                axHisty.plot(delta_t_range, hist_values_sampled, color="gray", alpha=0.5)
             restime_sampled, koff_sampled, r_squared_sampled, params_sampled = cal_restime_koff(sigma_sampled, initial_guess)
             n_fitted = bi_expo(np.array(delta_t_range), *params_sampled)
             r_squared_sampled = 1 - np.sum((np.nan_to_num(n_fitted) - np.nan_to_num(hist_values_sampled))**2)/np.sum((hist_values_sampled - np.mean(hist_values_sampled))**2)
@@ -597,11 +600,11 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         y = np.arange(len(x)) + 1
         axScatter.scatter(x[::-1], y, label=label, s=10)
         axScatter.set_xlim(0, x[-1] * 1.1)
-        axScatter.legend(loc="upper right", prop={"size": 10}, frameon=False)
+        axScatter.legend(loc="upper right", prop={"size": 10}, frameon=False, markerscale=0)
         axScatter.set_ylabel("Sorted Index", fontsize=10, weight="bold")
         axScatter.set_xlabel(xlabel, fontsize=10, weight="bold")
         hist_values = np.array([sigma[delta_t] for delta_t in delta_t_range])
-        axHisty.scatter(delta_t_range, hist_values, zorder=8, s=3, label="sigma func.")
+        axHisty.scatter(delta_t_range, hist_values, zorder=8, s=10, label="Survival func.")
         axHisty.yaxis.set_label_position("right")
         axHisty.yaxis.tick_right()
         axHisty.set_xlabel(r"$\Delta t$", fontsize=10, weight="bold")
@@ -614,7 +617,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         ks = [abs(k) for k in params[:2]]
         ks.sort()
         axHisty.plot(delta_t_range, n_fitted, 'r--', linewidth=3, zorder=10, label="Fitted biexpo.")
-        axHisty.legend(loc="upper right", prop={"size": 10}, frameon=False)
+        axHisty.legend(loc="upper right", prop={"size": 10}, frameon=False, markerscale=2.)
         ######### labels ############
         if self.timeunit == "ns":
             text = "{:18s} = {:.3f} ns$^{{-1}} $\n".format("$k_{{off1}}$", ks[0])
@@ -641,8 +644,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 "r_squared_b_avg": np.mean(r_squared_sampled_set)}
 
 
-    def cal_interaction_network(self, save_dir=None, pdb=None, save_dataset=True, nbootstrap=10, \
-                                radii=None, gen_binding_poses=5, score_weights=None, save_pose_format="pdb", kde_bw=0.15):
+    def cal_interaction_network(self, save_dir=None, pdb=None, save_dataset=True, nbootstrap=10, BS_size=4,\
+                                radii=None, n_binding_poses=5, score_weights=None, save_pose_format="pdb", kde_bw=0.15):
 
         Residue_property_book = {"ARG": "Pos. Charge", "HIS": "Pos. Charge", "LYS": "Pos. Charge",
                                  "ASP": "Neg. Charge", "GLU": "Neg. Charge",
@@ -706,7 +709,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         node_list_set = []
         for value in range(max(values)):
             node_list = [k for k,v in part.items() if v == value]
-            if len(node_list) >= 3:
+            if len(node_list) >= BS_size:
                 binding_site_identifiers[node_list] = binding_site_id
                 node_list_set.append(node_list)
                 binding_site_id += 1
@@ -714,8 +717,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         if len(node_list_set) > 0:
             surface_area_all = defaultdict(list)
             self._coordinate_pool = [[] for dummy in np.arange(len(node_list_set))]
-            for traj_idx, trajfile in enumerate(self.trajfile_list):
-                traj = md.load(trajfile, top=self.grofile_list[traj_idx], stride=self.stride)
+            for traj_idx in trange(len(self.trajfile_list), desc="COLLECT BINDING POSES"):
+                trajfile = self.trajfile_list[traj_idx]
+                topfile = self.grofile_list[traj_idx]
+                traj = md.load(trajfile, top=topfile, stride=self.stride)
                 if self.dt == None:
                     timestep = traj.timestep/1000000.0 if self.timeunit == "us" else traj.timestep/1000.0
                 else:
@@ -759,7 +764,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                     for binding_site_id, node_list in enumerate(node_list_set):
                         surface_area_all[binding_site_id].append(areas[:, node_list].sum(axis=1))
             ########### write and plot results ###########
-            for binding_site_id in np.arange(len(node_list_set)):
+            for binding_site_id in trange(len(node_list_set), desc="PLOT BS RESIDENCE TIME"):
                 duration_raw = np.concatenate(self.interaction_duration_BS[binding_site_id])
                 mask = (binding_site_identifiers == binding_site_id)
                 bootstrap_results = self.bootstrap(duration_raw, "BS id: {}".format(binding_site_id), "{}/BS_koff_id{}.pdf".format(save_dir, binding_site_id), nbootstrap=nbootstrap)
@@ -803,10 +808,10 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 f.write("{:20s} {:10s}\n".format(" Polar:", "/".join([str(res_stats["Polar"]), str(BS_num_resi)])))
                 f.write("{:20s} {:10s}\n".format(" Hydrophobic:", "/".join([str(res_stats["Hydrophobic"]), str(BS_num_resi)])))
                 f.write("{:20s} {:10s}\n".format(" Special:", "/".join([str(res_stats["Special"]), str(BS_num_resi)])))
-                f.write("{:^9s}{:^9s}{:^13s}{:^11s}{:^10s}{:^10s}{:^10s}{:^13s}{:^10s}{:^10s}\n".format("Residue", "Duration", "Duration std", \
+                f.write("{:^9s}{:^7s}{:^9s}{:^13s}{:^11s}{:^10s}{:^10s}{:^10s}{:^13s}{:^10s}{:^10s}\n".format("Residue", "Resid", "Duration", "Duration std", \
                         "Res. Time", "R squared", "Occupancy", "Occu. std", "Lipid Count", "L. C. std", "Koff"))
                 for residue in self.residue_set[mask]:
-                    f.write("{Residue:^9s}{Duration:^9.3f}{Duration_std:^13.3f}{Residence Time:^11.3f}{R squared:^10.4f}{Occupancy:^10.3f}{Occupancy_std:^10.3f}{LipidCount:^13.3f}{LipidCount_std:^10.3f}{Koff:^10.4f}\n".format(\
+                    f.write("{Residue:^9s}{Residue idx:^7d}{Duration:^9.3f}{Duration_std:^13.3f}{Residence Time:^11.3f}{R squared:^10.4f}{Occupancy:^10.3f}{Occupancy_std:^10.3f}{LipidCount:^13.3f}{LipidCount_std:^10.3f}{Koff:^10.4f}\n".format(\
                             **self.dataset[self.dataset["Residue"]==residue].to_dict("records")[0] ))
                 f.write("\n")
                 f.write("\n")
@@ -862,13 +867,12 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             with open("{}/BS_surface_area_{}.pickle".format(dataset_dir, self.lipid), "wb") as f:
                 pickle.dump(surface_area_all, f, 2)
         ################## generate binding poses ################
-        if gen_binding_poses > 0 and len(node_list_set) > 0:
+        if n_binding_poses > 0 and len(node_list_set) > 0:
             coords_save_dir = check_dir(save_dir, "Binding_Poses")
             lipid_atom_map = {atom.index:atom.name for atom in self._lipid_ref.top.atoms}
             weights = {name:1 for index, name in lipid_atom_map.items()}
             if score_weights != None:
                 weights.update(score_weights)
-            binding_site_id_set = np.arange(len(self._coordinate_pool))
             if len(self.resi_list) == 0:
                 selected_protein_atoms = [[atom.index for atom in residue.atoms] for residue in self._protein_ref.top.residues]
             else:
@@ -877,8 +881,8 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
             lipid_atoms = [self._protein_ref.n_atoms + atom_idx for atom_idx in np.arange(self._lipid_ref.n_atoms)]
             joined_top = self._protein_ref.top.join(self._lipid_ref.top)
 
-            for binding_site_id in binding_site_id_set:
-                num_of_poses = gen_binding_poses if gen_binding_poses <= len(self._coordinate_pool[binding_site_id]) \
+            for binding_site_id in trange(len(self._coordinate_pool), desc='GEN BINDING POSES'):
+                num_of_poses = n_binding_poses if n_binding_poses <= len(self._coordinate_pool[binding_site_id]) \
                     else len(self._coordinate_pool[binding_site_id])
                 node_list = node_list_set[binding_site_id]
                 new_traj = md.Trajectory([frame[0] for frame in self._coordinate_pool[binding_site_id]], joined_top, \
@@ -927,14 +931,17 @@ import pymol
 from pymol import cmd
 pymol.finish_launching()
 
+########## files to process ##########
+csv_fn = "{HOME_DIR}/Interactions_{LIPID}.csv"
+pdb_file = "{PDB}"
+
 ########## set the sphere scales to corresponding value ##########
 value_to_show = "Residence Time"
 
 ###### reading data from csv file ##########
-binding_site_id = {BINDING_SITE_ID}
+num_of_binding_site = {BINDING_SITE_ID}
 
-fn_data = "{HOME_DIR}/Interactions_{LIPID}.csv"
-with open(fn_data, "r") as f:
+with open(csv_fn, "r") as f:
     data_lines = f.readlines()
 
 column_names = data_lines[0].strip().split(",")
@@ -959,21 +966,21 @@ for line in data_lines[1:]:
     binding_site_identifiers.append(data_list[column_id_BS])
     values_to_show.append(data_list[column_id_value_to_show])
 
-############## read information from pdb coordinates ##########
-pdb_file = "{PDB}"
+############## read information from pdb file ##########
 with open(pdb_file, "r") as f:
     pdb_lines = f.readlines()
 residue_identifiers = []
 for line in pdb_lines:
-    if line.strip()[:4] == "ATOM":
-        identifier = (line.strip()[22:26].strip(), line.strip()[17:20].strip(), line.strip()[21].strip())
+    line_stripped = line_strip()
+    if line_stripped[:4] == "ATOM":
+        identifier = (line_stripped[22:26].strip(), line_stripped[17:20].strip(), line_stripped[21].strip())
 ##                           residue index,              resname,                     chain id
         if len(residue_identifiers) == 0:
             residue_identifiers.append(identifier)
         elif identifier != residue_identifiers[-1]:
             residue_identifiers.append(identifier)
 
-######### calculate scale ###############
+######### set sphere scales ###############
 values_to_show = np.array(values_to_show, dtype=float)
 MIN = np.percentile(np.unique(values_to_show), 5)
 MAX = np.percentile(np.unique(values_to_show), 100)
@@ -988,7 +995,7 @@ cmd.set("cartoon_color", "white")
 cmd.set("stick_radius", 0.35)
 
 ##################################
-cmd.load("{PDB}", "Prot_{LIPID}")
+cmd.load(pdb_file, "Prot_{LIPID}")
 prefix = "Prot_{LIPID}"
 cmd.hide("everything")
 cmd.show("cartoon", prefix)
@@ -1002,7 +1009,7 @@ residue_set = np.array(residue_set, dtype=str)
 residue_rank_set = np.array(residue_rank_set, dtype=int)
 binding_site_identifiers = np.array(binding_site_identifiers, dtype=int)
 residue_identifiers = list(residue_identifiers)
-for bs_id in np.arange(binding_site_id):
+for bs_id in np.arange(num_of_binding_site):
     cmd.set_color("tmp_{}".format(bs_id), list(colors[bs_id]))
     for entry_id in np.where(binding_site_identifiers == bs_id)[0]:
         selected_residue = residue_set[entry_id]
@@ -1030,7 +1037,7 @@ for bs_id in np.arange(binding_site_id):
         return
 
 
-    def plot_interactions(self, item="Duration",  save_dir=None, letter_map=None, chain_breaks=[]):
+    def plot_interactions(self, item="Duration",  save_dir=None, letter_map=None):
 
         if save_dir == None:
             save_dir = check_dir(self.save_dir, "Figures_{}".format(self.lipid))
@@ -1043,172 +1050,100 @@ for bs_id in np.arange(binding_site_id):
                          'ALA': 'A', 'VAL':'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
         if letter_map != None:
             single_letter.update(letter_map)
-        if len(chain_breaks) == 0:
-            chain_break_points = [0, len(self.dataset)]
-            no_break = True
-        else:
-            chain_break_points = [0]
-            for points in chain_breaks:
-                chain_break_points.append(points)
-            chain_break_points.append(len(self.dataset))
-            no_break = False
 
-        plt.rcParams["font.size"] = 8
-        plt.rcParams["font.weight"] = "bold"
-
-        for point_idx in np.arange(1, len(chain_break_points), dtype=int):
-            dataset = self.dataset[chain_break_points[point_idx-1]:chain_break_points[point_idx]]
-            data = dataset[item]
-            if len(data) == 0:
-                continue
-            resi = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self.residue_set])[chain_break_points[point_idx-1]:chain_break_points[point_idx]]
-            SL_resn = [single_letter[re.findall("[a-zA-Z]+$", residue)[0]] for residue in self.residue_set][chain_break_points[point_idx-1]:chain_break_points[point_idx]]
-            width = 1
-            sns.set_style("ticks", {'xtick.major.size': 5.0, 'ytick.major.size': 5.0})
-            if item == "Residence Time":
-                if len(data) <= 500:
-                    fig = plt.figure(figsize=(5.5, 5))
-                elif len(data) > 500 and len(data) <= 1500:
-                    fig = plt.figure(figsize=(7.5, 5))
-                else:
-                    fig = plt.figure(figsize=(9, 6))
-                ax_R2 = fig.add_axes([0.18, 0.79, 0.75, 0.10])
-                ax_capped = fig.add_axes([0.18, 0.71, 0.75, 0.05])
-                ax_data = fig.add_axes([0.18, 0.50, 0.75, 0.18])
-                ax_boot = fig.add_axes([0.18, 0.22, 0.75, 0.18])
-                ax_boot_cv = fig.add_axes([0.18, 0.08, 0.75, 0.10])
-                ax_boot.xaxis.tick_top()
-                ax_boot.invert_yaxis()
-                ax_boot_cv.invert_yaxis()
-                for ax in [ax_data, ax_capped, ax_R2, ax_boot, ax_boot_cv]:
-                    ax.yaxis.set_ticks_position('left')
-                    ax.spines['right'].set_visible(False)
-                for ax in [ax_capped, ax_R2, ax_boot_cv]:
-                    ax.xaxis.set_ticks_position('none')
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['bottom'].set_visible(False)
-                    ax.set_xticklabels([])
-                ax_data.spines['top'].set_visible(False)
-                ax_boot.spines['bottom'].set_visible(False)
-                if len(data) > 1000:
-                    ax_data.xaxis.set_major_locator(MultipleLocator(200))
-                    ax_data.xaxis.set_minor_locator(MultipleLocator(50))
-                    ax_boot.xaxis.set_major_locator(MultipleLocator(200))
-                    ax_boot.xaxis.set_minor_locator(MultipleLocator(50))
-                elif len(data) <= 1000 and len(data) > 100:
-                    ax_data.xaxis.set_major_locator(MultipleLocator(100))
-                    ax_data.xaxis.set_minor_locator(MultipleLocator(10))
-                    ax_boot.xaxis.set_major_locator(MultipleLocator(100))
-                    ax_boot.xaxis.set_minor_locator(MultipleLocator(10))
-                elif len(data) <= 100:
-                    ax_data.xaxis.set_major_locator(MultipleLocator(10))
-                    ax_data.xaxis.set_minor_locator(MultipleLocator(1))
-                    ax_boot.xaxis.set_major_locator(MultipleLocator(10))
-                    ax_boot.xaxis.set_minor_locator(MultipleLocator(1))
-                if self.timeunit == "ns":
-                    timeunit = " (ns) "
-                elif self.timeunit == "us":
-                    timeunit = r" ($\mu s$)"
-                ax_data.bar(resi, data, width, linewidth=0, color="#F75C03")
-                ax_data.set_ylabel("Res. Time {}".format(timeunit), fontsize=8, weight="bold", va="center")
-                ax_data.set_xlabel("Residue Index", fontsize=8, weight="bold")
-                ax_capped.plot(resi, dataset["Capped"]*1, linewidth=0, marker="+", markerfacecolor="#38040E", \
-                               markeredgecolor="#38040E", markersize=2)
-                ax_capped.set_ylim(0.9, 1.1)
-                ax_capped.set_yticks([1.0])
-                ax_capped.set_yticklabels(["Capped"], fontsize=8, weight="bold")
-                ax_capped.set_xlim(ax_data.get_xlim())
-                mask = dataset["R squared"] > 0
-                ax_R2.plot(resi[mask], dataset["R squared"][mask], linewidth=0, marker="+", markerfacecolor="#0FA3B1", markeredgecolor="#0FA3B1", \
-                           markersize=2)
-                ax_R2.set_xlim(ax_data.get_xlim())
-                ax_R2.set_ylabel(r"$R^2$", fontsize=8, weight="bold", va="center")
-                ax_R2.set_title("{} {}".format(self.lipid, item), fontsize=8, weight="bold")
-
-                ax_boot.bar(resi, dataset["Residence Time_boot"], width, linewidth=0, color="#F75C03")
-                ax_boot.set_xlim(ax_data.get_xlim())
-                ax_boot.set_ylabel("Res. Time \n Boot. {}".format(timeunit), fontsize=8, weight="bold", va="center")
-                ax_boot.set_xticklabels([])
-                mask = dataset["R squared_boot"] > 0
-                mask = dataset["Residence Time_boot_cv"] > 0
-                ax_boot_cv.plot(resi[mask], dataset["Residence Time_boot_cv"][mask], linewidth=0, marker="+", markerfacecolor="#0FA3B1", markeredgecolor="#F7B538",
-                                markersize=2)
-                ax_boot_cv.set_ylabel("Coef. Var.", fontsize=8, weight="bold", va="center")
-                ax_boot_cv.set_xlim(ax_data.get_xlim())
-                for ax in [ax_data, ax_capped, ax_R2, ax_boot, ax_boot_cv]:
-                    ax.yaxis.set_label_coords(-0.15, 0.5, transform=ax.transAxes)
-                if no_break:
-                    plt.savefig("{}/{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
-                else:
-                    plt.savefig("{}/{}_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(point_idx)), dpi=300)
-                plt.close()
-
+        if self.timeunit == "ns":
+            timeunit = " (ns) "
+        elif self.timeunit == "us":
+            timeunit = r" ($\mu s$)"        
+        if item == "Duration":
+            ylabel = item + timeunit
+        elif item == "Occupancy":
+            ylabel = item + " 100% "
+        elif item == "LipidCount":
+            ylabel = "Num. of Lipids"
+        elif item == "Residence Time":
+            ylabel = "Res. Time {}".format(timeunit) 
+        ####### check for chain breakds ##########
+        residue_index_set = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self.residue_set])
+        data = self.dataset[item]
+        SL_resn = [single_letter[re.findall("[a-zA-Z]+$", residue)[0]] for residue in self.residue_set]
+        gray_areas = {}
+        chain_starts = [0]
+        for idx in np.arange(len(residue_index_set)):
+            if idx > 0 and residue_index_set[idx] - residue_index_set[idx-1] < 0:
+                chain_starts.append(idx)
+            elif idx > 0 and residue_index_set[idx] - residue_index_set[idx-1] >= 50:
+                chain_starts.append(idx)
+            elif idx > 0 and residue_index_set[idx] - residue_index_set[idx-1] > 1:
+                gray_areas[chain_starts[-1]] = [residue_index_set[idx], residue_index_set[idx-1]]
+        chain_starts.append(len(residue_index_set))
+        ######### plots ######
+        color = "#d60542"
+        for chain_idx in np.arange(len(chain_starts[:-1])):
+            df = data[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
+            resi_selected = residue_index_set[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
+            if len(df) <= 50:
+                fig, ax = plt.subplots(1, 1, figsize=(3.5, 1.8))
+                ax.xaxis.set_major_locator(MultipleLocator(10))
+                ax.xaxis.set_minor_locator(MultipleLocator(1))
+            elif len(df) <= 500 and len(df) > 50:
+                fig, ax = plt.subplots(1, 1, figsize=(5.5, 2.1))
+                ax.xaxis.set_major_locator(MultipleLocator(50))
+                ax.xaxis.set_minor_locator(MultipleLocator(10))
+            elif len(df) > 500:
+                fig, ax = plt.subplots(1, 1, figsize=(7.5, 3.3))
+                ax.xaxis.set_major_locator(MultipleLocator(200))
+                ax.xaxis.set_minor_locator(MultipleLocator(50))
+            ax.bar(resi_selected, df, 1.0, linewidth=0, color=color)
+            if chain_starts[chain_idx] in gray_areas.keys():
+                ax.axvspan(gray_areas[chain_starts[chain_idx]][0], gray_areas[chain_starts[chain_idx]][1], \
+                           facecolor="gray", alpha=0.3)
+            ax.set_ylim(0, df.max()*1.05)
+            ax.set_ylabel(ylabel, fontsize=8, weight="bold")
+            ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
+            for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
+                plt.setp(label, fontsize=8, weight="bold")
+            ax.set_title("{} {}".format(self.lipid, item), fontsize=8, weight="bold")
+            plt.tight_layout()
+            if len(chain_starts) == 2:
+                plt.savefig("{}/{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
             else:
-                fig, ax = plt.subplots(1, 1, figsize=(4, 2.2))
-                ax.bar(resi, data, width, linewidth=0, color=sns.xkcd_rgb["red"])
-                sns.despine(fig, top=True, right=True, trim=False)
-                if len(data) > 1000:
-                    ax.xaxis.set_major_locator(MultipleLocator(200))
-                    ax.xaxis.set_minor_locator(MultipleLocator(50))
-                elif len(data) <= 1000:
-                    ax.xaxis.set_major_locator(MultipleLocator(100))
-                    ax.xaxis.set_minor_locator(MultipleLocator(10))
-                ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
-                if self.timeunit == "ns":
-                    timeunit = " (ns) "
-                elif self.timeunit == "us":
-                    timeunit = r" ($\mu s$)"
-                if item == "Duration":
-                    ylabel = item + timeunit
-                elif item == "Occupancy":
-                    ylabel = item + " 100% "
-                elif item == "LipidCount":
-                    ylabel = "Num. of Lipids"
-                ax.set_ylabel(ylabel, fontsize=8, weight="bold")
-                for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
-                    plt.setp(label, fontsize=8, weight="bold")
-                ax.set_title("{} {}".format(self.lipid, item), fontsize=8, weight="bold")
-                plt.tight_layout()
-                if no_break:
-                    plt.savefig("{}/{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
-                else:
-                    plt.savefig("{}/{}_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(point_idx)), dpi=300)
-                plt.close()
-
-            ###### logomater #####
-            if item == "Residence Time":
-                ylabel = "Res. Time {}".format(timeunit)
-            df = pd.DataFrame({"Resid": resi, "Resn": SL_resn, "Data": data})
-            matrix = df.pivot(index="Resid", columns='Resn', values="Data").fillna(0)
-            n_rows = 1 + resi[-1]//100 - resi[0]//100
-            start = (resi[0]//100)*100
-            length = start + 100 - resi[0]
+                plt.savefig("{}/{}_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(chain_idx)), dpi=300)
+            plt.close()
+ 
+            ######### logomaker #########
+            SL_resn_selected = SL_resn[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
+            df_logo = pd.DataFrame({"Resid": resi_selected, "Resn": SL_resn_selected, "Data": df})
+            matrix = df_logo.pivot(index="Resid", columns='Resn', values="Data").fillna(0)
+            n_rows = 1 + resi_selected[-1]//100 - resi_selected[0]//100
+            start = (resi_selected[0]//100)*100
+            length = start + 100 - resi_selected[0]
             fig, axes = plt.subplots(n_rows, 1, figsize=(4.5, 1.3*n_rows), sharey=True)
-            plt.subplots_adjust(hspace=0.5, left=0.2)
-            for idx, ax in enumerate(np.atleast_1d(axes)):
+            plt.subplots_adjust(hspace=0.5, left=0.2) 
+            for ax_idx, ax in enumerate(np.atleast_1d(axes)):
                 try:
-                    if idx == (n_rows - 1):
-                        logomaker.Logo(matrix[(idx-1)*100 + length:], color_scheme="chemistry", ax=ax)
+                    if ax_idx == (n_rows - 1):
+                        logomaker.Logo(matrix[(ax_idx-1)*100 + length:], color_scheme="chemistry", ax=ax)
                         ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
-                    elif idx == 0:
+                    elif ax_idx == 0:
                         logomaker.Logo(matrix[:length], color_scheme="chemistry", ax=ax)
                     else:
-                        logomaker.Logo(matrix[(idx-1)*100+length:idx*100+length], color_scheme="chemistry", ax=ax)
+                        logomaker.Logo(matrix[(ax_idx-1)*100+length:ax_idx*100+length], color_scheme="chemistry", ax=ax)
                 except logomaker.src.error_handling.LogomakerError:
                     pass
                 ax.xaxis.set_major_locator(MultipleLocator(20))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
-                ax.set_xlim(idx*100+start, (idx+1)*100+start)
+                ax.set_xlim(ax_idx*100+start, (ax_idx+1)*100+start)
                 ax.set_ylim(0, data.max()*1.05)
                 ax.set_ylabel(ylabel, fontsize=8, weight="bold", va="center")
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, fontsize=8, weight="bold")
             plt.tight_layout()
-            if no_break:
+            if len(chain_starts) == 2:
                 plt.savefig("{}/{}_logo_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
             else:
-                plt.savefig("{}/{}_logo_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(point_idx)), dpi=300)
-            plt.close()
+                plt.savefig("{}/{}_logo_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(chain_idx)), dpi=300)
+            plt.close()            
 
         return
 
@@ -1321,16 +1256,16 @@ if __name__ == '__main__':
                               lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=int(args.resi_offset), \
                               resi_list=resi_list, save_dir=args.save_dir)
         li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nbootstrap))
-        li.plot_interactions(item="Duration", letter_map=letter_map, chain_breaks=chain_breaks)
-        li.plot_interactions(item="Residence Time", letter_map=letter_map, chain_breaks=chain_breaks)
-        li.plot_interactions(item="Occupancy", letter_map=letter_map, chain_breaks=chain_breaks)
-        li.plot_interactions(item="LipidCount", letter_map=letter_map, chain_breaks=chain_breaks)
+        li.plot_interactions(item="Duration", letter_map=letter_map)
+        li.plot_interactions(item="Residence Time", letter_map=letter_map)
+        li.plot_interactions(item="Occupancy", letter_map=letter_map)
+        li.plot_interactions(item="LipidCount", letter_map=letter_map)
         li.write_to_pdb(item="Duration")
         li.write_to_pdb(item="Residence Time")
         li.write_to_pdb(item="Occupancy")
         li.write_to_pdb(item="LipidCount")
-        li.cal_interaction_network(pdb=args.pdb, save_dataset=args.save_dataset, \
-                                   radii=radii_book, gen_binding_poses=int(args.gen_binding_poses), \
+        li.cal_interaction_network(pdb=args.pdb, save_dataset=args.save_dataset, BS_size=int(args.BS_size),\
+                                   radii=radii_book, n_binding_poses=int(args.n_binding_poses), \
                                    score_weights=score_weights, save_pose_format=args.save_pose_format)
 
 

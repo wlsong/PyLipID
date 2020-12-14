@@ -43,6 +43,7 @@ pylipid.py requires following packages:
 - logomaker
 - statsmodels
 - scikit-learn
+- tqdm
 
 To create a compatible python environment but not to mess up with your global python settings, we recommend building an independent env called PyLipID using [conda](https://www.anaconda.com/distribution/). 
 To create this PyLipID environment using the provided env.yml, assuming you have installed [conda](https://www.anaconda.com/distribution/) in your system:

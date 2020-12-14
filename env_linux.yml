@@ -18,3 +18,4 @@ dependencies:
   - logomaker
   - statsmodels
   - scikit-learn
+  - tqdm
