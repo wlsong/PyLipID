@@ -1082,15 +1082,20 @@ for bs_id in np.arange(num_of_binding_site):
                 fig, ax = plt.subplots(1, 1, figsize=(5.5, 1.8))
                 ax.xaxis.set_major_locator(MultipleLocator(50))
                 ax.xaxis.set_minor_locator(MultipleLocator(10))
-            elif len(df) > 500:
+            elif len(df) > 500 and len(df) <= 200:
                 fig, ax = plt.subplots(1, 1, figsize=(7.5, 2.3))
                 ax.xaxis.set_major_locator(MultipleLocator(200))
                 ax.xaxis.set_minor_locator(MultipleLocator(50))
+            elif len(df) > 2000:
+                fig, ax = plt.subplots(1, 1, figsize=(10.5, 2.3))
+                ax.xaxis.set_major_locator(MultipleLocator(500))
+                ax.xaxis.set_minor_locator(MultipleLocator(100))
             ax.bar(resi_selected, df, 1.0, linewidth=0, color=color)
             if chain_starts[chain_idx] in gray_areas.keys():
                 ax.axvspan(gray_areas[chain_starts[chain_idx]][0], gray_areas[chain_starts[chain_idx]][1], \
                            facecolor="gray", alpha=0.3)
             ax.set_ylim(0, df.max()*1.05)
+            ax.set_xlim(0, resi_selected.max()+5)
             ax.set_ylabel(ylabel, fontsize=8, weight="bold")
             ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
             for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
