@@ -963,7 +963,7 @@ with open(pdb_file, "r") as f:
     pdb_lines = f.readlines()
 residue_identifiers = []
 for line in pdb_lines:
-    line_stripped = line_strip()
+    line_stripped = line.strip()
     if line_stripped[:4] == "ATOM":
         identifier = (line_stripped[22:26].strip(), line_stripped[17:20].strip(), line_stripped[21].strip())
 ##                           residue index,              resname,                     chain id
@@ -993,7 +993,7 @@ cmd.hide("everything")
 cmd.show("cartoon", prefix)
 cmd.center(prefix)
 cmd.orient(prefix)
-colors = np.array([np.random.choice(np.arange(256, dtype=float), size=3) for dummy in range(binding_site_id)])
+colors = np.array([np.random.choice(np.arange(256, dtype=float), size=3) for dummy in range(num_of_binding_site)])
 colors /= 255.0
             """.format(**{"HOME_DIR": self.save_dir, "LIPID": self.lipid, "BINDING_SITE_ID": binding_site_id, "PDB": pdb_new_loc})
             text += r"""
