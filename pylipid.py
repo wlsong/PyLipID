@@ -1082,7 +1082,7 @@ for bs_id in np.arange(num_of_binding_site):
                 fig, ax = plt.subplots(1, 1, figsize=(5.5, 1.8))
                 ax.xaxis.set_major_locator(MultipleLocator(50))
                 ax.xaxis.set_minor_locator(MultipleLocator(10))
-            elif len(df) > 500 and len(df) <= 200:
+            elif len(df) > 500 and len(df) <= 2000:
                 fig, ax = plt.subplots(1, 1, figsize=(7.5, 2.3))
                 ax.xaxis.set_major_locator(MultipleLocator(200))
                 ax.xaxis.set_minor_locator(MultipleLocator(50))
