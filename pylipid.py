@@ -599,13 +599,13 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         sigma = cal_sigma(durations, len(durations), np.max(self.T_total), delta_t_range)
         x = np.sort(durations)
         y = np.arange(len(x)) + 1
-        axScatter.scatter(x[::-1], y, label=label, s=10)
+        axScatter.scatter(x[::-1], y, label=label, s=10, c="#003f5c")
         axScatter.set_xlim(0, x[-1] * 1.1)
         axScatter.legend(loc="upper right", prop={"size": 10}, frameon=False, markerscale=0)
         axScatter.set_ylabel("Sorted Index", fontsize=10, weight="bold")
         axScatter.set_xlabel(xlabel, fontsize=10, weight="bold")
         hist_values = np.array([sigma[delta_t] for delta_t in delta_t_range])
-        axHisty.scatter(delta_t_range, hist_values, zorder=8, s=10, label="Survival func.")
+        axHisty.scatter(delta_t_range, hist_values, zorder=8, s=10, label="Survival func.", c="#7a5195")
         axHisty.yaxis.set_label_position("right")
         axHisty.yaxis.tick_right()
         axHisty.set_xlabel(r"$\Delta t$", fontsize=10, weight="bold")
@@ -1070,24 +1070,32 @@ for bs_id in np.arange(num_of_binding_site):
                 gray_areas[chain_starts[-1]] = [residue_index_set[idx], residue_index_set[idx-1]]
         chain_starts.append(len(residue_index_set))
         ######### plots ######
-        color = "#d60542"
+        color = "#003f5c"
         for chain_idx in np.arange(len(chain_starts[:-1])):
             df = data[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
             resi_selected = residue_index_set[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
-            if len(df) <= 50:
-                fig, ax = plt.subplots(1, 1, figsize=(3.5, 1.5))
+            if 0 < len(df) <= 20:
+                fig, ax = plt.subplots(1, 1, figsize=(2.8, 1.5))
+                ax.xaxis.set_major_locator(MultipleLocator(5))
+                ax.xaxis.set_minor_locator(MultipleLocator(1))
+            elif 20 < len(df) <= 50:
+                fig, ax = plt.subplots(1, 1, figsize=(3.2, 1.5))
                 ax.xaxis.set_major_locator(MultipleLocator(10))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
-            elif 50 < len(df) <= 500:
-                fig, ax = plt.subplots(1, 1, figsize=(5.5, 1.8))
+            elif 50 < len(df) <= 300:
+                fig, ax = plt.subplots(1, 1, figsize=(3.8, 1.8))
                 ax.xaxis.set_major_locator(MultipleLocator(50))
                 ax.xaxis.set_minor_locator(MultipleLocator(10))
-            elif 500 < len(df) <= 2000:
-                fig, ax = plt.subplots(1, 1, figsize=(7.5, 2.3))
+            elif 300 < len(df) <= 1000:
+                fig, ax = plt.subplots(1, 1, figsize=(4.5, 1.8))
+                ax.xaxis.set_major_locator(MultipleLocator(100))
+                ax.xaxis.set_minor_locator(MultipleLocator(10))
+            elif 1000 < len(df) <= 2000:
+                fig, ax = plt.subplots(1, 1, figsize=(6.0, 1.8))
                 ax.xaxis.set_major_locator(MultipleLocator(200))
                 ax.xaxis.set_minor_locator(MultipleLocator(50))
             elif len(df) > 2000:
-                fig, ax = plt.subplots(1, 1, figsize=(10.5, 2.3))
+                fig, ax = plt.subplots(1, 1, figsize=(7.5, 1.8))
                 ax.xaxis.set_major_locator(MultipleLocator(500))
                 ax.xaxis.set_minor_locator(MultipleLocator(100))
             ax.bar(resi_selected, df, 1.0, linewidth=0, color=color)
