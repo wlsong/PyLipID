@@ -31,7 +31,7 @@ To alleviate the 'cage-rattling' phenomenon of the beads dynamics in coarse-grai
 
 ## Installation:
 pylipid.py requires following packages:
-- python=3.7
+- python
 - mdtraj
 - numpy
 - pandas
