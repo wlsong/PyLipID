@@ -48,7 +48,7 @@ pylipid.py requires following packages:
 To create a compatible python environment but not to mess up with your global python settings, we recommend building an independent env called PyLipID using [conda](https://www.anaconda.com/distribution/). 
 To create this PyLipID environment using the provided env.yml, assuming you have installed [conda](https://www.anaconda.com/distribution/) in your system:
 ```
-conda env create -f env.yml
+conda env create -f env_{OS_PLATFORM}.yml
 ```
 Now your python env PyLipID is all set. Whenever you want to use the script, activate PyLipID first by
 ```
