@@ -7,7 +7,7 @@ channels:
   - rangsiman
   - anaconda
 dependencies:
-  - python=3.7
+  - python
   - mdtraj
   - matplotlib
   - seaborn
