@@ -237,6 +237,90 @@ def sparse_corrcoef(A, B=None):
     coeffs = C / np.sqrt(np.outer(d, d))
     return coeffs
 
+class AxisIndex:
+    """Build axes for logo figure."""
+
+    def __init__(self, residue_index, logos, interactions, length, gap):
+        self.page_idx = 0
+        self.length = length
+        self.gap = gap
+        self.residue_index = residue_index
+        self.logos = logos
+        self.interactions = interactions
+        self.axis_start = (residue_index[0] // length) * length
+        self.breaks = defaultdict(list)
+        self.breaks[self.page_idx].append([])
+        self.gray_areas = defaultdict(list)
+
+    def fill_missing(self, start_value, end_value):
+        for xloci in np.arange(start_value, end_value + 1):
+            self.breaks[self.page_idx][-1].append((xloci, "A", 0))
+        self.gray_areas[self.page_idx].append((len(self.breaks[self.page_idx]) - 1, start_value, end_value))
+
+    def new_axis(self, pointer):
+        self.breaks[self.page_idx].append([])
+        self.axis_start = self.residue_index[pointer]
+        self.breaks[self.page_idx][-1].append(
+            (self.residue_index[pointer], self.logos[pointer], self.interactions[pointer]))
+
+    def new_page(self, pointer):
+        if len(self.breaks[self.page_idx][-1]) < self.length:
+            self.fill_missing(self.axis_start + len(self.breaks[self.page_idx][-1]), self.axis_start + self.length - 1)
+        self.page_idx += 1
+        self.breaks[self.page_idx].append([])
+        self.axis_start = (self.residue_index[pointer] // self.length) * self.length
+        if self.axis_start != self.residue_index[pointer]:
+            self.fill_missing(self.axis_start, self.residue_index[pointer] - 1)
+        self.breaks[self.page_idx][-1].append(
+            (self.residue_index[pointer], self.logos[pointer], self.interactions[pointer]))
+
+    def new_gap(self, pointer):
+        gray_start = self.residue_index[pointer - 1] + 1
+        for xloci in np.arange(self.residue_index[pointer - 1] + 1, self.residue_index[pointer]):
+            if xloci - self.axis_start < self.length:
+                self.breaks[self.page_idx][-1].append((xloci, "A", 0))
+            else:
+                self.gray_areas[self.page_idx].append((len(self.breaks[self.page_idx]) - 1, gray_start, xloci - 1))
+                self.breaks[self.page_idx].append([])
+                self.breaks[self.page_idx][-1].append((xloci, "A", 0))
+                self.axis_start = xloci
+                gray_start = xloci
+        self.gray_areas[self.page_idx].append(
+            (len(self.breaks[self.page_idx]) - 1, gray_start, self.residue_index[pointer] - 1))
+        self.breaks[self.page_idx][-1].append(
+            (self.residue_index[pointer], self.logos[pointer], self.interactions[pointer]))
+
+    def sort(self):
+        end = False
+        if self.axis_start != self.residue_index[0]:
+            self.fill_missing(self.axis_start, self.residue_index[0] - 1)
+        self.breaks[self.page_idx][-1].append((self.residue_index[0], self.logos[0], self.interactions[0]))
+        pointer = 1
+        while not end:
+            if self.residue_index[pointer] - self.residue_index[pointer - 1] == 1 and self.residue_index[
+                pointer] - self.axis_start < self.length:
+                self.breaks[self.page_idx][-1].append(
+                    (self.residue_index[pointer], self.logos[pointer], self.interactions[pointer]))
+                pointer += 1
+            elif self.residue_index[pointer] - self.residue_index[pointer - 1] == 1 and self.residue_index[
+                pointer] - self.axis_start >= self.length:
+                self.new_axis(pointer)
+                pointer += 1
+            elif self.residue_index[pointer] - self.residue_index[pointer - 1] < 0:
+                self.new_page(pointer)
+                pointer += 1
+            elif 1 < self.residue_index[pointer] - self.residue_index[pointer - 1] <= self.gap:
+                self.new_gap(pointer)
+                pointer += 1
+            elif self.residue_index[pointer] - self.residue_index[pointer - 1] > self.gap:
+                self.new_page(pointer)
+                pointer += 1
+            if pointer == len(self.residue_index):
+                end = True
+        if len(self.breaks[self.page_idx][-1]) < self.length:
+            self.fill_missing(self.axis_start + len(self.breaks[self.page_idx][-1]), self.axis_start + self.length - 1)
+
+
 
 #####################################
 ####### Main Class object ###########
@@ -820,18 +904,18 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                 bs_area_set.append(np.concatenate(surface_area_all[binding_site_id]))
                 bs_id_set.append([binding_site_id for dummy in np.arange(len(bs_area_set[-1]))])
             d_area = pd.DataFrame({"BS id": np.concatenate(bs_id_set), "Area (nm^2)": np.concatenate(bs_area_set)})
-            plt.rcParams["font.size"] = 8
+            plt.rcParams["font.size"] = 10
             plt.rcParams["font.weight"] = "bold"
             if len(surface_area_all.keys()) <= 8:
-                fig, ax = plt.subplots(figsize=(4.5, 2.8))
+                fig, ax = plt.subplots(figsize=(4.2, 2.6))
             elif len(surface_area_all.keys()) > 8 and len(surface_area_all.keys()) <= 15:
-                fig, ax = plt.subplots(figsize=(6.5, 2.8))
+                fig, ax = plt.subplots(figsize=(6.0, 2.6))
             else:
-                fig, ax = plt.subplots(figsize=(9.5, 3))
-            sns.violinplot(x="BS id", y="Area (nm^2)", data=d_area, palette="Set3", bw=.2, cut=1, linewidth=1, ax=ax)
-            ax.set_xlabel("BS id", fontsize=8, weight="bold")
-            ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=8, weight="bold")
-            ax.set_title("{} Binding Site Surface Area".format(self.lipid), fontsize=8, weight="bold")
+                fig, ax = plt.subplots(figsize=(8.0, 2.6))
+            sns.violinplot(x="BS id", y="Area (nm^2)", data=d_area, palette="Set1", bw=.2, cut=1, linewidth=1, ax=ax)
+            ax.set_xlabel("BS id", fontsize=10, weight="bold")
+            ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=10, weight="bold")
+            ax.set_title("{} Binding Site Surface Area".format(self.lipid), fontsize=10, weight="bold")
             plt.tight_layout()
             plt.savefig("{}/BS_surface_area.pdf".format(save_dir), dpi=300)
             plt.close()
@@ -1029,7 +1113,7 @@ for bs_id in np.arange(num_of_binding_site):
         return
 
 
-    def plot_interactions(self, item="Duration",  save_dir=None, letter_map=None):
+    def plot_interactions(self, item="Duration",  save_dir=None, gap=200):
 
         if save_dir == None:
             save_dir = check_dir(self.save_dir, "Figures_{}".format(self.lipid))
@@ -1056,24 +1140,25 @@ for bs_id in np.arange(num_of_binding_site):
         elif item == "Residence Time":
             ylabel = "Res. Time {}".format(timeunit) 
         ####### check for chain breakds ##########
-        residue_index_set = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self.residue_set])
+        residue_index = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self.residue_set])
         data = self.dataset[item]
-        SL_resn = [single_letter[re.findall("[a-zA-Z]+$", residue)[0]] for residue in self.residue_set]
-        gray_areas = {}
-        chain_starts = [0]
-        for idx in np.arange(len(residue_index_set)):
-            if idx > 0 and residue_index_set[idx] - residue_index_set[idx-1] < 0:
+        # check for chain breaks
+        gray_areas = defaultdict(list)  # show grey area to indicate missing residues
+        chain_starts = [0]  # plot in separate figures if the gap between two adjacent residues is larger than 50
+        for idx in np.arange(1, len(residue_index)):
+            if residue_index[idx] - residue_index[idx - 1] < 0:
                 chain_starts.append(idx)
-            elif idx > 0 and residue_index_set[idx] - residue_index_set[idx-1] >= 50:
+            elif residue_index[idx] - residue_index[idx - 1] > gap:
                 chain_starts.append(idx)
-            elif idx > 0 and residue_index_set[idx] - residue_index_set[idx-1] > 1:
-                gray_areas[chain_starts[-1]] = [residue_index_set[idx], residue_index_set[idx-1]]
-        chain_starts.append(len(residue_index_set))
+            elif 1 < residue_index[idx] - residue_index[idx - 1] <= gap:
+                gray_areas[chain_starts[-1]].append([residue_index[idx - 1] + 1, residue_index[idx] - 1])
+        chain_starts.append(len(residue_index))
+
         ######### plots ######
-        color = "#003f5c"
+        bar_color = "#176BA0"
         for chain_idx in np.arange(len(chain_starts[:-1])):
-            df = data[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
-            resi_selected = residue_index_set[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
+            df = data[chain_starts[chain_idx]:chain_starts[chain_idx + 1]]
+            resi_selected = residue_index[chain_starts[chain_idx]:chain_starts[chain_idx + 1]]
             if 0 < len(df) <= 20:
                 fig, ax = plt.subplots(1, 1, figsize=(2.8, 1.5))
                 ax.xaxis.set_major_locator(MultipleLocator(5))
@@ -1098,12 +1183,14 @@ for bs_id in np.arange(num_of_binding_site):
                 fig, ax = plt.subplots(1, 1, figsize=(7.5, 1.8))
                 ax.xaxis.set_major_locator(MultipleLocator(500))
                 ax.xaxis.set_minor_locator(MultipleLocator(100))
-            ax.bar(resi_selected, df, 1.0, linewidth=0, color=color)
+            ax.bar(resi_selected, df, 1.0, linewidth=0, color=bar_color)
+            # plot missing residue area
             if chain_starts[chain_idx] in gray_areas.keys():
-                ax.axvspan(gray_areas[chain_starts[chain_idx]][0], gray_areas[chain_starts[chain_idx]][1], \
-                           facecolor="gray", alpha=0.3)
-            ax.set_ylim(0, df.max()*1.05)
-            ax.set_xlim(0, resi_selected.max()+5)
+                for gray_area in gray_areas[chain_starts[chain_idx]]:
+                    ax.axvspan(gray_area[0], gray_area[1], facecolor="#c0c0c0", alpha=0.3)
+            # axis setting
+            ax.set_ylim(0, df.max() * 1.05)
+            ax.set_xlim(resi_selected.min() - 1, resi_selected.max() + 1)
             ax.set_ylabel(ylabel, fontsize=8, weight="bold")
             ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
             for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
@@ -1115,44 +1202,92 @@ for bs_id in np.arange(num_of_binding_site):
             else:
                 plt.savefig("{}/{}_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(chain_idx)), dpi=300)
             plt.close()
- 
-            ######### logomaker #########
-            SL_resn_selected = SL_resn[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
-            df_logo = pd.DataFrame({"Resid": resi_selected, "Resn": SL_resn_selected, "Data": df})
-            matrix = df_logo.pivot(index="Resid", columns='Resn', values="Data").fillna(0)
-            n_rows = 1 + resi_selected[-1]//100 - resi_selected[0]//100
-            start = (resi_selected[0]//100)*100
-            length = start + 100 - resi_selected[0]
-            fig, axes = plt.subplots(n_rows, 1, figsize=(4.5, 1.3*n_rows), sharey=True)
-            plt.subplots_adjust(hspace=0.5, left=0.2) 
+      
+        return
+
+    
+
+    def plot_interactions_logo(self, item="Duration", save_dir=None, letter_map=None, gap=500,
+                               color_scheme="chemistry"):
+        
+        if save_dir == None:
+            save_dir = check_dir(self.save_dir, "Figures_{}".format(self.lipid))
+        else:
+            save_dir = check_dir(save_dir, "Figures_{}".format(self.lipid))
+
+        single_letter = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
+                         'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
+                         'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
+                         'ALA': 'A', 'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
+        if letter_map is not None:
+            single_letter.update(letter_map)
+    
+        if self.timeunit == "ns":
+            timeunit = " (ns) "
+        elif self.timeunit == "us":
+            timeunit = r" ($\mu s$)"        
+        if item == "Duration":
+            ylabel = item + timeunit
+        elif item == "Occupancy":
+            ylabel = item + " 100% "
+        elif item == "LipidCount":
+            ylabel = "Num. of Lipids"
+        elif item == "Residence Time":
+            ylabel = "Res. Time {}".format(timeunit) 
+
+        logos = [re.findall("[a-zA-Z]+$", residue)[0] for residue in self.residue_set]
+        logos_checked = []
+        for name in logos:
+            if len(name) == 1:
+                logos_checked.append(name)
+            else:
+                logos_checked.append(single_letter[name])
+        residue_index = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self.residue_set])
+        interactions = self.dataset[item]
+        length = 100
+        # check for chain breaks, gray_areas and axis breaks
+        axis_obj = AxisIndex(residue_index, logos_checked, interactions, length, gap)
+        axis_obj.sort()
+        # plot
+        for page_idx in axis_obj.breaks.keys():
+            n_rows = len(axis_obj.breaks[page_idx])
+            fig, axes = plt.subplots(n_rows, 1, figsize=(4.5, 1.3 * n_rows), sharey=True)
+            plt.subplots_adjust(hspace=0.5, left=0.2)
+            ymax = []
             for ax_idx, ax in enumerate(np.atleast_1d(axes)):
-                try:
-                    if ax_idx == (n_rows - 1):
-                        logomaker.Logo(matrix[(ax_idx-1)*100 + length:], color_scheme="chemistry", ax=ax)
-                        ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
-                    elif ax_idx == 0:
-                        logomaker.Logo(matrix[:length], color_scheme="chemistry", ax=ax)
-                    else:
-                        logomaker.Logo(matrix[(ax_idx-1)*100+length:ax_idx*100+length], color_scheme="chemistry", ax=ax)
-                except logomaker.src.error_handling.LogomakerError:
-                    pass
+                resi_selected = [break_item[0] for break_item in axis_obj.breaks[page_idx][ax_idx]]
+                logos_selected = [break_item[1] for break_item in axis_obj.breaks[page_idx][ax_idx]]
+                interaction_selected = [break_item[2] for break_item in axis_obj.breaks[page_idx][ax_idx]]
+                ymax.append(np.max(interaction_selected))
+                if np.sum(interaction_selected) > 0:
+                    df = pd.DataFrame({"Resid": resi_selected, "Resn": logos_selected, "Data": interaction_selected})
+                    matrix = df.pivot(index="Resid", columns='Resn', values="Data").fillna(0)
+                    logomaker.Logo(matrix, color_scheme=color_scheme, ax=ax)
+                if ax_idx == (n_rows - 1):
+                    ax.set_xlabel("Residue Index", fontsize=8, weight="bold")
                 ax.xaxis.set_major_locator(MultipleLocator(20))
                 ax.xaxis.set_minor_locator(MultipleLocator(1))
-                ax.set_xlim(ax_idx*100+start, (ax_idx+1)*100+start)
-                ax.set_ylim(0, data.max()*1.05)
+                ax.set_xlim(resi_selected[0] - 0.5, resi_selected[-1] + 0.5)
                 ax.set_ylabel(ylabel, fontsize=8, weight="bold", va="center")
                 for label in ax.xaxis.get_ticklabels() + ax.yaxis.get_ticklabels():
                     plt.setp(label, fontsize=8, weight="bold")
+            np.atleast_1d(axes)[-1].set_ylim(0, np.max(ymax) * 1.05)
+            # plot missing areas
+            if page_idx in axis_obj.gray_areas.keys():
+                for gray_item in axis_obj.gray_areas[page_idx]:
+                    axes[gray_item[0]].axvspan(gray_item[1], gray_item[2], facecolor="#c0c0c0", alpha=0.3)
+    
             plt.tight_layout()
-            if len(chain_starts) == 2:
+            if len(axis_obj.breaks.keys()) == 1:
                 plt.savefig("{}/{}_logo_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
             else:
-                plt.savefig("{}/{}_logo_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(chain_idx)), dpi=300)
-            plt.close()            
-
+                plt.savefig("{}/{}_logo_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(page_idx)), dpi=300)
+            plt.close()        
+        
         return
-
-
+    
+    
+    
     def write_to_pdb(self, item, save_dir=None):
 
         if save_dir == None:
@@ -1258,10 +1393,14 @@ if __name__ == '__main__':
                               lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=int(args.resi_offset), \
                               resi_list=resi_list, save_dir=args.save_dir)
         li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nbootstrap))
-        li.plot_interactions(item="Duration", letter_map=letter_map)
-        li.plot_interactions(item="Residence Time", letter_map=letter_map)
-        li.plot_interactions(item="Occupancy", letter_map=letter_map)
-        li.plot_interactions(item="LipidCount", letter_map=letter_map)
+        li.plot_interactions(item="Duration")
+        li.plot_interactions(item="Residence Time")
+        li.plot_interactions(item="Occupancy")
+        li.plot_interactions(item="LipidCount")
+        li.plot_interactions_logo(item="Duration", letter_map=letter_map)
+        li.plot_interactions_logo(item="Residence Time", letter_map=letter_map)
+        li.plot_interactions_logo(item="Occupancy", letter_map=letter_map)
+        li.plot_interactions_logo(item="LipidCount", letter_map=letter_map)        
         li.write_to_pdb(item="Duration")
         li.write_to_pdb(item="Residence Time")
         li.write_to_pdb(item="Occupancy")
