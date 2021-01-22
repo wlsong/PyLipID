@@ -1275,7 +1275,7 @@ for bs_id in np.arange(num_of_binding_site):
             # plot missing areas
             if page_idx in axis_obj.gray_areas.keys():
                 for gray_item in axis_obj.gray_areas[page_idx]:
-                    axes[gray_item[0]].axvspan(gray_item[1], gray_item[2], facecolor="#c0c0c0", alpha=0.3)
+                    np.atleast_1d(axes)[gray_item[0]].axvspan(gray_item[1], gray_item[2], facecolor="#c0c0c0", alpha=0.3)
 
             plt.tight_layout()
             if len(axis_obj.breaks.keys()) == 1:
