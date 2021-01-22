@@ -51,7 +51,7 @@ parser.add_argument("-c", nargs="+", metavar="./run/system.gro", \
 parser.add_argument("-stride", default=1, metavar=1, help="Striding through trajectories. Only every stride-th will be analized." )
 parser.add_argument("-dt", default=None, metavar="None", help="The time interval between two adjacent frames in trajectories. \
                     If not specified, the mdtraj will deduce from the trajectories. This is requierd for trajectories that do not \
-                    have time stamps.") 
+                    have time stamps.")
 parser.add_argument("-tu", default="us", choices=["ns", "us"], metavar="us", \
                     help="Time unit. It will convert all the calculated values to the specified time unit.")
 parser.add_argument("-save_dir", default=None, metavar="None", help="Directory to put all the generated results. \
@@ -632,7 +632,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
         self.lipid_count = None
         self.res_time_b = None
         self.res_time = None
-        
+
         return
 
 
@@ -1130,7 +1130,7 @@ for bs_id in np.arange(num_of_binding_site):
         if self.timeunit == "ns":
             timeunit = " (ns) "
         elif self.timeunit == "us":
-            timeunit = r" ($\mu s$)"        
+            timeunit = r" ($\mu s$)"
         if item == "Duration":
             ylabel = item + timeunit
         elif item == "Occupancy":
@@ -1138,7 +1138,7 @@ for bs_id in np.arange(num_of_binding_site):
         elif item == "LipidCount":
             ylabel = "Num. of Lipids"
         elif item == "Residence Time":
-            ylabel = "Res. Time {}".format(timeunit) 
+            ylabel = "Res. Time {}".format(timeunit)
         ####### check for chain breakds ##########
         residue_index = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self.residue_set])
         data = self.dataset[item]
@@ -1155,17 +1155,10 @@ for bs_id in np.arange(num_of_binding_site):
         chain_starts.append(len(residue_index))
 
         ######### plots ######
-<<<<<<< HEAD
         bar_color = "#176BA0"
         for chain_idx in np.arange(len(chain_starts[:-1])):
             df = data[chain_starts[chain_idx]:chain_starts[chain_idx + 1]]
             resi_selected = residue_index[chain_starts[chain_idx]:chain_starts[chain_idx + 1]]
-=======
-        color = "#003f5c"
-        for chain_idx in np.arange(len(chain_starts[:-1])):
-            df = data[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
-            resi_selected = residue_index_set[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
->>>>>>> ef738f73795729b72214f26d19b1acd5be9b06dc
             if 0 < len(df) <= 20:
                 fig, ax = plt.subplots(1, 1, figsize=(2.8, 1.5))
                 ax.xaxis.set_major_locator(MultipleLocator(5))
@@ -1209,14 +1202,14 @@ for bs_id in np.arange(num_of_binding_site):
             else:
                 plt.savefig("{}/{}_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(chain_idx)), dpi=300)
             plt.close()
-      
+
         return
 
-    
+
 
     def plot_interactions_logo(self, item="Duration", save_dir=None, letter_map=None, gap=500,
                                color_scheme="chemistry"):
-        
+
         if save_dir == None:
             save_dir = check_dir(self.save_dir, "Figures_{}".format(self.lipid))
         else:
@@ -1228,11 +1221,11 @@ for bs_id in np.arange(num_of_binding_site):
                          'ALA': 'A', 'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
         if letter_map is not None:
             single_letter.update(letter_map)
-    
+
         if self.timeunit == "ns":
             timeunit = " (ns) "
         elif self.timeunit == "us":
-            timeunit = r" ($\mu s$)"        
+            timeunit = r" ($\mu s$)"
         if item == "Duration":
             ylabel = item + timeunit
         elif item == "Occupancy":
@@ -1240,7 +1233,7 @@ for bs_id in np.arange(num_of_binding_site):
         elif item == "LipidCount":
             ylabel = "Num. of Lipids"
         elif item == "Residence Time":
-            ylabel = "Res. Time {}".format(timeunit) 
+            ylabel = "Res. Time {}".format(timeunit)
 
         logos = [re.findall("[a-zA-Z]+$", residue)[0] for residue in self.residue_set]
         logos_checked = []
@@ -1283,18 +1276,18 @@ for bs_id in np.arange(num_of_binding_site):
             if page_idx in axis_obj.gray_areas.keys():
                 for gray_item in axis_obj.gray_areas[page_idx]:
                     axes[gray_item[0]].axvspan(gray_item[1], gray_item[2], facecolor="#c0c0c0", alpha=0.3)
-    
+
             plt.tight_layout()
             if len(axis_obj.breaks.keys()) == 1:
                 plt.savefig("{}/{}_logo_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid), dpi=300)
             else:
                 plt.savefig("{}/{}_logo_{}_{}.pdf".format(save_dir, "_".join(item.split()), self.lipid, str(page_idx)), dpi=300)
-            plt.close()        
-        
+            plt.close()
+
         return
-    
-    
-    
+
+
+
     def write_to_pdb(self, item, save_dir=None):
 
         if save_dir == None:
@@ -1407,7 +1400,7 @@ if __name__ == '__main__':
         li.plot_interactions_logo(item="Duration", letter_map=letter_map)
         li.plot_interactions_logo(item="Residence Time", letter_map=letter_map)
         li.plot_interactions_logo(item="Occupancy", letter_map=letter_map)
-        li.plot_interactions_logo(item="LipidCount", letter_map=letter_map)        
+        li.plot_interactions_logo(item="LipidCount", letter_map=letter_map)
         li.write_to_pdb(item="Duration")
         li.write_to_pdb(item="Residence Time")
         li.write_to_pdb(item="Occupancy")
