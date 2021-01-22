@@ -1155,10 +1155,17 @@ for bs_id in np.arange(num_of_binding_site):
         chain_starts.append(len(residue_index))
 
         ######### plots ######
+<<<<<<< HEAD
         bar_color = "#176BA0"
         for chain_idx in np.arange(len(chain_starts[:-1])):
             df = data[chain_starts[chain_idx]:chain_starts[chain_idx + 1]]
             resi_selected = residue_index[chain_starts[chain_idx]:chain_starts[chain_idx + 1]]
+=======
+        color = "#003f5c"
+        for chain_idx in np.arange(len(chain_starts[:-1])):
+            df = data[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
+            resi_selected = residue_index_set[chain_starts[chain_idx]:chain_starts[chain_idx+1]]
+>>>>>>> ef738f73795729b72214f26d19b1acd5be9b06dc
             if 0 < len(df) <= 20:
                 fig, ax = plt.subplots(1, 1, figsize=(2.8, 1.5))
                 ax.xaxis.set_major_locator(MultipleLocator(5))
