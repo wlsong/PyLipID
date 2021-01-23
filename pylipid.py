@@ -1119,13 +1119,6 @@ for bs_id in np.arange(num_of_binding_site):
             save_dir = check_dir(self.save_dir, "Figures_{}".format(self.lipid))
         else:
             save_dir = check_dir(save_dir, "Figures_{}".format(self.lipid))
-        ### single-letter dictionary ###
-        single_letter = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
-                         'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
-                         'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
-                         'ALA': 'A', 'VAL':'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
-        if letter_map != None:
-            single_letter.update(letter_map)
 
         if self.timeunit == "ns":
             timeunit = " (ns) "
