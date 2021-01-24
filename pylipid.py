@@ -502,7 +502,7 @@ class LipidInteraction():
                         self.contact_residues_high[resid].append(contact_high)
                         self.contact_residues_low[resid].append(contact_low)
                         self.interaction_duration[resid].append(Durations(contact_low, contact_high, timestep).cal_duration())
-                        occupancy, lipidcount = cal_interaction_intensity(contact_high)
+                        occupancy, lipidcount = cal_interaction_intensity(contact_low)
                         self.interaction_occupancy[resid].append(occupancy)
                         self.lipid_count[resid].append(lipidcount)
                 ncol_start += ncol_per_protein * self.nprot
@@ -818,7 +818,7 @@ Koff:          Koff of lipid with the given residue (in unit of ({timeunit})^(-1
                         contact_BS_high = [np.unique(np.concatenate([self.contact_residues_high[node][list_to_take][frame_idx] for node in node_list])) \
                                            for frame_idx in range(traj.n_frames)]
                         self.interaction_duration_BS[binding_site_id].append(Durations(contact_BS_low, contact_BS_high, timestep).cal_duration())
-                        occupancy, lipidcount = cal_interaction_intensity(contact_BS_high)
+                        occupancy, lipidcount = cal_interaction_intensity(contact_BS_low)
                         self.interaction_occupancy_BS[binding_site_id].append(occupancy)
                         self.lipid_count_BS[binding_site_id].append(lipidcount)
                         ########### store lipid binding poses ############
