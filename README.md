@@ -70,13 +70,13 @@ Information regarding **pylipid.py** flags can be checked via 'python pylipid.py
 A standard check on lipid interactions using **pylipid.py**, which suits most of the cases:
 ```
 conda activate PyLipID
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+python pylipid.py -f ./run_1/protein_lipids.xtc ./run_2/protein_lipids.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset 
 ```
 
 Due to the smoothened energy potentials, coarse-grained force fields often render the tails of phosphalipids too flexible, which could lead to poor characterisation of binding sites. When behaviours of the tails are not the main focus, it's better to focus on the binding of headgroups. Users can use the flag -lipid_atoms to specify lipid atoms/beads for calculation. An example of calculating the binding of PIP2 in MARTINI 2 (named as POP2 in this force field) using only the headgroup beads: 
 ```
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+python pylipid.py -f ./run_1/protein_lipids.xtc ./run_2/protein_lipids.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POP2 -lipid_atoms C1 C2 C3 C4 PO4 P1 P2 -nprot 1 -save_dataset 
 ```
 
@@ -89,16 +89,11 @@ The calculation of lipid probability density uses the function of [KDEMultivaria
 
 The script also allows users to view the calculated binding sites in PyMol via generating a python script, a process that is evoked by providing a protein atomistic structure (preferably in pdb format) to the flag -pdb. For the coarse-grained simulations, either provide the atomistic protein structure before coarse-graining or use an atomistic structure that is converted back from coarse-grained models. Users need to make sure that the provided protein coordinates are consistent with the configuration in the simulations in terms of the residue indices and ordering of the protein. An example of using the flag -pdb: 
 ```
-python pylipid.py -f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
+python pylipid.py -f ./run_1/protein_lipids.xtc ./run_2/protein_lipids.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
 -cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -save_dataset -pdb XXXX.pdb
 ```
 Replace 'XXXX.pdb' with the pdb file of your chose. Running the generated python script by the comment 'python show_binding_site_info.py' will open a PyMol session displaying binding site information. 
 
-**pylipid.py** allows user to specify a couple of regions for calculation via the flag -resi_list. Supported syntax include: 1/ use "-" to indicate a range of the protein residue index (both ends included); or 2/ specify individual residue index seperated by space: 
-```
-python pylipid.py f ./run_1/md.xtc ./run_2/md.xtc -c ./run_1/protein_lipids.gro ./run_2/protein_lipids.gro 
--cutoffs 0.55 1.0 -lipids POPC CHOL POP2 -nprot 1 -resi_list 5 7 8 10-30 50-70 100-130 -save_dataset
-```
 
 **pylipid.py** calculates the surface area of each binding site. By default, the script uses atom radii defined by mdtraj (https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56) for calculation. The script also defines the radii of MARTINI coarse-grained beads BB as 0.26 nm and SC1/2/3 as 0.23 nm. To change or define radii of atoms/beads, use -radii and specify radius in unit of nm. For example, to change the radius of MARINI coarse-grained beads BB to 0.28 nm and SC1 to 0.22 nm: 
 ```
