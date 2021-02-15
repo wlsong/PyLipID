@@ -13,7 +13,7 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-import sphinx_rtd_theme
+#import sphinx_rtd_theme
 
 
 # -- Project information -----------------------------------------------------
@@ -29,13 +29,12 @@ author = 'Wanling Song'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-        "sphinx_rtd_theme"
-        "sphinx.ext.autodoc",
-        "sphinx.ext.autosummary",
-        "sphinx.ext.napoleon",
-        "sphinx.ext.mathjax",
-        "sphinx_issues",
-        "nbsphinx",
+        'sphinx_rtd_theme',
+        'sphinx.ext.autodoc',
+        'sphinx.ext.autosummary',
+        'sphinx.ext.napoleon',
+        'sphinx.ext.mathjax',
+        'nbsphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
