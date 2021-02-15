@@ -1,0 +1,86 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "theoretical-klein",
+   "metadata": {},
+   "source": [
+    "# 0-application-walk-thourgh\n",
+    "\n",
+    "In this notebook, we introduce the basics of PyLipID via a walk-through application. We keep the details to minimum and invite users to refer to other specific notebooks in which you can find more details, exercise and theory. \n",
+    "\n",
+    "In this tutorial, we show the PyLipID workflow of checking the lipid interactions a Class A GPCR, Adenosine A2a receptor from coarse-grained simulations with a complex membrane bilayer that contains 7 lipid species. \n",
+    "\n",
+    "<img src=\"_statics/A2aR_system_overview.pdf\" width=\"520\" height=\"280\" />\n",
+    "\n",
+    "The simulation ensemble reported in the original paper contained 10 repeats, but here we took 2 of the repeats for demonstration and saved in two directories ``run1`` and ``run2``, both of which contains a simulation trajectory ``protein_lipids.xtc`` and a corresponding topology coordinate ``protein_lipids.gro``. The two simulation trajectories have the same topology but different initial configurations. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "thrown-granny",
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "ModuleNotFoundError",
+     "evalue": "No module named 'plipid'",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mModuleNotFoundError\u001b[0m                       Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-2-731cf2fdab13>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m      1\u001b[0m \u001b[0mget_ipython\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrun_line_magic\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m'matplotlib'\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m'inline'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      2\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mpylipid\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 3\u001b[0;31m \u001b[0;32mfrom\u001b[0m \u001b[0mplipid\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mLipidIneteraction\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
+      "\u001b[0;31mModuleNotFoundError\u001b[0m: No module named 'plipid'"
+     ]
+    }
+   ],
+   "source": [
+    "%matplotlib inline\n",
+    "import pylipid\n",
+    "from plipid import LipidIneteraction"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "better-poker",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.3"
+  },
+  "toc": {
+   "base_numbering": 1,
+   "nav_menu": {},
+   "number_sections": true,
+   "sideBar": true,
+   "skip_h1_title": false,
+   "title_cell": "Table of Contents",
+   "title_sidebar": "Contents",
+   "toc_cell": false,
+   "toc_position": {},
+   "toc_section_display": true,
+   "toc_window_display": true
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
