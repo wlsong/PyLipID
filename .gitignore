@@ -1,5 +1,6 @@
 dist
 pylipid.egg-info
-DS_Store
-gitignore
-build 
+.DS_Store
+.gitignore
+build
+.idea
