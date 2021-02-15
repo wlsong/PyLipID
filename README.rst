@@ -1,7 +1,7 @@
 .. image:: docs/static/pylipid_logo.png
   :alt: PyLipID logo
   :align: left
-  :scale: 10 %
+  :scale: 2 %
 
 ==========================================================
 PyLipID - A Python Library For Lipid Interactions Analysis
