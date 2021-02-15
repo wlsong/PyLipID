@@ -20,22 +20,8 @@ the tutorials for examples and the documentations for the API functionalities:
 Installation
 ============
 
-To install the PyLipID Python package, you need a few Python package dependencies. These dependencies
-include:
-
-- mdtraj
-- numpy
-- pandas
-- matplotlib
-- seaborn
-- networkx
-- scipy
-- python-louvain
-- logomaker
-- statsmodels
-- scikit-learn
-- tqdm
-- kneebow
+To install the PyLipID Python package, you need a few Python package dependencies which is listed in the
+`requirement.txt` file.
 
 If these dependencies are not available in their required versions, the installation will fail. We thus
 recommend using the package installer pip:
