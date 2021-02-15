@@ -11,3 +11,5 @@ statsmodels
 scikit-learn
 tqdm
 kneebow
+sphinx>=1.4
+nbsphinx
