@@ -12,4 +12,4 @@ install:
 script:
   - python -m unittest discover -s tests
 after_success:
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)
