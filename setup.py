@@ -9,7 +9,7 @@ long_description = (here / 'README.rst').read_text(encoding='utf-8')
 
 setup(
     name='pylipid',
-    version='0.1.1',
+    version='1.0.0',
     description='PyLipID - A Python Library For Lipid Interactions Analysis',
     long_description=long_description,
     long_description_content_type='text/x-rst',

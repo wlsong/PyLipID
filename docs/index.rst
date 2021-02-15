@@ -24,29 +24,15 @@ If you use PyLipID in scientific software, please cite the following paper:
 PLACEHOLDER
 
 
-Installation
-============
+Table of Contents
+=================
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    INSTALL.rst
-
-Documentation
-=============
-
-.. toctree::
-   :maxdepth: 2
-
    api_index.rst
-
-Tutorials
-=========
-
-.. toctree::
-   :maxdepth: 2
-
-   tutorial
+   tutorial.rst
 
 
 
