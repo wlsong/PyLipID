@@ -16,7 +16,7 @@
 
 from .directory import check_dir
 from .coordinate import write_PDB
-from .script import write_pymol_script
+from .pymol_script import write_pymol_script
 from .corrcoef import sparse_corrcoef
 from .rmsd import rmsd
 from .trajectory import get_traj_info
