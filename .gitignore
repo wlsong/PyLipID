@@ -4,3 +4,5 @@ pylipid.egg-info
 .gitignore
 build
 .idea
+docs/_build
+docs/tutorials/.ipynb_checkpoints
