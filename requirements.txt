@@ -1,0 +1,13 @@
+mdtraj
+numpy
+pandas
+matplotlib
+seaborn
+networkx
+scipy
+python-louvain
+logomaker
+statsmodels
+scikit-learn
+tqdm
+kneebow
