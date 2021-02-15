@@ -1,4 +1,4 @@
-.. image:: docs/static/pylipid_logo.png
+.. image:: https://github.com/wlsong/PyLipID/docs/static/pylipid_logo.png
   :alt: PyLipID logo
   :align: center
 
