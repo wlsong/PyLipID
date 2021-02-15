@@ -3,6 +3,11 @@
 PyLipID - A Python Library For Lipid Interactions Analysis
 ==========================================================
 
+.. image:: https://travis-ci.com/wlsong/PyLipID.svg?branch=master
+   :target: https://travis-ci.com/github/wlsong/PyLipID
+.. image:: https://img.shields.io/pypi/v/PyLipID
+   :target: https://pypi.org/project/pylipid/
+
 PyLipID is a python library for analyzing lipid interactions with membrane proteins from
 Molecular Dynamics Simulations. PyLipID has the following main features, please check out
 the tutorials for examples and the documentations for the API functionalities:
