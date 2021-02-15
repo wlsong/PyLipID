@@ -1,20 +1,11 @@
-.. PyLipID documentation master file, created by
-   sphinx-quickstart on Fri Dec 11 11:01:32 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. image:: /static/pylipid_logo.png
+  :height: 200px
+  :align: center
 
-Welcome to PyLipID's documentation!
-===================================
+|
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+PyLipID - A Python Library For Analysis Lipid Interactions
+==========================================================
 
+**pylipid.py**: is a toolkit to calculate lipid interactions with membrane proteins.
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

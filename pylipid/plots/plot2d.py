@@ -18,8 +18,6 @@
 """
 
 import os
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
@@ -90,7 +88,7 @@ def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None)
         if idx > 0 and resi - residue_index[idx-1] != 1:
             breaks.append(idx-0.5)
 
-    x = y = np.arange(len(residue_index)+1)
+    x = y = np.arange(len(residue_index)+1, dtype=float)
     x -= 0.5
     y -= 0.5
 
@@ -110,8 +108,8 @@ def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None)
 
     if len(breaks) > 0:
         for break_line in breaks:
-            ax.axhline(break_line, linewidth=1.5, color="black")
-            ax.axvline(break_line, linewidth=1.5, color="black")
+            ax.axhline(break_line, linewidth=0.8, color="black", linestyle="--")
+            ax.axvline(break_line, linewidth=0.8, color="black", linestyle="--")
 
     if title is not None:
         ax.set_title(title, fontsize=8, weight="bold")

@@ -19,15 +19,14 @@
 
 import os
 from collections import defaultdict
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import numpy as np
 import pandas as pd
 import logomaker
 
-__all__ = ["plot_residue_data", "plot_residue_data_logos"]
+__all__ = ["plot_residue_data", "plot_residue_data_logos",
+           "plot_binding_site_data", "plot_surface_area", "AxisIndex"]
 
 
 def plot_residue_data(residue_index, interactions, gap=200, ylabel=None,
@@ -130,7 +129,7 @@ def plot_residue_data(residue_index, interactions, gap=200, ylabel=None,
 
 
 def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter_map=None,
-                            color_scheme="chemistry", ylabel=None, fn=None):
+                            color_scheme="chemistry", ylabel=None, title=None, fn=None):
     """Plot interactions using `logomaker.Logo
     <https://logomaker.readthedocs.io/en/latest/implementation.html#logo-class>`_.
 
@@ -218,6 +217,8 @@ def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter
         if page_idx in axis_obj.gray_areas.keys():
             for item in axis_obj.gray_areas[page_idx]:
                 np.atleast_1d(axes)[item[0]].axvspan(item[1], item[2], facecolor="#c0c0c0", alpha=0.3)
+        if title is not None:
+            np.atleast_1d(axes)[0].set_title(title, fontsize=10, weight="bold")
         plt.tight_layout()
         if len(axis_obj.breaks.keys()) == 1:
             fig.savefig(fn, dpi=300)
@@ -261,21 +262,23 @@ def plot_binding_site_data(data, fig_fn, ylabel=None, title=None):
     BS_names = [col for col in data.columns]
     BS_id_set = [int(name.split()[-1]) for name in BS_names]
     BS_id_set.sort()
-    data = [data["Binding Site {}".format(bs_id)].tolist() for bs_id in BS_id_set]
+    data_processed = [np.sort(data["Binding Site {}".format(bs_id)].dropna().tolist())
+                      for bs_id in BS_id_set]
     colors = [next(color_set) for dummy in BS_id_set]
-    fig, ax = plt.subplots(1, 1, figsize=(len(BS_id_set)*0.5, 2.8))
+    fig, ax = plt.subplots(1, 1, figsize=(len(BS_id_set)*0.6, 2.8))
     plt.subplots_adjust(bottom=0.20, top=0.83)
     ax.set_title(title, fontsize=10, weight="bold")
-    parts = ax.violinplot(data, showmeans=False, showmedians=False, showextrema=False)
+    parts = ax.violinplot(data_processed, showmeans=False, showmedians=False, showextrema=False)
     for pc_idx, pc in enumerate(parts['bodies']):
         pc.set_facecolors(colors[pc_idx])
         pc.set_edgecolor('black')
         pc.set_alpha(1)
 
-    quartile1, medians, quartile3 = np.percentile(data, [25, 50, 75], axis=1)
+    # deal with the situation in which the columns in data have different lengths.
+    quartile1, medians, quartile3 = np.array([np.percentile(d, [25, 50, 75]) for d in data_processed]).T
     whiskers = np.array([
         adjacent_values(sorted_array, q1, q3)
-        for sorted_array, q1, q3 in zip(data, quartile1, quartile3)])
+        for sorted_array, q1, q3 in zip(data_processed, quartile1, quartile3)])
     whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
 
     inds = np.arange(1, len(medians) + 1)
@@ -290,9 +293,9 @@ def plot_binding_site_data(data, fig_fn, ylabel=None, title=None):
     ax.set_xlim(0.25, len(BS_id_set) + 0.75)
     ax.set_xlabel('Binding Site', fontsize=10, weight="bold")
     ax.set_ylabel(ylabel, fontsize=10, weight="bold")
+    plt.tight_layout()
     fig.savefig(fig_fn, dpi=200)
     plt.close()
-
     return
 
 
@@ -347,6 +350,7 @@ def plot_surface_area(surface_area, fig_fn, timeunit=None):
             if row_idx == 0:
                 axes[row_idx, col_idx].set_title(bs_name, fontsize=10)
             axes[row_idx, col_idx].legend(loc="best", frameon=False)
+    fig.tight_layout()
     fig.savefig(fig_fn, dpi=200)
     plt.close()
 

@@ -16,13 +16,9 @@
 
 """This module contains functions for calculating interaction residence time and koff.
 """
-
 import numpy as np
 from scipy.optimize import curve_fit
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.filterwarnings('ignore')
-np.seterr(all='ignore')
+
 
 __all__ = ["cal_koff", "cal_survival_func"]
 
@@ -73,7 +69,7 @@ def cal_koff(durations, t_total, timestep, nbootstrap=10, initial_guess=[1., 1.,
     """
     # calculate original residence time
     delta_t_list = np.arange(0, t_total, timestep)
-    survival_func = cal_survival_func(durations, len(durations), np.max(t_total), delta_t_list)
+    survival_func = cal_survival_func(durations, np.max(t_total), delta_t_list)
     survival_rates = np.array([survival_func[delta_t] for delta_t in delta_t_list])
     res_time, _, r_squared, params = _curve_fitting(survival_func, delta_t_list, initial_guess)
     if cap and res_time > t_total:
@@ -92,7 +88,7 @@ def cal_koff(durations, t_total, timestep, nbootstrap=10, initial_guess=[1., 1.,
         survival_rates_boot_set = []
         n_fitted_boot_set = []
         for duration_boot in duration_boot_set:
-            survival_func_boot = cal_survival_func(duration_boot, len(duration_boot), np.max(t_total), delta_t_list)
+            survival_func_boot = cal_survival_func(duration_boot, np.max(t_total), delta_t_list)
             survival_rates_boot = np.array([survival_func_boot[delta_t] for delta_t in delta_t_list])
             _, _, r_squared_boot, params_boot = _curve_fitting(survival_func_boot, delta_t_list,
                                                                                                 initial_guess)

@@ -14,88 +14,118 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
-"""This module contains functions for calculating lipid interactions.
+"""This module contains the class Durations for using dual-cutoff scheme.
 """
-
 import numpy as np
-from collections import defaultdict
-from scipy import sparse
+
+__all__ = ["cal_contact_residues", "Duration", "cal_interaction_frequency"]
 
 
-def get_traj_info(traj, lipid, lipid_atoms=None, resi_offset=0, nprot=1, protein_ref=None, lipid_ref=None):
-    """Get trajectory information regarding atom/residue index and topologies.
+def cal_contact_residues(dist_matrix, cutoff):
+    """Obtain contact residues as a function of time.
 
     Parameters
     ----------
-    traj : mdtraj.Trajectory
-        A mdtraj.Trajectory object.
-    lipid : str
-        The residue name of the lipid to check.
-    lipid_atoms : a list of str; opt
-        The names of lipid atoms that are used to define lipid interaction and lipid binding sites.
-        Default is None, that is all the lipid atoms will be used for calculation.
-    resi_offset : int, optional, default=0
-        Shift of residue index. The new residue index (i.e. the original index + resi_offset) will
-        be used in all the generated data.
-    nprot : int, optional, default=1
-        Number of protein copies in the systems. If nprot >= 2, the protein copies need to be identical,
-        and the generated data will be the averages of the copies.
-    protein_ref : None or mdtraj.Trajectory, optional, default=None
-        A mdtraj.Trajectory object that stores the topology and coordinates of a copy of the protein structure.
-    lipid_ref : None or mdtraj.Trajectory, optional, default=None
-        A mdtraj.Trajectory object that stores the topology and coordinates of a lipid molecule structure.
+    dist_matrix : list of lists or ndarray, shape=(n_residues, n_frames)
+        The residue distances to the target. The distances of a residue
+        to the target is listed in a row/a list as a function of time.
+    cutoff : scalar
+        The distance cutoff to define a contact. A distance to the target
+        equal or lower to the `cutoff` is considered as in contact.
 
     Returns
     -------
-    traj_info : dict
-        A dictionary that contains the topology information of `traj`.
-    protein_ref :  mdtraj.Trajectory
-        A mdtraj.Trajectory object that stores the topology and coordinates of a copy of the protein structure.
-    lipid_ref : mdtraj.Trajectory
-        A mdtraj.Trajectory object that stores the topology and coordinates of a lipid molecule structure.
+    contact_list : list of lists
+        A list of n_frame lists that contains the residues (represented by the row index of dist_matrix)
+        within the cutoff distance to the target in each frame.
+    frame_id_set : ndarray
+        An array of frame indices where distances are smaller than the `cutoff`.
+    residue_id_set : ndarray
+        An array of residue indices which meet the distance
+
+    Examples
+    --------
+    >>> dr0 = [0.9, 0.95, 1.2, 1.1, 1.0, 0.9] # the distances of R0 to the target as a function of time
+    >>> dr1 = [0.95, 0.9, 0.95, 1.1, 1.2, 1.1] # the distances of R1
+    >>> dr2 = [0.90, 0.90, 0.85, 0.95, 1.0, 1.1] # the distances of R2
+    >>> dist_matrix = [dr0, dr1, dr2]
+    >>> contact_list, frame_id_set, residue_id_set = cal_contact_residues(dist_matrix, 1.0)
+    >>> print(contact_list)
+    [[0, 1, 2], [0, 1, 2], [1, 2], [2], [0, 2], [0]]
+    >>> print(frame_id_set)
+    array([0, 1, 4, 5, 0, 1, 2, 0, 1, 2, 3, 4])
+    >>> print(residue_id_set)
+    array([0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2])
 
     """
-    lipid_index_dict = defaultdict(list)
-    lipid_atom_indices = traj.top.select("resn {}".format(lipid))
-    if lipid_atoms is not None:
-        for atom_index in lipid_atom_indices:
-            if traj.top.atom(atom_index).name in lipid_atoms:
-                lipid_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
-    else:
-        for atom_index in lipid_atom_indices:
-            lipid_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
-    lipid_atom_index_set = [lipid_index_dict[resi] for resi in np.sort(list(lipid_index_dict.keys()))]
-    # get protein atom indices
-    all_protein_atom_indices = traj.top.select("protein")
-    natoms_per_protein = int(len(all_protein_atom_indices)/nprot)
-    protein_atom_index_set = []
-    for protein_idx in np.arange(nprot):
-        chain_index_dict = defaultdict(list)
-        for atom_index in all_protein_atom_indices[protein_idx*natoms_per_protein:(protein_idx+1)*natoms_per_protein]:
-            chain_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
-        protein_atom_index_set.append([chain_index_dict[resi] for resi in np.sort(list(chain_index_dict.keys()))])
-    protein_residue_id = np.arange(len(protein_atom_index_set[0]))
-    residue_list = ["{}{}".format(traj.top.residue(residue_id).resSeq+resi_offset, traj.top.residue(residue_id).name)
-                   for residue_id in protein_residue_id]
+    residue_id_set, frame_id_set = np.where(np.array(dist_matrix) <= cutoff)
+    contact_list = [[] for dummy in np.arange(len(dist_matrix[0]))]
+    for frame_id, residue_id in zip(frame_id_set, residue_id_set):
+        contact_list[frame_id].append(residue_id)
+    return contact_list, frame_id_set, residue_id_set
 
-    if lipid_ref is None:
-        one_lipid_indices = []
-        for lipid_id in np.sort(traj.top.select("resn {}".format(lipid))):
-            if len(one_lipid_indices) == 0:
-                one_lipid_indices.append(lipid_id)
-            elif traj.top.atom(lipid_id).residue.index != traj.top.atom(one_lipid_indices[-1]).residue.index:
-                break
+
+class Duration:
+    def __init__(self, contact_low, contact_high, dt):
+        """Dual cutoff scheme for calculating the interaction durations.
+
+        Parameters
+        ----------
+        contact_low : list of lists
+            A list of n_frame lists that contains the residues within the smaller
+            distance as a function of trajectory frames.
+        contact_high : list of lists
+            A list of n_frame lists that contains the residues within the larger
+            distance as a function of trajectory frames.
+        dt : scalar
+            The timestep between two adjacent trajectory frames.
+
+        """
+        self.contact_low = contact_low
+        self.contact_high = contact_high
+        self.dt = dt
+        self.pointer = [np.zeros_like(self.contact_high[idx], dtype=np.int)
+                        for idx in range(len(self.contact_high))]
+        return
+
+    def cal_durations(self):
+        """Calculate interaction durations using the dual-cutoff scheme.
+
+        Calculate the durations of the appearances that start from the point when an object appears
+        in `contact_low` to the point when the object disappears from `contact_high`.
+
+        Returns
+        -------
+        durations : list
+            A list of durations of all the interactions defined by *contact_low* and *contact_high*
+
+        """
+
+        durations = []
+        for i in range(len(self.contact_low)):
+            for j in range(len(self.contact_low[i])):
+                pos = np.where(self.contact_high[i] == self.contact_low[i][j])[0][0]
+                if self.pointer[i][pos] == 0:
+                    durations.append(self._get_duration(i, pos))
+        if len(durations) == 0:
+            return [0]
+        else:
+            durations.sort()
+            return durations
+
+    def _get_duration(self, i, j):
+        count = 1
+        self.pointer[i][j] = 1
+        lipid_to_search = self.contact_high[i][j]
+        for k in range(i+1, len(self.contact_high)):
+            locations = np.where(self.contact_high[k] == lipid_to_search)[0]
+            if len(locations) == 0:
+                return count * self.dt
             else:
-                one_lipid_indices.append(lipid_id)
-        lipid_ref = traj[0].atom_slice(np.unique(one_lipid_indices))
-    if protein_ref is None:
-        protein_ref = traj[0].atom_slice(all_protein_atom_indices[:natoms_per_protein])
-
-    traj_info = {"protein_atom_index_set": protein_atom_index_set,
-                 "lipid_atom_index_set": lipid_atom_index_set,
-                 "protein_residue_id": protein_residue_id, "residue_list": residue_list}
-
-    return traj_info, protein_ref, lipid_ref
+                pos = locations[0]
+                self.pointer[k][pos] = 1
+                count +=1
+        return (count - 1) * self.dt
 
 
 def cal_interaction_frequency(contact_list):
@@ -120,25 +150,10 @@ def cal_interaction_frequency(contact_list):
         The function that calculates contact residues from distance matrix.
 
     """
-    contact_counts = [len(item) for item in contact_list]
-    mask = np.array(contact_counts) > 0
-    contact_counts_nonzero = np.array(contact_counts)[mask]
-    return 100 * len(contact_counts_nonzero)/len(contact_list), np.nan_to_num(contact_counts_nonzero.mean())
-
-
-def sparse_corrcoef(A, B=None):
-    """Calculate correlation coeffient matrix using sparse matrix"""
-    if B is not None:
-        A = sparse.vstack((A, B), format='csr')
-    A = A.astype(np.float64)
-    n = A.shape[1]
-    # Compute the covariance matrix
-    rowsum = A.sum(1)
-    centering = rowsum.dot(rowsum.T.conjugate()) / n
-    C = (A.dot(A.T.conjugate()) - centering) / (n - 1)
-    # The correlation coefficients are given by
-    # C_{i,j} / sqrt(C_{i} * C_{j})
-    d = np.diag(C)
-    corrcoefs = C / np.sqrt(np.outer(d, d))
-    return corrcoefs
-
+    if len(contact_list) == 0:
+        return 0, 0
+    else:
+        contact_counts = [len(item) for item in contact_list]
+        mask = np.array(contact_counts) > 0
+        contact_counts_nonzero = np.array(contact_counts)[mask]
+        return 100 * len(contact_counts_nonzero)/len(contact_list), np.nan_to_num(contact_counts_nonzero.mean())
