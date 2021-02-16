@@ -9,7 +9,7 @@ long_description = (here / 'README.rst').read_text(encoding='utf-8')
 
 setup(
     name='pylipid',
-    version='1.0.0',
+    version='1.1.0',
     description='PyLipID - A Python Library For Lipid Interactions Analysis',
     long_description=long_description,
     long_description_content_type='text/x-rst',
@@ -30,5 +30,20 @@ setup(
     ],
     keywords='simulation tools, network community, binding site',
     python_requires='>=3.6, <4',
-    packages=find_packages()
+    packages=find_packages(),
+    install_requires=[
+        "mdtraj",
+        "numpy",
+        "pandas",
+        "matplotlib",
+        "seaborn",
+        "networkx",
+        "scipy",
+        "python-louvain",
+        "logomaker",
+        "statsmodels",
+        "scikit-learn",
+        "tqdm",
+        "kneebow"
+    ]
 )

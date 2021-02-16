@@ -15,37 +15,18 @@
 ##############################################################################
 
 r"""
-funcs module
-==============
-The ``funcs`` module provides functions for functions that do the heavy-lifting:
+PyLipID class
+=============
+**api** provides the outer layer functions to calculate lipid interactions
+and binding sites.
 
-.. currentmodule:: pylipid.funcs
+.. currentmodule:: pylipid.api
 
 .. autosummary::
    :toctree: generated/
 
-   cal_koff
-   cal_survival_func
-   Duration
-   cal_contact_residues
-   cal_interaction_frequency
-   get_node_list
-   collect_bound_poses
-   vectorize_poses
-   calculate_scores
-   write_bound_poses
-   cluster_DBSCAN
-   cluster_KMeans
-   calculate_site_surface_area
+   LipidInteraction
 
 """
 
-from .kinetics import cal_koff
-from .kinetics import cal_survival_func
-from .interactions import Duration
-from .interactions import cal_contact_residues, cal_interaction_frequency
-from .binding_site import get_node_list
-from .binding_site import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
-from .clusterer import cluster_DBSCAN, cluster_KMeans
-from .binding_site import calculate_site_surface_area
-
+from .api import LipidInteraction

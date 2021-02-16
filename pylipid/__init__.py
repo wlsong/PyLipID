@@ -15,22 +15,7 @@
 ##############################################################################
 
 
-r"""
-PyLipID class
-=============
-**LipidInteraction** provides the outer layer functions to calculate lipid interactions
-and binding sites.
-
-.. currentmodule:: pylipid
-
-.. autosummary::
-   :toctree: generated/
-
-   LipidInteraction
-
-"""
-
-from .pylipid import LipidInteraction
+# from .api import LipidInteraction
 # import funcs
 # import plots
 # import utils

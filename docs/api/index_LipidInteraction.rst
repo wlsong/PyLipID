@@ -1,8 +1,8 @@
 
-pylipid.LipidInteraction
-=========================
+pylipid.api
+===========
 
-.. currentmodule:: pylipid
+.. currentmodule:: pylipid.api
 
 .. autoclass:: LipidInteraction
 
