@@ -5,14 +5,16 @@ plots (pylipid.plots)
 The ``plots`` package provides tools to plot the generated data in PyLipID.
 
 
+.. currentmodule:: pylipid.plots
+
 .. autosummary::
    :toctree: generated/
 
-   pylipid.plots.plot_koff
-   pylipid.plots.plot_residue_data
-   pylipid.plots.plot_residue_data_logo
-   pylipid.plots.surface_area
-   pylipid.plots.plot_surface_area
-   pylipid.plots.plot_binding_site_data
-   pylipid.plots.plot_corrcoef
+   ~plot_koff
+   ~plot_residue_data
+   ~plot_residue_data_logo
+   ~surface_area
+   ~plot_surface_area
+   ~plot_binding_site_data
+   ~plot_corrcoef
 

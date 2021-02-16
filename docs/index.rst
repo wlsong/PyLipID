@@ -30,9 +30,9 @@ Table of Contents
 .. toctree::
    :maxdepth: 2
 
-   INSTALL.rst
-   api/index.rst
-   tutorial.rst
+   INSTALL
+   api/index
+   tutorial
 
 
 
