@@ -22,7 +22,7 @@ the tutorials for examples and the documentations for the API functionalities:
     * Generation of manuscript-ready figures for analysis.
 
 PyLipID can be used from Jupyter (former IPython, recommended), or by writing Python scripts.
-The documentaion and tutorials can be found at `pylipid.readthedocs.io <pylipid.readthedocs.io>`__.
+The documentaion and tutorials can be found at `pylipid.readthedocs.io <https://pylipid.readthedocs.io>`_.
 
 Installation
 ============
