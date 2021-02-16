@@ -14,6 +14,33 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
+r"""
+funcs module
+==============
+The ``funcs`` module provides functions for functions that do the heavy-lifting:
+
+.. currentmodule:: pylipid.funcs
+
+.. autosummary::
+   :toctree: generated/
+
+   cal_koff
+   cal_survival_func
+   Duration
+   cal_contact_residues
+   cal_interaction_frequency
+   get_node_list
+   collect_bound_poses
+   vectorize_poses
+   calculate_scores
+   write_bound_poses
+   cluster_DBSCAN
+   cluster_KMeans
+   calculate_site_surface_area
+
+"""
+
+
 from .kinetics import cal_koff
 from .kinetics import cal_survival_func
 from .interactions import Duration

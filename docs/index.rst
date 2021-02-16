@@ -3,11 +3,6 @@
 PyLipID - A Python Library For Lipid Interactions Analysis
 ==========================================================
 
-.. image:: https://travis-ci.com/wlsong/PyLipID.svg?branch=master
-   :target: https://travis-ci.com/github/wlsong/PyLipID
-.. image:: https://img.shields.io/pypi/v/PyLipID
-   :target: https://pypi.org/project/pylipid/
-
 PyLipID is a python library for analyzing lipid interactions with membrane proteins from
 Molecular Dynamics Simulations. PyLipID has the following main features, please check out
 the tutorials for examples and the documentations for the API functionalities:
@@ -21,21 +16,23 @@ the tutorials for examples and the documentations for the API functionalities:
     * Adoption of a dual-cutoff scheme to overcome the 'cage-rattling' effect of coarse-grained simulations.
     * Generation of manuscript-ready figures for analysis.
 
-PyLipID can be used from Jupyter (former IPython, recommended), or by writing Python scripts.
-The documentaion and tutorials can be found at `pylipid.readthedocs.io <https://pylipid.readthedocs.io>`_.
+Citation
+=========
 
-Installation
-============
+If you use PyLipID in scientific software, please cite the following paper:
 
-To install the PyLipID Python package, you need a few Python package dependencies which is listed in the
-`requirement.txt` file.
+PLACEHOLDER
 
-If these dependencies are not available in their required versions, the installation will fail. We thus
-recommend using the package installer pip:
 
-``pip install pylipid``
+Table of Contents
+=================
 
-If you know what you are doing and want to build from the source, the package is also available for
-download on Github via:
+.. toctree::
+   :maxdepth: 2
 
-``git clone https://github.com/wlsong/PyLipID``
+   INSTALL.rst
+   api/index.rst
+   tutorial.rst
+
+
+

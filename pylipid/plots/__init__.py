@@ -14,6 +14,27 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
+r"""
+plots module
+============
+The ``plot`` module provides functions for aiding in the scientific analysis:
+
+.. currentmodule:: pylipid.plots
+
+.. autosummary::
+   :toctree: generated/
+
+   plot_koff
+   plot_residue_data
+   plot_residue_data_logo
+   surface_area
+   plot_surface_area
+   plot_binding_site_data
+   plot_corrcoef
+
+"""
+
+
 from .koff import plot_koff
 from .plot1d import plot_residue_data
 from .plot1d import plot_residue_data_logos

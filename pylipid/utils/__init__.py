@@ -14,6 +14,27 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
+
+r"""
+utils module
+=============
+The ``utils`` module contains other assisting functions:
+
+.. currentmodule:: pylipid.utils
+
+.. autosummary::
+   :toctree: generated/
+
+   check_dir
+   write_PDB
+   write_pymol_script
+   sparse_corrcoef
+   rmsd
+   get_traj_info
+
+"""
+
+
 from .directory import check_dir
 from .coordinate import write_PDB
 from .pymol_script import write_pymol_script

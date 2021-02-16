@@ -10,28 +10,29 @@ the main class object `LipidInteractions` and three assisting packages.
 The `pylipid.LipidInteraction` class provides functions to calculate lipid interactions and
 binding sites:
 
-.. automodule:: pylipid.LipidInteraction
+.. toctree::
+   :maxdepth: 1
+
+   index_LipidInteraction.rst
+
+The ``funcs`` module provides functions for functions that do the heavy-lifting:
 
 .. toctree::
    :maxdepth: 1
 
-The ``funcs`` package for functions that do the heavy-lifting:
+   index_funcs.rst
 
-.. automodule:: pylipid.funcs
-
-.. toctree::
-   :maxdepth: 1
-
-``plot`` package for aiding in the scientific analysis:
-
-.. automodule:: pylipid.plots
+The ``plot`` module provides functions for aiding in the scientific analysis:
 
 .. toctree::
    :maxdepth: 1
 
-``utils`` package contains other assisting functions:
+   index_plots.rst
 
-.. automodule:: pylipid.utils
+The ``utils`` module contains other assisting functions:
 
 .. toctree::
    :maxdepth: 1
+
+   index_utils.rst
+

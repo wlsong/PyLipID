@@ -27,16 +27,16 @@ from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 import pandas as pd
 from tqdm import trange, tqdm
-from .funcs import cal_contact_residues
-from .funcs import cal_interaction_frequency, Duration, cal_koff
-from .funcs import get_node_list
-from .funcs import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
-from .funcs import cluster_DBSCAN, cluster_KMeans
-from .funcs import calculate_site_surface_area
-from .plots import plot_koff
-from .plots import plot_surface_area, plot_binding_site_data
-from .plots import plot_residue_data, plot_corrcoef, plot_residue_data_logos
-from .utils import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, rmsd, get_traj_info
+from pylipid.funcs import cal_contact_residues
+from pylipid.funcs import cal_interaction_frequency, Duration, cal_koff
+from pylipid.funcs import get_node_list
+from pylipid.funcs import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
+from pylipid.funcs import cluster_DBSCAN, cluster_KMeans
+from pylipid.funcs import calculate_site_surface_area
+from pylipid.plots import plot_koff
+from pylipid.plots import plot_surface_area, plot_binding_site_data
+from pylipid.plots import plot_residue_data, plot_corrcoef, plot_residue_data_logos
+from pylipid.utils import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, rmsd, get_traj_info
 
 
 class LipidInteraction:
