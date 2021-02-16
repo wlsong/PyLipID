@@ -10,12 +10,12 @@ path checking and writing pymol script etc.
 .. autosummary::
    :toctree: generated/
 
-   ~check_dir
-   ~write_PDB
-   ~write_pymol_script
-   ~sparse_corrcoef
-   ~rmsd
-   ~get_traj_info
+   pylipid.utils.check_dir
+   pylipid.utils.write_PDB
+   pylipid.utils.write_pymol_script
+   pylipid.utils.sparse_corrcoef
+   pylipid.utils.rmsd
+   pylipid.utils.get_traj_info
 
 
 
