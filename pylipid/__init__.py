@@ -31,6 +31,6 @@ and binding sites.
 """
 
 from .pylipid import LipidInteraction
-# import funcs
-# import plots
-# import utils
+import funcs
+import plots
+import utils
