@@ -2,8 +2,6 @@
 LipidInteraction (pylipid.LipidInteraction)
 ===========================================
 
-.. currentmodule:: pylipid
-
 .. autoclass:: LipidInteraction
 
    .. rubric:: Methods
@@ -11,18 +9,18 @@ LipidInteraction (pylipid.LipidInteraction)
    .. autosummary::
       :toctree: generated/
 
-      ~LipidInteraction.collect_residue_contacts
-      ~LipidInteraction.compute_residue_koff
-      ~LipidInteraction.compute_binding_nodes
-      ~LipidInteraction.compute_site_koff
-      ~LipidInteraction.analyze_bound_poses
-      ~LipidInteraction.compute_surface_area
-      ~LipidInteraction.write_site_info
-      ~LipidInteraction.save_data
-      ~LipidInteraction.save_coordinate
-      ~LipidInteraction.save_pymol_script
-      ~LipidInteraction.plot
-      ~LipidInteraction.plot_logo
+      pylipid.LipidInteraction.collect_residue_contacts
+      pylipid.LipidInteraction.compute_residue_koff
+      pylipid.LipidInteraction.compute_binding_nodes
+      pylipid.LipidInteraction.compute_site_koff
+      pylipid.LipidInteraction.analyze_bound_poses
+      pylipid.LipidInteraction.compute_surface_area
+      pylipid.LipidInteraction.write_site_info
+      pylipid.LipidInteraction.save_data
+      pylipid.LipidInteraction.save_coordinate
+      pylipid.LipidInteraction.save_pymol_script
+      pylipid.LipidInteraction.plot
+      pylipid.LipidInteraction.plot_logo
 
 
    .. rubric:: Attributes
@@ -30,25 +28,25 @@ LipidInteraction (pylipid.LipidInteraction)
    .. autosummary::
       :toctree: generated
 
-      ~LipidInteraction.residue_list
-      ~LipidInteraction.node_list
-      ~LipidInteraction.lipid
-      ~LipidInteraction.lipid_atoms
-      ~LipidInteraction.cutoffs
-      ~LipidInteraction.nprot
-      ~LipidInteraction.stride
-      ~LipidInteraction.dt_traj
-      ~LipidInteraction.trajfile_list
-      ~LipidInteraction.topfile_list
-      ~LipidInteraction.resi_offset
-      ~LipidInteraction.save_dir
-      ~LipidInteraction.timeunit
-      ~LipidInteraction.koff
-      ~LipidInteraction.res_time
-      ~LipidInteraction.koff_bs
-      ~LipidInteraction.res_time_bs
-      ~LipidInteraction.residue
-      ~LipidInteraction.binding_site
+      pylipid.LipidInteraction.residue_list
+      pylipid.LipidInteraction.node_list
+      pylipid.LipidInteraction.lipid
+      pylipid.LipidInteraction.lipid_atoms
+      pylipid.LipidInteraction.cutoffs
+      pylipid.LipidInteraction.nprot
+      pylipid.LipidInteraction.stride
+      pylipid.LipidInteraction.dt_traj
+      pylipid.LipidInteraction.trajfile_list
+      pylipid.LipidInteraction.topfile_list
+      pylipid.LipidInteraction.resi_offset
+      pylipid.LipidInteraction.save_dir
+      pylipid.LipidInteraction.timeunit
+      pylipid.LipidInteraction.koff
+      pylipid.LipidInteraction.res_time
+      pylipid.LipidInteraction.koff_bs
+      pylipid.LipidInteraction.res_time_bs
+      pylipid.LipidInteraction.residue
+      pylipid.LipidInteraction.binding_site
 
 
 

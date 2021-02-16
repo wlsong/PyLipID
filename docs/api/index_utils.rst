@@ -5,7 +5,6 @@ utils (pylipid.utils)
 The ``utils`` package provides assisting tools to deal with e.g. the writing of pdb files,
 path checking and writing pymol script etc.
 
-.. currentmodule:: pylipid.utils
 
 .. autosummary::
    :toctree: generated/

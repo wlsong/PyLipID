@@ -5,19 +5,18 @@ funcs (pylipid.funcs)
 The ``funcs`` package provides tools to collect lipid interactions, calculate koff/residence time,
 and calculate binding sites in PyLipID
 
-.. currentmodule:: pylipid.funcs
 
 .. rubric:: binding_site
 
 .. autosummary::
    :toctree: generated/
 
-   ~get_node_list
-   ~collect_bound_poses
-   ~vectorize_poses
-   ~calculate_scores
-   ~write_bound_poses
-   ~calculate_site_surface_area
+   pylipid.funcs.get_node_list
+   pylipid.funcs.collect_bound_poses
+   pylipid.funcs.vectorize_poses
+   pylipid.funcs.calculate_scores
+   pylipid.funcs.write_bound_poses
+   pylipid.funcs.calculate_site_surface_area
 
 
 .. rubric:: clusterer
@@ -25,8 +24,8 @@ and calculate binding sites in PyLipID
 .. autosummary::
    :toctree: generated/
 
-    ~cluster_DBSCAN
-    ~cluster_KMeans
+    pylipid.funcs.cluster_DBSCAN
+    pylipid.funcs.cluster_KMeans
 
 
 .. rubric:: interactions
@@ -34,9 +33,9 @@ and calculate binding sites in PyLipID
 .. autosummary::
    :toctree: generated/
 
-    ~cal_contact_residues
-    ~Duration
-    ~cal_interaction_frequency
+    pylipid.funcs.cal_contact_residues
+    pylipid.funcs.Duration
+    pylipid.funcs.cal_interaction_frequency
 
 
 .. rubric:: kinetics
