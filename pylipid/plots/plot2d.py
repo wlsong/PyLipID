@@ -25,7 +25,7 @@ import numpy as np
 __all__ = ["plot_corrcoef"]
 
 
-def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None):
+def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None, fig_close=False):
     """Plot correlation coefficient matrix.
 
     Parameters
@@ -116,7 +116,8 @@ def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None)
 
     plt.tight_layout()
     fig.savefig(fn, dpi=200)
-    plt.close()
+    if fig_close:
+        plt.close()
 
     return
 

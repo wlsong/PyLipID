@@ -256,7 +256,7 @@ class LipidInteraction:
                                                                                            self._cutoffs[0])
                     contact_high, _, _ = cal_contact_residues(dist_matrix, self._cutoffs[1])
                     self.contact_residues_high[residue_id].append(contact_high)
-                    self.contact_residues_low[residue_id].append(contact_low)
+                    self.r[residue_id].append(contact_low)
                     self.durations[residue_id].append(
                         Duration(contact_low, contact_high, timestep).cal_durations())
                     with warnings.catch_warnings():  # mute the warnings for empty list.
@@ -547,7 +547,7 @@ class LipidInteraction:
 
     def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
                             kde_bw=0.15, pca_component=0.95, plot_rmsd=True, save_dir=None,
-                            n_clusters="auto", eps=None, min_samples=None, metric="euclidean"):
+                            n_clusters="auto", eps=None, min_samples=None, metric="euclidean", fig_close=False):
         """Analyze binding poses.
 
         Parameters
@@ -636,10 +636,10 @@ class LipidInteraction:
         # plot RMSD
         if plot_rmsd and n_top_poses > 0:
             plot_binding_site_data(pose_rmsd_data, os.path.join(pose_dir, "Pose_RMSD_violinplot.pdf"),
-                                   title="{}".format(self._lipid), ylabel="RMSD (nm)")
+                                   title="{}".format(self._lipid), ylabel="RMSD (nm)", fig_close=fig_close)
         return pose_pool, pose_rmsd_data
 
-    def compute_surface_area(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None):
+    def compute_surface_area(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None, fig_close=False):
         """Calculate binding site surface areas.
 
         Parameters
@@ -685,12 +685,13 @@ class LipidInteraction:
                 surface_area_dir = check_dir(self._save_dir)
             plot_surface_area(surface_area_data,
                               os.path.join(surface_area_dir, "Surface_Area_{}_timeseries.pdf".format(self._lipid)),
-                              timeunit=self._timeunit)
+                              timeunit=self._timeunit, fig_close=fig_close)
             selected_columns = [column for column in surface_area_data.columns if column != "Time"]
             surface_data_noTimeSeries = surface_area_data[selected_columns]
             plot_binding_site_data(surface_data_noTimeSeries,
                                    os.path.join(surface_area_dir, "Surface_Area_{}_violinplot.pdf".format(self._lipid)),
-                                   title="{}".format(self._lipid), ylabel=r"Surface Area (nm$^2$)")
+                                   title="{}".format(self._lipid), ylabel=r"Surface Area (nm$^2$)",
+                                   fig_close=fig_close)
         return surface_area_data
 
     def write_site_info(self, sort_residue="Residence Time", save_dir=None, fn_info=None):
@@ -778,7 +779,7 @@ class LipidInteraction:
                            self._lipid, len(self._node_list))
         return
 
-    def plot(self, item, save_dir=None, gap=200):
+    def plot(self, item, save_dir=None, gap=200, fig_close=False):
         """Plot interactions.
 
         Parameters
@@ -804,16 +805,17 @@ class LipidInteraction:
             title = "{} {}".format(self._lipid, item)
             fig_fn = os.path.join(figure_dir, "{}.pdf".format("_".join(item.split())))
             residue_index = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self._residue_list])
-            plot_residue_data(residue_index, data, gap=gap, ylabel=ylabel, fn=fig_fn, title=title)
+            plot_residue_data(residue_index, data, gap=gap, ylabel=ylabel, fn=fig_fn, title=title,
+                              fig_close=fig_close)
 
         if item == "CorrCoef":
             residue_index = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self._residue_list])
             plot_corrcoef(self.interaction_corrcoef, residue_index, fn=os.path.join(figure_dir, "CorrCoef.pdf"),
-                          title="{} Correlation Coeffient".format(self._lipid))
+                          title="{} Correlation Coeffient".format(self._lipid), fig_close=fig_close)
 
         return
 
-    def plot_logo(self, item, save_dir=None, gap=2000, letter_map=None, color_scheme="chemistry"):
+    def plot_logo(self, item, save_dir=None, gap=2000, letter_map=None, color_scheme="chemistry", fig_close=False):
         """Plot interactions using logomaker.
 
         Parameters
@@ -852,7 +854,8 @@ class LipidInteraction:
             title = "{} {} Logo".format(self._lipid, item)
             fig_fn = os.path.join(figure_dir, "{}_logo.pdf".format("_".join(item.split())))
             plot_residue_data_logos(residue_index, resname_set, data, ylabel=ylabel,
-                                    fn=fig_fn, title=title, letter_map=letter_map, color_scheme=color_scheme)
+                                    fn=fig_fn, title=title, letter_map=letter_map, color_scheme=color_scheme,
+                                    fig_close=fig_close)
         else:
             print("Invalid input for item!")
 

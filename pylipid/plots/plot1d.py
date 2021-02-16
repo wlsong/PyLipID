@@ -30,7 +30,7 @@ __all__ = ["plot_residue_data", "plot_residue_data_logos",
 
 
 def plot_residue_data(residue_index, interactions, gap=200, ylabel=None,
-                      fn=None, title=None):
+                      fn=None, title=None, fig_close=False):
     """Plot interactions as a function of residue index
     
     Parameters
@@ -123,13 +123,14 @@ def plot_residue_data(residue_index, interactions, gap=200, ylabel=None,
         else:
             name, ext = os.path.splitext(fn)
             fig.savefig("{}_{}{}".format(name, chain_idx, ext), dpi=300)
-        plt.close()
+        if fig_close:
+            plt.close()
 
     return
 
 
 def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter_map=None,
-                            color_scheme="chemistry", ylabel=None, title=None, fn=None):
+                            color_scheme="chemistry", ylabel=None, title=None, fn=None, fig_close=False):
     """Plot interactions using `logomaker.Logo
     <https://logomaker.readthedocs.io/en/latest/implementation.html#logo-class>`_.
 
@@ -164,6 +165,7 @@ def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter
     fn : str, optional, default=None
             Figure name. By default the figure is saved as "Figure_interactions_logo.pdf" as the current
             working directory.
+    fig_close : bool, optional, default=False
 
     """
     # single-letter dictionary
@@ -225,12 +227,13 @@ def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter
         else:
             name, ext = os.path.splitext(fn)
             fig.savefig("{}_{}{}".format(name, page_idx, ext), dpi=300)
-        plt.close()
+        if fig_close:
+            plt.close()
 
     return
 
 
-def plot_binding_site_data(data, fig_fn, ylabel=None, title=None):
+def plot_binding_site_data(data, fig_fn, ylabel=None, title=None, fig_close=False):
     """Plot surface area in a matplotlib violin plot.
 
     Parameters
@@ -239,6 +242,7 @@ def plot_binding_site_data(data, fig_fn, ylabel=None, title=None):
     fig_fn : str
     ylabel : str, optional, default=None
     title : str, optional, default=None
+    fig_close : bool
 
     """
     from itertools import cycle as _cycle
@@ -295,11 +299,12 @@ def plot_binding_site_data(data, fig_fn, ylabel=None, title=None):
     ax.set_ylabel(ylabel, fontsize=10, weight="bold")
     plt.tight_layout()
     fig.savefig(fig_fn, dpi=200)
-    plt.close()
+    if fig_close():
+        plt.close()
     return
 
 
-def plot_surface_area(surface_area, fig_fn, timeunit=None):
+def plot_surface_area(surface_area, fig_fn, timeunit=None, fig_close=False):
     """Plot surface area as a function of time.
 
     Parameters
@@ -352,7 +357,8 @@ def plot_surface_area(surface_area, fig_fn, timeunit=None):
             axes[row_idx, col_idx].legend(loc="best", frameon=False)
     fig.tight_layout()
     fig.savefig(fig_fn, dpi=200)
-    plt.close()
+    if fig_close():
+        plt.close()
 
     return
 
