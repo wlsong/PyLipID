@@ -4,25 +4,23 @@ Documentation
 =============
 
 PyLipID is a Python library and can be used through python or ipython. See Tutorials for
-examples and getting started. The API (Application Programming Interface) currently contains
-the main class object `LipidInteractions` and three assisting packages.
+examples and getting started. The package contains 4 modules:
 
-The `pylipid.LipidInteraction` class provides functions to calculate lipid interactions and
-binding sites:
+The ``api`` module provides the outer layer functions and classes for calculation:
 
 .. toctree::
    :maxdepth: 1
 
    index_LipidInteraction
 
-The ``funcs`` module provides functions for functions that do the heavy-lifting:
+The ``funcs`` module contains functions that do the heavy-lifting:
 
 .. toctree::
    :maxdepth: 1
 
    index_funcs
 
-The ``plot`` module provides functions for aiding in the scientific analysis:
+The ``plot`` module contains plotting functions for aiding in the scientific analysis:
 
 .. toctree::
    :maxdepth: 1
