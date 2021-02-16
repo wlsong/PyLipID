@@ -1,6 +1,6 @@
 
-plots (pylipid.plots)
-=====================
+pylipid.plots
+==============
 
 The ``plots`` package provides tools to plot the generated data in PyLipID.
 

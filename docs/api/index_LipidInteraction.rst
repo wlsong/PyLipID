@@ -1,6 +1,6 @@
 
-LipidInteraction (~LipidInteraction)
-===========================================
+pylipid.LipidInteraction
+=========================
 
 .. currentmodule:: pylipid
 

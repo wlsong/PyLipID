@@ -1,6 +1,6 @@
 
-funcs (pylipid.funcs)
-=====================
+pylipid.funcs
+==============
 
 The ``funcs`` package provides tools to collect lipid interactions, calculate koff/residence time,
 and calculate binding sites in PyLipID
