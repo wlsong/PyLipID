@@ -64,9 +64,9 @@ column_names = data_lines[0].strip().split(",")
 for column_idx, column_name in enumerate(column_names):
     if column_name == "Residue":
         column_id_residue_list = column_idx
-    elif column_name == "Residue idx":
+    elif column_name == "Residue ID":
         column_id_residue_index = column_idx
-    elif column_name == "Binding site":
+    elif column_name == "Binding site ID":
         column_id_BS = column_idx
     elif column_name == value_to_show:
         column_id_value_to_show = column_idx

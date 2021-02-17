@@ -26,7 +26,7 @@ __all__ = ["plot_koff"]
 
 def plot_koff(durations, delta_t_list, survival_rates, n_fitted,
               survival_rates_bootstraps=None, fig_fn=None, title=None,
-              timeunit=None, text=None, t_total=None):
+              timeunit=None, text=None, t_total=None, fig_close=True):
     """Plot the koff figure.
 
     The koff figure contains two axes. The left axis plots the sorted
@@ -134,7 +134,8 @@ def plot_koff(durations, delta_t_list, survival_rates, n_fitted,
     if fig_fn is None:
         fig_fn = os.path.join(os.getcwd(), "koff.pdf")
     fig.savefig(fig_fn, dpi=300)
-    plt.close()
+    if fig_close:
+        plt.close()
 
     return
 

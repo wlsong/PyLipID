@@ -299,7 +299,7 @@ def plot_binding_site_data(data, fig_fn, ylabel=None, title=None, fig_close=Fals
     ax.set_ylabel(ylabel, fontsize=10, weight="bold")
     plt.tight_layout()
     fig.savefig(fig_fn, dpi=200)
-    if fig_close():
+    if fig_close:
         plt.close()
     return
 
@@ -357,7 +357,7 @@ def plot_surface_area(surface_area, fig_fn, timeunit=None, fig_close=False):
             axes[row_idx, col_idx].legend(loc="best", frameon=False)
     fig.tight_layout()
     fig.savefig(fig_fn, dpi=200)
-    if fig_close():
+    if fig_close:
         plt.close()
 
     return

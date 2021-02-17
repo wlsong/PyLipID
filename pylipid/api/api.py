@@ -297,7 +297,7 @@ class LipidInteraction:
         return
 
     def compute_residue_koff(self, residue_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                             save_dir=None, print_data=True, plot_data=True):
+                             save_dir=None, print_data=True, plot_data=True, fig_close=True):
         """Calculate interaction koff for residues.
 
         Parameters
@@ -308,6 +308,7 @@ class LipidInteraction:
         save_dir : str, optional, default=None
         print_data : bool, optional, default=True
         plot_data : bool, optional, default=True
+        fig_close : bool, optional, default=True
 
         Returns
         ---------
@@ -364,7 +365,7 @@ class LipidInteraction:
                     plot_koff(durations, properties["delta_t_list"], properties["survival_rates"],
                               properties["n_fitted"], survival_rates_bootstraps=properties["survival_rates_boot_set"],
                               fig_fn=os.path.join(koff_dir, "{}.pdf".format(residue)), title=residue,
-                              timeunit=self._timeunit, t_total=t_total, text=text)
+                              timeunit=self._timeunit, t_total=t_total, text=text, fig_close=fig_close)
                 if print_data:
                     print("{:15s}: {}".format("Residue", residue))
                     print("{:15s}: {}".format("Residue ID", residue_id))
@@ -429,7 +430,8 @@ class LipidInteraction:
         return node_list
 
     def compute_site_koff(self, binding_site_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                          save_dir=None, print_data=True, plot_data=True, sort_residue="Residence Time"):
+                          save_dir=None, print_data=True, plot_data=True, sort_residue="Residence Time",
+                          fig_close=True):
         """Calculate interactions for binding sites.
 
         Parameters
@@ -524,7 +526,7 @@ class LipidInteraction:
                 plot_koff(durations, properties_BS["delta_t_list"], properties_BS["survival_rates"],
                           properties_BS["n_fitted"], survival_rates_bootstraps=properties_BS["survival_rates_boot_set"],
                           fig_fn=os.path.join(BS_dir, f"BS_id{bs_id}.pdf"), title=f"Binding Site {bs_id}",
-                          timeunit=self._timeunit, t_total=t_total, text=text)
+                          timeunit=self._timeunit, t_total=t_total, text=text, fig_close=fig_close)
         # update dataset
         self.dataset["Binding Site Koff"] = koff_BS_per_residue
         self.dataset["Binding Site Residence Time"] = res_time_BS_per_residue
