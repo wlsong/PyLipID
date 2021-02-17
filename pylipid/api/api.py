@@ -256,7 +256,7 @@ class LipidInteraction:
                                                                                            self._cutoffs[0])
                     contact_high, _, _ = cal_contact_residues(dist_matrix, self._cutoffs[1])
                     self.contact_residues_high[residue_id].append(contact_high)
-                    self.r[residue_id].append(contact_low)
+                    self.contact_residues_low[residue_id].append(contact_low)
                     self.durations[residue_id].append(
                         Duration(contact_low, contact_high, timestep).cal_durations())
                     with warnings.catch_warnings():  # mute the warnings for empty list.

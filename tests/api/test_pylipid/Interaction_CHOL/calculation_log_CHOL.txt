@@ -1,0 +1,86 @@
+###### Lipid: CHOL
+###### Lipid Atoms: None
+###### Cutoffs: [0.55 0.8 ]
+###### nprot: 1
+###### Trajectories:
+  ../data/run1/protein_lipids.xtc
+  ../data/run2/protein_lipids.xtc
+###### Coordinates:
+  ../data/run1/protein_lipids.gro
+  ../data/run2/protein_lipids.gro
+
+########## CHOL interactions in 
+########## ../data/run1/protein_lipids.xtc 
+10 residues that showed longest average interaction durations (us):
+ 269TYR  --  0.460  
+ 65SER   --  0.420  
+ 42PHE   --  0.420  
+ 99ASP   --  0.365  
+ 54GLY   --  0.360  
+ 58ILE   --  0.314  
+ 15ALA   --  0.259  
+ 44VAL   --  0.256  
+ 45SER   --  0.255  
+ 48ALA   --  0.224  
+10 residues that showed highest lipid occupancy (100%):
+ 16VAL   --  88.84  
+ 190LEU  --  87.65  
+ 12LEU   --  86.45  
+ 55VAL   --  85.66  
+ 10VAL   --  81.67  
+ 242LEU  --  81.67  
+ 239LEU  --  79.28  
+ 125ILE  --  79.28  
+ 235ILE  --  78.88  
+ 98ILE   --  77.29  
+10 residues that have the largest number of surrounding lipids (count):
+ 16VAL   --   1.58  
+ 189LEU  --   1.49  
+ 242LEU  --   1.44  
+ 12LEU   --   1.39  
+ 55VAL   --   1.39  
+ 235ILE  --   1.38  
+ 128VAL  --   1.37  
+ 277THR  --   1.36  
+ 125ILE  --   1.35  
+ 10VAL   --   1.31  
+
+
+
+########## CHOL interactions in 
+########## ../data/run2/protein_lipids.xtc 
+10 residues that showed longest average interaction durations (us):
+ 250ILE  --  0.428  
+ 247LEU  --  0.380  
+ 99ASP   --  0.354  
+ 58ILE   --  0.341  
+ 268MET  --  0.290  
+ 59PRO   --  0.263  
+ 45SER   --  0.258  
+ 44VAL   --  0.245  
+ 264PRO  --  0.241  
+ 62ILE   --  0.232  
+10 residues that showed highest lipid occupancy (100%):
+ 55VAL   --  91.63  
+ 16VAL   --  91.63  
+ 12LEU   --  89.24  
+ 10VAL   --  85.66  
+ 242LEU  --  85.66  
+ 98ILE   --  85.26  
+ 59PRO   --  84.46  
+ 190LEU  --  84.06  
+ 246PRO  --  82.87  
+ 129LEU  --  82.87  
+10 residues that have the largest number of surrounding lipids (count):
+ 16VAL   --   1.52  
+ 242LEU  --   1.49  
+ 128VAL  --   1.45  
+ 125ILE  --   1.43  
+ 274LEU  --   1.40  
+ 129LEU  --   1.35  
+ 10VAL   --   1.34  
+ 189LEU  --   1.34  
+ 190LEU  --   1.33  
+ 131PHE  --   1.33  
+
+
