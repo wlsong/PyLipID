@@ -49,7 +49,6 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir))
     surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir))
 
-
     #### plot binding site comparison.
 
     timeunit = timeunit = 'ns' if li.timeunit == "ns" else r"$\mu$s"
@@ -94,7 +93,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     plt.close()
 
 
-    # plot 3
+    # plot No. 3
     surface_area_averages = np.array([surface_area_data["Binding Site {}".format(bs_id)].dropna(inplace=False).mean()
                                       for bs_id in binding_site_IDs])
     fig, ax = plt.subplots(1, 1)
@@ -108,4 +107,30 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
         plt.setp(label, fontsize=12, weight="normal")
     plt.tight_layout()
     plt.savefig("{}/{}_surface_area_v_binding_site.pdf".format(li.save_dir, li.lipid), dpi=200)
+    plt.close()
+
+
+    # plot No. 4
+    res_time_BS = np.array([li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
+                           for bs_id in binding_site_IDs])
+    fig, ax = plt.subplots(1, 1)
+    ax.scatter(res_time_BS, RMSD_averages, s=50, color="red")
+    ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
+    ax.set_ylabel("RMSD (nm)", fontsize=12)
+    for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
+        plt.setp(label, fontsize=12, weight="normal")
+    plt.tight_layout()
+    plt.savefig("{}/{}_Residence_Time_v_RMSD.pdf".format(li.save_dir, li.lipid), dpi=200)
+    plt.close()
+
+
+    # plot No. 5
+    fig, ax = plt.subplots(1, 1)
+    ax.scatter(res_time_BS, surface_area_averages, s=50, color="red")
+    ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
+    ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=12)
+    for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
+        plt.setp(label, fontsize=12, weight="normal")
+    plt.tight_layout()
+    plt.savefig("{}/{}_Residence_Time_v_surface_area.pdf".format(li.save_dir, li.lipid), dpi=200)
     plt.close()
