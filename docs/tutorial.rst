@@ -1,7 +1,7 @@
 
-========
-Tutorial
-========
+=========
+Tutorials
+=========
 
 We provide a collection of Jupyter notebook tutorials that provide either a complete walk-through of the application
 or explanations of some important functions.
