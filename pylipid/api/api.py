@@ -407,7 +407,7 @@ class LipidInteraction:
         if len(self._node_list) == 0:
             print("No binding site detected!!")
         else:
-            residue_BS_identifiers = np.ones(self._nresi_per_protein) * -1
+            residue_BS_identifiers = np.ones(self._nresi_per_protein, dtype=int) * -1
             for bs_id, nodes in enumerate(self._node_list):
                 residue_BS_identifiers[nodes] = bs_id
             # update dataset

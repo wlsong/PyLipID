@@ -79,7 +79,7 @@ for line in data_lines[1:]:
     data_list = line.strip().split(",")
     residue_list.append(data_list[column_id_residue_list])
     residue_rank_set.append(data_list[column_id_residue_index])
-    binding_site_identifiers.append(data_list[column_id_BS])
+    binding_site_identifiers.append(float(data_list[column_id_BS]))
     values_to_show.append(data_list[column_id_value_to_show])
 
 ############## read information from pdb file ##########
