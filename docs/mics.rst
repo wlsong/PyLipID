@@ -52,14 +52,15 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                  "Duration BS", "Occupancy BS"]:
         li.save_data(item=item)
 
-    for item in ["Dataset", "Duration", "Occupancy", "Lipid Count", "Duration BS",
+    for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count", "Duration BS",
                  "Occupancy BS", "Residence Time BS"]:
         li.save_coordinate(item=item)
 
-    for item in ["Dataset", "Duration", "Occupancy", "Lipid Count"]:
+    for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
         li.plot(item=item, fig_close=True)
         li.plot_logo(item=item, fig_close=True)
-
+    li.plot(item="CorrCoef")
+    
     pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir))
     surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir))
 
