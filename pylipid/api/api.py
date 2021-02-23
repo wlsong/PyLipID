@@ -928,7 +928,7 @@ class LipidInteraction:
 
     def _format_koff_text(self, properties):
         """Format text for koff plot. """
-        tu = "ns" if self._timeunit == "ns" else r"$\mu$ s"
+        tu = "ns" if self._timeunit == "ns" else r"$\mu$s"
         text = "{:18s} = {:.3f} {:2s}$^{{-1}} $\n".format("$k_{{off1}}$", properties["ks"][0], tu)
         text += "{:18s} = {:.3f} {:2s}$^{{-1}} $\n".format("$k_{{off2}}$", properties["ks"][1], tu)
         text += "{:14s} = {:.4f}\n".format("$R^2$", properties["r_squared"])

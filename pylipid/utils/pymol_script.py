@@ -66,7 +66,7 @@ for column_idx, column_name in enumerate(column_names):
         column_id_residue_list = column_idx
     elif column_name == "Residue ID":
         column_id_residue_index = column_idx
-    elif column_name == "Binding site ID":
+    elif column_name == "Binding Site ID":
         column_id_BS = column_idx
     elif column_name == value_to_show:
         column_id_value_to_show = column_idx

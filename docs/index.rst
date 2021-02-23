@@ -33,6 +33,7 @@ Table of Contents
    INSTALL
    api/index
    tutorial
+   gallery
    mics
 
 
