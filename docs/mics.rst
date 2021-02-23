@@ -42,6 +42,8 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                          fig_close=True)
     _, pose_rmsd_data = li.analyze_bound_poses()
     surface_area_data = li.compute_surface_area()
+    if pdb_file_to_map is not None:
+        li.save_pymol_script(pdb_file_to_map)
 
     #### write and save data
     li.write_site_info()
