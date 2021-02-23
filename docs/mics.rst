@@ -21,6 +21,11 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     timeunit = "us"  # micro-sec. "ns" is nanosecond.
     save_dir = None  # save at current working directory
     binding_site_size = 4  # binding site should contain at least four residues.
+    resi_offset = 0  # shift the residue index, useful in MARTINI force field.
+    pdb_file_to_map = None   # if a pdb coordinate of the receptor is provided, a python script
+                             # "show_binding_site_info.py" will be generated which maps the binding
+                             # site information to the structure. As PyMol cannot recognize coarse-grained
+                             # structures, an atomistic structure of the receptor is needed.
 
     #####################################
     ###### no changes needed below ######
@@ -28,7 +33,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
 
     #### calculate lipid interactions
     li = LipidInteraction(trajfile_list, topfile_list, cutoffs=cutoffs, lipid=lipid,
-                          lipid_atoms=lipid_atoms, nprot=1,
+                          lipid_atoms=lipid_atoms, nprot=1, resi_offset=resi_offset
                           timeunit=timeunit, save_dir=save_dir)
     li.collect_residue_contacts(write_log=True, print_log=True)
     li.compute_residue_koff(print_data=False, plot_data=True, fig_close=True)
