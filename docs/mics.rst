@@ -60,15 +60,15 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
         li.plot(item=item, fig_close=True)
         li.plot_logo(item=item, fig_close=True)
     li.plot(item="CorrCoef")
-    
+
     pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir))
     surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir))
 
     #### plot binding site comparison.
 
-    timeunit = timeunit = 'ns' if li.timeunit == "ns" else r"$\mu$s"
-    ylabel_dict = {"Residence Time": "Residence Time ({})".format(timeunit),
-                   "Duration": "Duration ({})".format(timeunit),
+    ylabel_timeunit = 'ns' if li.timeunit == "ns" else r"$\mu$s"
+    ylabel_dict = {"Residence Time": "Residence Time ({})".format(ylabel_timeunit),
+                   "Duration": "Duration ({})".format(ylabel_timeunit),
                    "Occupancy": "Occuoancy (100%)",
                    "Lipid Count": "Lipid Count (num.)"}
     binding_site_IDs = np.sort(
