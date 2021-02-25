@@ -1,4 +1,3 @@
-![Github Logo](https://github.com/wlsong/PyLipID/blob/master/header.png)
 
 ## Introduction 
 **pylipid.py**: is a toolkit to calculate lipid interactions with membrane proteins. 
