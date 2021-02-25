@@ -1,0 +1,21 @@
+name: PyLipID
+channels:
+  - conda-forge
+  - defaults
+  - schrodinger 
+  - bioconda
+  - rangsiman
+  - anaconda
+dependencies:
+  - python
+  - mdtraj
+  - matplotlib
+  - seaborn
+  - networkx
+  - python-louvain
+  - pymol
+  - pillow
+  - logomaker
+  - statsmodels
+  - scikit-learn
+  - tqdm

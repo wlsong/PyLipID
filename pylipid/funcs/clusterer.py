@@ -51,6 +51,8 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
     labels : array_like, shape=(n_samples)
 
     """
+    if len(data) <= 3:
+        return np.array([0 for dummy in data])
     if eps is None:
         nearest_neighbors = NearestNeighbors(n_neighbors=3)
         nearest_neighbors.fit(data)
@@ -90,6 +92,8 @@ def cluster_KMeans(data, n_clusters):
     labels : array_like, shape=(n_samples)
 
     """
+    if len(data) < n_clusters:
+        return cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean")
     model = KMeans(n_clusters=n_clusters).fit(data)
     labels = model.predict(data)
     return labels

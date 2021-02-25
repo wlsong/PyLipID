@@ -1,8 +1,7 @@
 mdtraj
 numpy
 pandas
-matplotlib
-seaborn
+matplotlib>=3.3.3
 networkx
 scipy
 python-louvain

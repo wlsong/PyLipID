@@ -14,4 +14,4 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
-from ._version import __version__
+__version__ = '1.3.9'
