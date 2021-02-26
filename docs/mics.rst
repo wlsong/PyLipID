@@ -13,10 +13,13 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     ##### This part needs changes according to your setting ##########
     ##################################################################
     trajfile_list = ["run1/md.xtc", "run2/md.xtc"]
-    topfile_list = ["run1/md.gro", "run2/md.gro"]
+    topfile_list = ["run1/md.gro", "run2/md.gro"]  # topology file is needed when trajectory format does not
+                                                   # provide topology information. See mdtraj.load() for more
+                                                   # information. 
     lipid = "CHOL"
     lipid_atoms = None  # all lipid atoms will be considered for interaction calculation.
-    cutoffs = [0.55, 0.8]
+    cutoffs = [0.55, 0.8] # dual-cutoff scheme for coarse-grained simulations. Single-cutoff scheme can be
+                          # achieved by using the same value for two cutoffs.
     nprot = 1
     timeunit = "us"  # micro-sec. "ns" is nanosecond.
     save_dir = None  # save at current working directory
@@ -24,8 +27,8 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     resi_offset = 0  # shift the residue index, useful in MARTINI force field.
     pdb_file_to_map = None   # if a pdb coordinate of the receptor is provided, a python script
                              # "show_binding_site_info.py" will be generated which maps the binding
-                             # site information to the structure. As PyMol cannot recognize coarse-grained
-                             # structures, an atomistic structure of the receptor is needed.
+                             # site information to the structure in PyMol. As PyMol cannot recognize
+                             # coarse-grained structures, an atomistic structure of the receptor is needed.
 
     #####################################
     ###### no changes needed below ######
