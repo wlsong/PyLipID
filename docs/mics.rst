@@ -59,8 +59,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                  "Duration BS", "Occupancy BS"]:
         li.save_data(item=item)
 
-    for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count", "Duration BS",
-                 "Occupancy BS", "Residence Time BS"]:
+    for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
         li.save_coordinate(item=item)
 
     for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
