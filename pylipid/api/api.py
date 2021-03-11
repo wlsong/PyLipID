@@ -547,7 +547,7 @@ class LipidInteraction:
             return [self._koff_BS[bs_id] for bs_id in selected_bs_id], \
                    [self._res_time_BS[bs_id] for bs_id in selected_bs_id]
 
-    def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
+    def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="pdb", score_weights=None,
                             kde_bw=0.15, pca_component=0.95, plot_rmsd=True, save_dir=None,
                             n_clusters="auto", eps=None, min_samples=None, metric="euclidean", fig_close=False):
         """Analyze binding poses.
@@ -556,7 +556,7 @@ class LipidInteraction:
         ----------
         binding_site_id : int or list_like or None, optional, default=None
         n_top_poses : int, optional, default=5
-        pose_format : str, optional, default="gro"
+        pose_format : str, optional, default="pdb"
         score_weights : dict or None, optional, default=None
         kde_bw : scalar, optional, default=0.15
         pca_component : int, float or ‘mle’, default=0.95

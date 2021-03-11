@@ -202,7 +202,7 @@ def calculate_scores(data, kde_bw=0.15, pca_component=0.95, score_weights=None):
         print("Pose generation error -- possibly due to insufficient number of binding event.")
 
 
-def write_bound_poses(pose_traj, pose_indices, save_dir, pose_prefix="BoundPose", pose_format="gro"):
+def write_bound_poses(pose_traj, pose_indices, save_dir, pose_prefix="BoundPose", pose_format="pdb"):
     """Write bound poses specified by pose_indices.
 
     Parameters
@@ -215,7 +215,7 @@ def write_bound_poses(pose_traj, pose_indices, save_dir, pose_prefix="BoundPose"
 
     """
     for idx, pose_id in enumerate(pose_indices):
-        pose_traj[pose_id].save(os.path.join(save_dir, "{}{}.{}".format(pose_prefix, idx+1, pose_format)))
+        pose_traj[pose_id].save(os.path.join(save_dir, "{}{}.{}".format(pose_prefix, idx, pose_format)))
     return
 
 
