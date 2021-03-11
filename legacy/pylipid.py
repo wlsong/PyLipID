@@ -1336,6 +1336,10 @@ if __name__ == '__main__':
     lipid_set = args.lipids
     cutoff = [float(data) for data in args.cutoffs]
     save_dir = check_dir(args.save_dir)
+    if args.dt is None:
+        dt = args.dt
+    else:
+        dt = float(args.dt)
     #######################################################################
     ######## write a backup file of params for reproducibility ############
     fn = os.path.join(save_dir, "pylipid_backup_{}.txt".format(datetime.datetime.now().strftime("%Y_%m_%d_%H%M")))
@@ -1382,7 +1386,7 @@ if __name__ == '__main__':
             letter_map[item.split(":")[0]] = item.split(":")[1]
     #######################################################################
     for lipid in lipid_set:
-        li = LipidInteraction(trajfile_list, grofile_list, stride=int(args.stride), dt=args.dt, cutoff=cutoff, lipid=lipid, \
+        li = LipidInteraction(trajfile_list, grofile_list, stride=int(args.stride), dt=dt, cutoff=cutoff, lipid=lipid, \
                               lipid_atoms=args.lipid_atoms, nprot=args.nprot, timeunit=args.tu, resi_offset=int(args.resi_offset), \
                               resi_list=resi_list, save_dir=args.save_dir)
         li.cal_interactions(save_dataset=args.save_dataset, nbootstrap=int(args.nbootstrap))

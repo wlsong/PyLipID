@@ -15,13 +15,17 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     trajfile_list = ["run1/md.xtc", "run2/md.xtc"]
     topfile_list = ["run1/md.gro", "run2/md.gro"]  # topology file is needed when trajectory format does not
                                                    # provide topology information. See mdtraj.load() for more
-                                                   # information. 
+                                                   # information.
     lipid = "CHOL"
     lipid_atoms = None  # all lipid atoms will be considered for interaction calculation.
     cutoffs = [0.55, 0.8] # dual-cutoff scheme for coarse-grained simulations. Single-cutoff scheme can be
                           # achieved by using the same value for two cutoffs.
     nprot = 1
     timeunit = "us"  # micro-sec. "ns" is nanosecond.
+    dt_traj = None  # the timestep of the trajectories. Need to use this param when trajectories are in a format
+                    # with no timestep information.
+    stride = 1   # tell pylipid to analyze every stride-th frame. Can be used to save computation memory
+                 # and speed up the calculation
     save_dir = None  # save at current working directory
     binding_site_size = 4  # binding site should contain at least four residues.
     resi_offset = 0  # shift the residue index, useful in MARTINI force field.
@@ -37,7 +41,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     #### calculate lipid interactions
     li = LipidInteraction(trajfile_list, topfile_list, cutoffs=cutoffs, lipid=lipid,
                           lipid_atoms=lipid_atoms, nprot=1, resi_offset=resi_offset,
-                          timeunit=timeunit, save_dir=save_dir)
+                          timeunit=timeunit, save_dir=save_dir, stride=stride, dt_traj=dt_traj)
     li.collect_residue_contacts(write_log=True, print_log=True)
     li.compute_residue_koff(print_data=False, plot_data=True, fig_close=True)
     li.compute_binding_nodes(threshold=binding_site_size, print_data=False)
