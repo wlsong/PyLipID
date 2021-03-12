@@ -16,19 +16,26 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     topfile_list = ["run1/md.gro", "run2/md.gro"]  # topology file is needed when trajectory format does not
                                                    # provide topology information. See mdtraj.load() for more
                                                    # information.
-    lipid = "CHOL"
+    dt_traj = None  # the timestep of trajectories. Need to use this param when trajectories are in a format
+                    # with no timestep information. Not necessary for trajectory formats of e.g. xtc, trr.
+    stride = 1   # tell pylipid to analyze every stride-th frame. Can be used to save computation memory
+                 # and speed up the calculation.
+
+    lipid = "CHOL"   # residue name in the topology.
     lipid_atoms = None  # all lipid atoms will be considered for interaction calculation.
     cutoffs = [0.55, 0.8] # dual-cutoff scheme for coarse-grained simulations. Single-cutoff scheme can be
                           # achieved by using the same value for two cutoffs.
-    nprot = 1
-    timeunit = "us"  # micro-sec. "ns" is nanosecond.
-    dt_traj = None  # the timestep of the trajectories. Need to use this param when trajectories are in a format
-                    # with no timestep information.
-    stride = 1   # tell pylipid to analyze every stride-th frame. Can be used to save computation memory
-                 # and speed up the calculation
-    save_dir = None  # save at current working directory
+
+    nprot = 1   # if the simulation system has N copies of receptors, "nprot=N" will report interactions
+                # averaged from the N copies, but "nprot=1" will ask pylipid to report interaction data for
+                # each copy.
+
     binding_site_size = 4  # binding site should contain at least four residues.
-    resi_offset = 0  # shift the residue index, useful in MARTINI force field.
+
+    save_dir = None  # save at current working directory if it is None.
+    timeunit = "us"  # micro-sec. "ns" is nanosecond. Time unit used for reporting the results.
+    resi_offset = 0  # shift the residue index, useful for MARTINI models.
+
     pdb_file_to_map = None   # if a pdb coordinate of the receptor is provided, a python script
                              # "show_binding_site_info.py" will be generated which maps the binding
                              # site information to the structure in PyMol. As PyMol cannot recognize
