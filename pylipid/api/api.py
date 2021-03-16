@@ -40,20 +40,33 @@ from ..utils import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, r
 
 
 class LipidInteraction:
-    def __init__(self, trajfile_list, topfile_list=None, stride=1, dt_traj=None, cutoffs=[0.55, 1.0],
-                 lipid="POPC", lipid_atoms=None, nprot=1, resi_offset=0, save_dir=None, timeunit="us"):
-        """The main class to handle the calculation.
+    def __init__(self, trajfile_list, cutoffs, lipid, topfile_list=None, lipid_atoms=None,
+                 nprot=1, resi_offset=0, save_dir=None, timeunit="us", stride=1, dt_traj=None):
+        """The outer layer class that integrates calculations and handles workflow.
 
-        *api* reads trajectory information via `mdtraj.load()`, and calculate the interactions
-        of specified lipids with the proteins or specified regions of the proteins in the systems.
+        `LipidInteraction` reads trajectory information via `mdtraj.load()`, and calculate interactions
+        of the specified lipid with the protein in the trajectories. `LipidInteraction` can calculate
+        interactions per protein residue and per binding site. 'LipidInteraction' also has a couple of assisting
+        functions to plot the interaction data and save the generated data.
 
         Parameters
         ----------
-        trajfile_list : str or list of str
-            A list of trajectory filenames. `mdtraj.load()` will load the trajectories one by one to read information.
-        topfile_list : str or list of str, optional, default=None
-            A list of topology filenames of the trajectories in *trajfile_list*. For those trajectory formats that
-            do not include topology information, `mdtraj.load()` requires a structure to read in
+        trajfile_list : str or a list of str
+            Trajectory filename(s) for `mdtraj.load()` to read the trajectory data.
+        cutoffs : float or a list of two floats
+            Cutoff value(s) for defining contacts. When a list of two floats are supplied, the dual-cutoff scheme
+            will be used, whereas a single float
+        topfile_list : str or a list of str, default=None
+            Topology filename(s). Most trajectory formats do not contain topology information. Pass in either
+            the path to a RCSB PDB file, a trajectory, or a topology for each trajectory in `trajfile_list`
+            to supply this information. See
+            `mdtraj.load() <https://mdtraj.org/1.9.4/api/generated/mdtraj.load.html#mdtraj.load>`_. for
+            more information.
+
+        stride : int, default=1
+            Only read every stride-th frame. The same as stride in mdtraj.load().
+        dt_traj : None or float, default=None
+
 
         """
         self._trajfile_list = np.atleast_1d(trajfile_list)
@@ -65,8 +78,11 @@ class LipidInteraction:
             raise ValueError(
                 "topfile_list should either have the same length as trajfile_list or have one valid file name")
 
+        if len(np.atleast_1d(cutoffs)) == 1:
+            self._cutoffs = np.array([np.atleast_1d(cutoffs)[0] for dummy in range(2)])
+        elif len(np.atleast_1d(cutoffs)) == 1:
+            self._cutoffs = np.sort(np.array(cutoffs, dtype=float))
         self._dt_traj = dt_traj
-        self._cutoffs = np.sort(np.array(cutoffs, dtype=float))
         self._lipid = lipid
         self._lipid_atoms = lipid_atoms
         self._nprot = int(nprot)
@@ -547,7 +563,7 @@ class LipidInteraction:
             return [self._koff_BS[bs_id] for bs_id in selected_bs_id], \
                    [self._res_time_BS[bs_id] for bs_id in selected_bs_id]
 
-    def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="pdb", score_weights=None,
+    def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
                             kde_bw=0.15, pca_component=0.95, plot_rmsd=True, save_dir=None,
                             n_clusters="auto", eps=None, min_samples=None, metric="euclidean", fig_close=False):
         """Analyze binding poses.
