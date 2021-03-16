@@ -52,12 +52,13 @@ napoleon_use_param = True
 napoleon_use_rtype = True
 
 extensions = [
-        'sphinx_rtd_theme',
+        'sphinx.ext.intersphinx',
         'sphinx.ext.autodoc',
         'sphinx.ext.autosummary',
         'sphinx.ext.napoleon',
         'sphinx.ext.coverage',
         'sphinx.ext.mathjax',
+        'sphinx.ext.viewcode',
         'nbsphinx'
 ]
 
@@ -74,14 +75,12 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'furo'
 html_static_path = ['static']
 html_logo = 'static/pylipid_logo.png'
 html_theme_options = {
-    'logo_only': True,
-    'display_version': False,
-    'prev_next_buttons_location': 'bottom',
-    'style_nav_header_background': 'white',
+    "sidebar_hide_name": True,
+    "navigation_with_keys": True,
 }
 
 exclude_patterns = ['_build', '*_test*', '**/.ipynb_checkpoints/*']
