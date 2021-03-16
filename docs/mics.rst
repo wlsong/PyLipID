@@ -33,6 +33,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     binding_site_size = 4  # binding site should contain at least four residues.
 
     save_dir = None  # save at current working directory if it is None.
+    save_pose_format = "gro"  # format that poses are written in
     timeunit = "us"  # micro-sec. "ns" is nanosecond. Time unit used for reporting the results.
     resi_offset = 0  # shift the residue index, useful for MARTINI models.
 
@@ -54,7 +55,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     li.compute_binding_nodes(threshold=binding_site_size, print_data=False)
     li.compute_site_koff(print_data=True, plot_data=True, sort_residue="Residence Time",
                          fig_close=True)
-    _, pose_rmsd_data = li.analyze_bound_poses()
+    _, pose_rmsd_data = li.analyze_bound_poses(pose_format=save_pose_format)
     surface_area_data = li.compute_surface_area()
     if pdb_file_to_map is not None:
         li.save_pymol_script(pdb_file_to_map)
@@ -94,7 +95,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                   [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site {}".format(item)].unique()[0]
                    for bs_id in binding_site_IDs]
                                )
-        fig, ax = plt.subplots(1, 1)
+        fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
         ax.scatter(np.arange(len(item_values)), np.sort(item_values)[::-1], s=50, color="red")
         ax.set_xticks(np.arange(len(item_values)))
         sorted_index = np.argsort(item_values)[::-1]
@@ -113,7 +114,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                  [pose_rmsd_data["Binding Site {}".format(bs_id)].dropna(inplace=False).mean()
                   for bs_id in binding_site_IDs]
                              )
-    fig, ax = plt.subplots(1, 1)
+    fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(np.arange(len(RMSD_averages)), np.sort(RMSD_averages)[::-1], s=50, color="red")
     ax.set_xticks(np.arange(len(RMSD_averages)))
     sorted_index = np.argsort(RMSD_averages)[::-1]
@@ -132,7 +133,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                    [surface_area_data["Binding Site {}".format(bs_id)].dropna(inplace=False).mean()
                     for bs_id in binding_site_IDs]
                                     )
-    fig, ax = plt.subplots(1, 1)
+    fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(np.arange(len(surface_area_averages)), np.sort(surface_area_averages)[::-1], s=50, color="red")
     ax.set_xticks(np.arange(len(surface_area_averages)))
     sorted_index = np.argsort(surface_area_averages)[::-1]
@@ -151,7 +152,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
               [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
                for bs_id in binding_site_IDs]
                            )
-    fig, ax = plt.subplots(1, 1)
+    fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(res_time_BS, RMSD_averages, s=50, color="red")
     ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
     ax.set_ylabel("RMSD (nm)", fontsize=12)
@@ -163,7 +164,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
 
 
     # plot No. 5
-    fig, ax = plt.subplots(1, 1)
+    fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(res_time_BS, surface_area_averages, s=50, color="red")
     ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
     ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=12)

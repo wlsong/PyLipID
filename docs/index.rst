@@ -48,6 +48,8 @@ Usage
 The :doc:`tutorial` is the place to go to learn how to use the PyLipID. The :doc:`api/index`
 provides API-level documentation.
 
+A no-brainer script is available at :doc:`mics` to run PyLipID with all the analysis.
+
 
 License
 =======
