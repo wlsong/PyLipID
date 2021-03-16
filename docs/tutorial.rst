@@ -13,5 +13,3 @@ improve.
    :maxdepth: 1
 
    tutorials/0-application-walk-through
-   tutorials/1-koff-and-residence-time
-   tutorials/2-binding_sites

@@ -16,12 +16,44 @@ the tutorials for examples and the documentations for the API functionalities:
     * Adoption of a dual-cutoff scheme to overcome the 'cage-rattling' effect of coarse-grained simulations.
     * Generation of manuscript-ready figures for analysis.
 
+
 Citation
 =========
 
 If you use PyLipID in scientific software, please cite the following paper:
 
 PLACEHOLDER
+
+
+Installing
+==========
+
+PyLipID can be installed with `pip <https://pip.pypa.io>`_
+
+.. code-block:: bash
+
+  $ pip install pylipid
+
+Alternatively, you can grab the latest source code from `GitHub <https://github.com/wlsong/PyLipID.git>`_:
+
+.. code-block:: bash
+
+  $ git clone git://github.com/wlsong/PyLipID.git
+  $ python setup.py install
+
+
+Usage
+=====
+
+The :doc:`tutorial` is the place to go to learn how to use the PyLipID. The :doc:`api/index`
+provides API-level documentation.
+
+
+License
+=======
+
+PyLipID is made available under the MIT License. For more details,
+see `LICENSE.txt <https://github.com/wlsong/PyLipID/blob/master/LICENSE.txt>`_.
 
 
 Table of Contents
