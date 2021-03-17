@@ -40,7 +40,7 @@ from ..utils import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, r
 
 
 class LipidInteraction:
-    def __init__(self, trajfile_list, cutoffs, lipid, topfile_list=None, lipid_atoms=None,
+    def __init__(self, trajfile_list, cutoffs=[0.45, 0.6], lipid="CHOL", topfile_list=None, lipid_atoms=None,
                  nprot=1, resi_offset=0, save_dir=None, timeunit="us", stride=1, dt_traj=None):
         """The outer layer class that integrates calculations and handles workflow.
 
@@ -53,9 +53,11 @@ class LipidInteraction:
         ----------
         trajfile_list : str or a list of str
             Trajectory filename(s) for `mdtraj.load()` to read the trajectory data.
-        cutoffs : float or a list of two floats
+        cutoffs : float or a list of two floats, default=[0.45, 0.6]
             Cutoff value(s) for defining contacts. When a list of two floats are supplied, the dual-cutoff scheme
             will be used, whereas a single float
+        lipid : str, default="CHOL"
+            The lipid residue name.
         topfile_list : str or a list of str, default=None
             Topology filename(s). Most trajectory formats do not contain topology information. Pass in either
             the path to a RCSB PDB file, a trajectory, or a topology for each trajectory in `trajfile_list`
@@ -76,12 +78,15 @@ class LipidInteraction:
             self._topfile_list = [topfile_list for dummy in self._trajfile_list]
         else:
             raise ValueError(
-                "topfile_list should either have the same length as trajfile_list or have one valid file name")
+                "topfile_list should either have the same length as trajfile_list or have one valid file name.")
 
         if len(np.atleast_1d(cutoffs)) == 1:
             self._cutoffs = np.array([np.atleast_1d(cutoffs)[0] for dummy in range(2)])
-        elif len(np.atleast_1d(cutoffs)) == 1:
+        elif len(np.atleast_1d(cutoffs)) == 2:
             self._cutoffs = np.sort(np.array(cutoffs, dtype=float))
+        else:
+            raise ValueError("cutoffs should be either a float or a list of two flaots.")
+
         self._dt_traj = dt_traj
         self._lipid = lipid
         self._lipid_atoms = lipid_atoms

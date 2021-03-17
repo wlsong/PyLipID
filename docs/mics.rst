@@ -47,7 +47,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     #####################################
 
     #### calculate lipid interactions
-    li = LipidInteraction(trajfile_list, topfile_list, cutoffs=cutoffs, lipid=lipid,
+    li = LipidInteraction(trajfile_list, topfile_list=topfile_list, cutoffs=cutoffs, lipid=lipid,
                           lipid_atoms=lipid_atoms, nprot=1, resi_offset=resi_offset,
                           timeunit=timeunit, save_dir=save_dir, stride=stride, dt_traj=dt_traj)
     li.collect_residue_contacts(write_log=True, print_log=True)
