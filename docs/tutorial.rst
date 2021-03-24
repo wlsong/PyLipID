@@ -13,3 +13,4 @@ improve.
    :maxdepth: 1
 
    tutorials/0-application-walk-through
+   tutorials/1-Distance_cutoff_determination.ipynb
