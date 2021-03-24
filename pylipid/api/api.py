@@ -40,8 +40,9 @@ from ..utils import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, r
 
 
 class LipidInteraction:
-    def __init__(self, trajfile_list, cutoffs=[0.45, 0.6], lipid="CHOL", topfile_list=None, lipid_atoms=None,
+    def __init__(self, trajfile_list, cutoffs=[0.475, 0.8], lipid="CHOL", topfile_list=None, lipid_atoms=None,
                  nprot=1, resi_offset=0, save_dir=None, timeunit="us", stride=1, dt_traj=None):
+
         """The outer layer class that integrates calculations and handles workflow.
 
         `LipidInteraction` reads trajectory information via `mdtraj.load()`, and calculate interactions
@@ -53,20 +54,23 @@ class LipidInteraction:
         ----------
         trajfile_list : str or a list of str
             Trajectory filename(s) for `mdtraj.load()` to read the trajectory data.
-        cutoffs : float or a list of two floats, default=[0.45, 0.6]
+
+        cutoffs : float or a list of two floats, default=[0.475, 0.8]
             Cutoff value(s) for defining contacts. When a list of two floats are supplied, the dual-cutoff scheme
             will be used, whereas a single float
+
         lipid : str, default="CHOL"
             The lipid residue name.
+
         topfile_list : str or a list of str, default=None
             Topology filename(s). Most trajectory formats do not contain topology information. Pass in either
             the path to a RCSB PDB file, a trajectory, or a topology for each trajectory in `trajfile_list`
             to supply this information. See
-            `mdtraj.load() <https://mdtraj.org/1.9.4/api/generated/mdtraj.load.html#mdtraj.load>`_. for
-            more information.
+            `mdtraj.load() <https://mdtraj.org>`_. for more information.
 
         stride : int, default=1
             Only read every stride-th frame. The same as stride in mdtraj.load().
+
         dt_traj : None or float, default=None
 
 

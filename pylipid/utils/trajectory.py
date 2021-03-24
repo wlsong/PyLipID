@@ -76,9 +76,9 @@ def get_traj_info(traj, lipid, lipid_atoms=None, resi_offset=0, nprot=1, protein
             chain_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
         protein_residue_atomid_list.append([chain_index_dict[resi] for resi in np.sort(list(chain_index_dict.keys()))])
     protein_residue_id = np.arange(len(protein_residue_atomid_list[0]), dtype=int)
-    residue_list = np.array(["{}{}".format(traj.top.residue(residue_id).resSeq+resi_offset, traj.top.residue(residue_id).name)
-                   for residue_id in protein_residue_id], dtype=str)
-
+    residue_list = np.array(["{}{}".format(traj.top.atom(residue_atoms[0]).residue.resSeq+resi_offset,
+                                           traj.top.atom(residue_atoms[0]).residue.name)
+                             for residue_atoms in protein_residue_atomid_list[0]], dtype=str)
     if lipid_ref is None:
         one_lipid_indices = []
         for lipid_id in np.sort(traj.top.select("resn {}".format(lipid))):
