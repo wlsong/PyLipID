@@ -85,16 +85,14 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                    "Duration": "Duration ({})".format(ylabel_timeunit),
                    "Occupancy": "Occuoancy (100%)",
                    "Lipid Count": "Lipid Count (num.)"}
-    binding_site_IDs = np.sort(
-             [int(bs_id) for bs_id in li.dataset["Binding Site ID"].unique() if bs_id != -1]
-                              )
 
     # plot No. 1
+    binding_site_IDs = np.sort(
+             [int(bs_id) for bs_id in li.dataset["Binding Site ID"].unique() if bs_id != -1])
     for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
         item_values = np.array(
                   [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site {}".format(item)].unique()[0]
-                   for bs_id in binding_site_IDs]
-                               )
+                   for bs_id in binding_site_IDs])
         fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
         ax.scatter(np.arange(len(item_values)), np.sort(item_values)[::-1], s=50, color="red")
         ax.set_xticks(np.arange(len(item_values)))
@@ -110,15 +108,16 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
 
 
     # plot No. 2
+    binding_site_IDs_RMSD = np.sort([int(bs_id) for bs_id in binding_site_IDs
+                                    if f"Binding Site {bs_id}" in pose_rmsd_data.columns])
     RMSD_averages = np.array(
-                 [pose_rmsd_data["Binding Site {}".format(bs_id)].dropna(inplace=False).mean()
-                  for bs_id in binding_site_IDs]
-                             )
+                 [pose_rmsd_data[f"Binding Site {bs_id}"].dropna(inplace=False).mean()
+                  for bs_id in binding_site_IDs_RMSD])
     fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(np.arange(len(RMSD_averages)), np.sort(RMSD_averages)[::-1], s=50, color="red")
     ax.set_xticks(np.arange(len(RMSD_averages)))
     sorted_index = np.argsort(RMSD_averages)[::-1]
-    ax.set_xticklabels(binding_site_IDs[sorted_index])
+    ax.set_xticklabels(binding_site_IDs_RMSD[sorted_index])
     ax.set_xlabel("Binding Site ID", fontsize=12)
     ax.set_ylabel("RMSD (nm)", fontsize=12)
     for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
@@ -131,8 +130,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     # plot No. 3
     surface_area_averages = np.array(
                    [surface_area_data["Binding Site {}".format(bs_id)].dropna(inplace=False).mean()
-                    for bs_id in binding_site_IDs]
-                                    )
+                    for bs_id in binding_site_IDs])
     fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(np.arange(len(surface_area_averages)), np.sort(surface_area_averages)[::-1], s=50, color="red")
     ax.set_xticks(np.arange(len(surface_area_averages)))
@@ -150,8 +148,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     # plot No. 4
     res_time_BS = np.array(
               [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
-               for bs_id in binding_site_IDs]
-                           )
+               for bs_id in binding_site_IDs_RMSD])
     fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(res_time_BS, RMSD_averages, s=50, color="red")
     ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
@@ -164,6 +161,9 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
 
 
     # plot No. 5
+    res_time_BS = np.array(
+              [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
+               for bs_id in binding_site_IDs])
     fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
     ax.scatter(res_time_BS, surface_area_averages, s=50, color="red")
     ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
