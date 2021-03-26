@@ -615,7 +615,7 @@ class LipidInteraction:
             # lipid_dist_per_atom shape: [n_lipid_atoms, n_bound_poses, n_BS_residues]
             if len(pose_pool[bs_id]) == 0:
                 print(f"Binding Site {bs_id} is bogus! Possibly due to insufficient sampling.")
-                pass
+                continue
             lipid_dist_per_atom, pose_traj = vectorize_poses(pose_pool[bs_id], self._node_list[bs_id],
                                                              self._protein_ref, self._lipid_ref)
             if n_top_poses > 0:
