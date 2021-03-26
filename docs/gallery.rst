@@ -5,7 +5,7 @@ Gallery
 =======
 
 
-**Bound poses**
+**Most representative bound poses**
 
 .. image:: static/top_ranked_poses.png
     :align: center
