@@ -11,21 +11,33 @@ Gallery
     :align: center
 
 
+**Interaction hotspots**
+
+.. image:: tutorials/statics/surface_hotspots.png
+    :align: center
+
+
+**Binding Site analysis**
+
+.. image:: tutorials/statics/binding_site_comparisons_cutoffs.png
+    :align: center
+
+
 **Koff plot**
 
-.. image:: static/binding_site_koff.png
+.. image:: tutorials/statics/koff_figure.png
     :align: center
 
 
 **Interaction plot**
 
-.. image:: static/Occupancy.png
+.. image:: tutorials/statics/Residence_Time.png
     :align: center
 
 
 **Logo plot**
 
-.. image:: static/Residence_Time_logo.png
+.. image:: tutorials/statics/Residence_Time_logo.png
     :align: center
 
 
@@ -37,13 +49,13 @@ Gallery
 
 **Bound pose RMSD**
 
-.. image:: static/Pose_RMSD.png
+.. image:: tutorials/statics/Pose_RMSD_violinplot.png
     :align: center
 
 
 **Binding site surface**
 
-.. image:: static/Surface_Area.png
+.. image:: tutorials/statics/Surface_Area_violinplot.png
     :align: center
 
 

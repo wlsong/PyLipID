@@ -1,6 +1,6 @@
 
 ==========================================================
-PyLipID - A Python Library For Lipid Interactions Analysis
+PyLipID - A Python Package For Lipid Interactions Analysis
 ==========================================================
 
 PyLipID is a python library for analyzing lipid interactions with membrane proteins from
