@@ -23,11 +23,11 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
 
     lipid = "CHOL"   # residue name in the topology.
     lipid_atoms = None  # all lipid atoms will be considered for interaction calculation.
-    cutoffs = [0.55, 0.8] # dual-cutoff scheme for coarse-grained simulations. Single-cutoff scheme can be
+    cutoffs = [0.5, 0.7]  # dual-cutoff scheme for coarse-grained simulations. Single-cutoff scheme can be
                           # achieved by using the same value for two cutoffs.
 
     nprot = 1   # if the simulation system has N copies of receptors, "nprot=N" will report interactions
-                # averaged from the N copies, but "nprot=1" will ask pylipid to report interaction data for
+                # averaged from the N copies, but "nprot=1" will ask pylipid to report interaction for
                 # each copy.
 
     binding_site_size = 4  # binding site should contain at least four residues.
@@ -75,8 +75,8 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
         li.plot_logo(item=item, fig_close=True)
     li.plot(item="CorrCoef")
 
-    pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir))
-    surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir))
+    pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir), index=False, header=True)
+    surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir), index=False, header=True)
 
     #### plot binding site comparison.
 

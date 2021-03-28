@@ -771,7 +771,7 @@ class LipidInteraction:
                 pickle.dump(obj, f, 2)
 
         if item.lower() == "dataset":
-            self.dataset.to_csv(os.path.join(data_dir, "dataset.csv"))
+            self.dataset.to_csv(os.path.join(data_dir, "dataset.csv"), header=True, index=False)
 
         return
 
@@ -804,7 +804,7 @@ class LipidInteraction:
         script_dir = check_dir(save_dir) if save_dir is not None else check_dir(self._save_dir)
         data_fname = os.path.join(script_dir, "Dataset_{}.csv".format(self._lipid))
         if not os.path.isfile(data_fname):
-            self.dataset.to_csv(data_fname)
+            self.dataset.to_csv(data_fname, index=False, header=True)
         write_pymol_script(os.path.join(script_dir, "show_binding_site_info.py"), pdb_file, data_fname,
                            self._lipid, len(self._node_list))
         return
