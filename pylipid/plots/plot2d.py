@@ -25,7 +25,7 @@ import numpy as np
 __all__ = ["plot_corrcoef"]
 
 
-def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None, fig_close=False):
+def plot_corrcoef(corrcoef, residue_index, cmap="Reds", fn=None, title=None, fig_close=False):
     """Plot correlation coefficient matrix.
 
     Parameters
@@ -50,27 +50,27 @@ def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None,
         fn = os.path.join(os.getcwd(), "Figure_Correlation_Matrix.pdf")
 
     if len(corrcoef) <= 20:
-        fig, ax = plt.subplots(1, 1, figsize=(2.2, 1.8))
+        fig, ax = plt.subplots(1, 1, figsize=(2.5, 1.8))
         majorlocator = 5
         minorlocator = 1
     elif 20 < len(corrcoef) <= 50:
-        fig, ax = plt.subplots(1, 1, figsize=(2.5, 2.0))
+        fig, ax = plt.subplots(1, 1, figsize=(2.9, 2.0))
         majorlocator = 10
         minorlocator = 1
     elif 50 < len(corrcoef) <= 500:
-        fig, ax = plt.subplots(1, 1, figsize=(4.5, 3.5))
+        fig, ax = plt.subplots(1, 1, figsize=(4.9, 3.5))
         majorlocator = 50
         minorlocator = 10
     elif 500 <= len(corrcoef) < 1000:
-        fig, ax = plt.subplots(1, 1, figsize=(5.5, 4.5))
+        fig, ax = plt.subplots(1, 1, figsize=(5.9, 4.5))
         majorlocator = 100
         minorlocator = 10
     elif 1000 <= len(corrcoef) < 2000:
-        fig, ax = plt.subplots(1, 1, figsize=(7.5, 6.5))
+        fig, ax = plt.subplots(1, 1, figsize=(7.9, 6.5))
         majorlocator = 200
         minorlocator = 20
     elif len(corrcoef) >= 2000:
-        fig, ax = plt.subplots(1, 1, figsize=(8.5, 7.5))
+        fig, ax = plt.subplots(1, 1, figsize=(8.9, 7.5))
         majorlocator = 500
         minorlocator = 100
 
@@ -92,8 +92,11 @@ def plot_corrcoef(corrcoef, residue_index, cmap="coolwarm", fn=None, title=None,
     x -= 0.5
     y -= 0.5
 
-    pcm = ax.pcolormesh(x, y, corrcoef, cmap=cmap, norm=colors.TwoSlopeNorm(0, vmin=-1, vmax=1))
-    fig.colorbar(pcm, ax=ax, ticks=[-1.0, -0.5, 0.0, 0.5, 1.0])
+    corrcoef = np.nan_to_num(corrcoef)
+    vmax = np.percentile(np.unique(np.ravel(corrcoef)), 99)
+    pcm = ax.pcolormesh(x, y, corrcoef, cmap=cmap, 
+                        norm=colors.LogNorm(vmax=vmax))
+    fig.colorbar(pcm, ax=ax)
     # set ticks
     ax.set_xticks(majorticks)
     ax.set_xticks(minorticks, minor=True)
