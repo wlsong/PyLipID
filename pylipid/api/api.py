@@ -40,7 +40,7 @@ from ..utils import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, r
 
 
 class LipidInteraction:
-    def __init__(self, trajfile_list, cutoffs=[0.475, 0.8], lipid="CHOL", topfile_list=None, lipid_atoms=None,
+    def __init__(self, trajfile_list, cutoffs=[0.475, 0.7], lipid="CHOL", topfile_list=None, lipid_atoms=None,
                  nprot=1, resi_offset=0, save_dir=None, timeunit="us", stride=1, dt_traj=None):
 
         """The outer layer class that integrates calculations and handles workflow.
@@ -55,7 +55,7 @@ class LipidInteraction:
         trajfile_list : str or a list of str
             Trajectory filename(s) for `mdtraj.load()` to read the trajectory data.
 
-        cutoffs : float or a list of two floats, default=[0.475, 0.8]
+        cutoffs : float or a list of two floats, default=[0.475, 0.7]
             Cutoff value(s) for defining contacts. When a list of two floats are supplied, the dual-cutoff scheme
             will be used, whereas a single float
 
@@ -423,12 +423,14 @@ class LipidInteraction:
         Returns
         -------
         node_list: list of lists
+        modularity : float
 
         """
         corrcoef_raw = np.nan_to_num(self.interaction_corrcoef)
         corrcoef = np.copy(corrcoef_raw)
-        node_list = get_node_list(corrcoef, threshold=threshold)
+        node_list, modularity = get_node_list(corrcoef, threshold=threshold)
         self._node_list = node_list
+        self._network_modularity = modularity
         if len(self._node_list) == 0:
             print("No binding site detected!!")
         else:
@@ -445,6 +447,7 @@ class LipidInteraction:
             self._res_time_BS = np.zeros(len(self._node_list))
             self._r_squared_BS = np.zeros(len(self._node_list))
             if print_data:
+                print(f"Network modularity: {modularity:.3f}")
                 for bs_id, nodes in enumerate(self._node_list):
                     print("#" * 25)
                     print(f"Binding Site ID: {bs_id}")
@@ -452,7 +455,7 @@ class LipidInteraction:
                     for node in nodes:
                         print("{:>10s} -- {:<12d}".format(self._residue_list[node], self._protein_residue_id[node]))
                     print("#" * 25)
-        return node_list
+        return node_list, modularity
 
     def compute_site_koff(self, binding_site_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
                           save_dir=None, print_data=True, plot_data=True, sort_residue="Residence Time",
@@ -733,6 +736,9 @@ class LipidInteraction:
         self._check_BS_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         self._check_BS_calculation("Binding Site Koff", self.compute_site_koff, print_data=False)
         with open(os.path.join(BS_dir, fn_info), "a") as f:
+
+            f.write(f"## Network modularity {self._network_modularity:5.3f}")
+            f.write("\n")
             for bs_id, nodes in enumerate(self._node_list):
                 text = self._format_BS_print_info(bs_id, nodes, sort_residue)
                 f.write(text)

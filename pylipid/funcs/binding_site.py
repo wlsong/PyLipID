@@ -47,20 +47,22 @@ def get_node_list(corrcoef, threshold=4):
     Returns
     --------
     node_list : list of lists
+    modularity : float
 
     """
     # TODO: check negative values in corrcoef_matrix. Come up with better solutions.
     corrcoef[corrcoef < 0.0] = 0.0 # network edge can't take negative values. Residues with
                                    # negative correlationsare are forced to separate to different binding sites.
-    residue_network = nx.Graph(corrcoef)
-    part = community.best_partition(residue_network, weight='weight')
-    values = [part.get(node) for node in residue_network.nodes()]
+    graph = nx.Graph(corrcoef)
+    partition = community.best_partition(graph, weight='weight')
+    modularity = community.modularity(partition, graph)
+    values = [partition.get(node) for node in graph.nodes()]
     node_list = []
     for value in range(max(values)):
-        nodes = [k for k, v in part.items() if v == value]
+        nodes = [k for k, v in partition.items() if v == value]
         if len(nodes) >= threshold:
             node_list.append(nodes)
-    return node_list
+    return node_list, modularity
 
 
 def collect_bound_poses(binding_site_map, contact_residue_dict, trajfile_list, topfile_list,

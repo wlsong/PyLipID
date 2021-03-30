@@ -25,7 +25,8 @@ import numpy as np
 __all__ = ["plot_corrcoef"]
 
 
-def plot_corrcoef(corrcoef, residue_index, cmap="Reds", fn=None, title=None, fig_close=False):
+def plot_corrcoef(corrcoef, residue_index, cmap="Reds", vmin=None, vmax=None,
+                  fn=None, title=None, fig_close=False):
     """Plot correlation coefficient matrix.
 
     Parameters
@@ -93,9 +94,12 @@ def plot_corrcoef(corrcoef, residue_index, cmap="Reds", fn=None, title=None, fig
     y -= 0.5
 
     corrcoef = np.nan_to_num(corrcoef)
-    vmax = np.percentile(np.unique(np.ravel(corrcoef)), 99)
+    if vmax is None:
+        vmax = np.percentile(np.unique(np.ravel(corrcoef)), 99)
+    if vmin is None:
+        vmin = np.percentile(np.unique(np.ravel(corrcoef)), 1)
     pcm = ax.pcolormesh(x, y, corrcoef, cmap=cmap, 
-                        norm=colors.LogNorm(vmax=vmax))
+                        norm=colors.LogNorm(vmax=vmax, vmin=vmin))
     fig.colorbar(pcm, ax=ax)
     # set ticks
     ax.set_xticks(majorticks)
