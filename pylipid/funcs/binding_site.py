@@ -47,7 +47,7 @@ def get_node_list(corrcoef, threshold=4):
     Returns
     --------
     node_list : list of lists
-    modularity : float
+    modularity : float or None
 
     """
     # TODO: check negative values in corrcoef_matrix. Come up with better solutions.
@@ -55,13 +55,16 @@ def get_node_list(corrcoef, threshold=4):
                                    # negative correlationsare are forced to separate to different binding sites.
     graph = nx.Graph(corrcoef)
     partition = community.best_partition(graph, weight='weight')
-    modularity = community.modularity(partition, graph)
     values = [partition.get(node) for node in graph.nodes()]
     node_list = []
     for value in range(max(values)):
         nodes = [k for k, v in partition.items() if v == value]
         if len(nodes) >= threshold:
             node_list.append(nodes)
+    if len(node_list) > 0:
+        modularity = community.modularity(partition, graph)
+    else:
+        modularity = None
     return node_list, modularity
 
 

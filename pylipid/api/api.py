@@ -423,7 +423,7 @@ class LipidInteraction:
         Returns
         -------
         node_list: list of lists
-        modularity : float
+        modularity : float or None
 
         """
         corrcoef_raw = np.nan_to_num(self.interaction_corrcoef)
@@ -729,19 +729,22 @@ class LipidInteraction:
 
     def write_site_info(self, sort_residue="Residence Time", save_dir=None, fn_info=None):
         """Write the binding site information in a txt file. """
-        BS_dir = check_dir(save_dir) if save_dir is not None \
-            else check_dir(self._save_dir)
-        if fn_info is None:
-            fn_info = "BindingSites_Info_{}.txt".format(self._lipid)
-        self._check_BS_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
-        self._check_BS_calculation("Binding Site Koff", self.compute_site_koff, print_data=False)
-        with open(os.path.join(BS_dir, fn_info), "a") as f:
+        if len(self._node_list) == 0:
+            print("No binding site was detected!!")
+        else:
+            BS_dir = check_dir(save_dir) if save_dir is not None \
+                else check_dir(self._save_dir)
+            if fn_info is None:
+                fn_info = "BindingSites_Info_{}.txt".format(self._lipid)
+            self._check_BS_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+            self._check_BS_calculation("Binding Site Koff", self.compute_site_koff, print_data=False)
+            with open(os.path.join(BS_dir, fn_info), "a") as f:
 
-            f.write(f"## Network modularity {self._network_modularity:5.3f}")
-            f.write("\n")
-            for bs_id, nodes in enumerate(self._node_list):
-                text = self._format_BS_print_info(bs_id, nodes, sort_residue)
-                f.write(text)
+                f.write(f"## Network modularity {self._network_modularity:5.3f}")
+                f.write("\n")
+                for bs_id, nodes in enumerate(self._node_list):
+                    text = self._format_BS_print_info(bs_id, nodes, sort_residue)
+                    f.write(text)
         return
 
     #################################
