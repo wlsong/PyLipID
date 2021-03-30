@@ -341,14 +341,13 @@ def plot_surface_area(surface_area, fig_fn, timeunit=None, fig_close=False):
     fig, axes = plt.subplots(len(row_set), len(col_set), figsize=(len(col_set)*2.4, len(row_set)*1.6),
                              sharex=True, sharey=True)
     plt.subplots_adjust(wspace=0.2, hspace=0.16)
-    axes = np.atleast_2d(axes)
+    if len(col_set) == 1:
+        axes = axes[:, np.newaxis]
     for row_idx, row in enumerate(row_set):
-        index = row_set[row_idx]
-        df = surface_area.loc[index]
-        for col_idx, col in enumerate(col_set):
-            bs_name = col_set[col_idx]
+        df = surface_area.loc[row]
+        for col_idx, bs_name in enumerate(col_set):
             axes[row_idx, col_idx].plot(df["Time"], df[bs_name], color=colors[col_idx],
-                                        label="traj {} prot {}".format(index[0], index[1]))
+                                        label="traj {} prot {}".format(row[0], row[1]))
             if row_idx == len(row_set)-1:
                 axes[row_idx, col_idx].set_xlabel("Time{}".format(timeunit), fontsize=10)
             if col_idx == 0:
