@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pylipid.funcs import cal_contact_residues, Duration, cal_interaction_frequency
+from pylipid.funcs import cal_contact_residues, Duration, cal_occupancy, cal_lipidcount
 
 class TestCutoff(unittest.TestCase):
 
@@ -20,10 +20,14 @@ class TestCutoff(unittest.TestCase):
         durations = Duration(contact_low, contact_high, 2).cal_durations()
         self.assertEqual(durations, [4, 6, 8, 10])
 
-    def test_cal_interaction_frequency(self):
-        contact_list = [[0], [0,1], [1,2], [0,2], [], [], [1], [0], [], []]
-        occupancy, lipidcount = cal_interaction_frequency(contact_list)
+    def test_cal_occupancy(self):
+        contact_list = [[0], [0, 1], [1, 2], [0, 2], [], [], [1], [0], [], []]
+        occupancy = cal_occupancy(contact_list)
         self.assertEqual(occupancy, 60)
+
+    def test_cal_lipid_count(self):
+        contact_list = [[0], [0, 1], [1, 2], [0, 2], [], [], [1], [0], [], []]
+        lipidcount = cal_lipidcount(contact_list)
         self.assertEqual(lipidcount, 1.5)
 
 

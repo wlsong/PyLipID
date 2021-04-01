@@ -43,7 +43,7 @@ The ``funcs`` module provides functions for functions that do the heavy-lifting:
 from .kinetics import cal_koff
 from .kinetics import cal_survival_func
 from .interactions import Duration
-from .interactions import cal_contact_residues, cal_interaction_frequency
+from .interactions import cal_contact_residues, cal_occupancy, cal_lipidcount
 from .binding_site import get_node_list
 from .binding_site import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
 from .clusterer import cluster_DBSCAN, cluster_KMeans

@@ -13,22 +13,28 @@ class TestLipidInteraction(unittest.TestCase):
         cutoffs = [0.55, 0.8]
         file_dir = os.path.dirname(os.path.abspath(__file__))
         self.save_dir = check_dir(os.path.join(file_dir, "test_pylipid"))
-        li = LipidInteraction(trajfile_list, topfile_list, cutoffs=cutoffs, lipid=lipid,
+        li = LipidInteraction(trajfile_list, cutoffs=cutoffs, topfile_list=topfile_list, lipid=lipid,
                                    nprot=1, save_dir=self.save_dir)
-        li.collect_residue_contacts(write_log=True, print_log=True)
+        li.collect_residue_contacts()
 
-        li.compute_residue_koff(print_data=False, plot_data=True)
+        li.compute_residue_duration()
+        li.compute_residue_duration(10)
+        li.compute_residue_duration([2,3,4])
+
+        li.compute_residue_koff(plot_data=False)
         li.compute_residue_koff(10)
         li.compute_residue_koff([2,4,5,10])
-        li.compute_residue_koff(20, print_data=False, plot_data=False)
 
         li.compute_binding_nodes(threshold=4)
         li.compute_binding_nodes(threshold=2, print_data=False)
 
-        li.compute_site_koff()
-        li.compute_site_koff(binding_site_id=[1,2,3], print_data=True, plot_data=True, sort_residue="Residence Time")
-        li.compute_site_koff(binding_site_id=1, print_data=False, plot_data=False, sort_residue="Residence Time")
-        li.compute_site_koff(binding_site_id=1, print_data=True, plot_data=True, sort_residue="Duration")
+        li.compute_site_koff(plot_data=False)
+        li.compute_site_koff(binding_site_id=[1,2,3])
+        li.compute_site_koff(binding_site_id=1)
+
+        li.compute_site_duration()
+        li.compute_site_duration(1)
+        li.compute_site_duration([0,1])
 
         li.analyze_bound_poses()
         li.analyze_bound_poses(binding_site_id=[1,2,3])
@@ -40,6 +46,8 @@ class TestLipidInteraction(unittest.TestCase):
 
         li.write_site_info()
         li.write_site_info(sort_residue="Duration")
+
+        li.show_stats_per_traj()
 
         li.save_data(item="Dataset")
         li.save_data(item="Duration")

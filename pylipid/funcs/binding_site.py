@@ -42,7 +42,7 @@ def get_node_list(corrcoef, threshold=4):
     Parameters
     -----------
     corrcoef : ndarray(n, n)
-    threshold : int, optional, default=4
+    threshold : int, default=4
 
     Returns
     --------
@@ -68,23 +68,24 @@ def get_node_list(corrcoef, threshold=4):
     return node_list, modularity
 
 
-def collect_bound_poses(binding_site_map, contact_residue_dict, trajfile_list, topfile_list,
+def collect_bound_poses(binding_site_map, contact_residue_index, trajfile_list, topfile_list,
                         lipid, stride=1, nprot=1):
-    """Collected the bound poses based on contact_residue_dict.
+    """Collected the bound poses based on contact_residue_index.
 
     Parameters
     ----------
     binding_site_map : dict
-    contact_residue_dict : dict
+    contact_residue_index : dict
     trajfile_list : list of str
     topfile_list : list of str
     lipid : str
-    stride : int, optional, default=1
-    nprot : int, optional, default=1
+    stride : int,default=1
+    nprot : int, default=1
 
     Returns
     ---------
     pose_pool : dict
+        Coordinates of all bound poses in stored in a python dictionary {binding_site_id: pose coordinates}
 
     See also
     --------
@@ -114,7 +115,7 @@ def collect_bound_poses(binding_site_map, contact_residue_dict, trajfile_list, t
             for bs_id, nodes in binding_site_map.items():
                 list_to_take = traj_idx * nprot + protein_idx
                 contact_BS = [np.unique(np.concatenate(
-                    [contact_residue_dict[node][list_to_take][frame_idx] for node in nodes]))
+                    [contact_residue_index[node][list_to_take][frame_idx] for node in nodes]))
                     for frame_idx in range(traj.n_frames)]
                 for frame_id in range(len(contact_BS)):
                     if len(contact_BS[frame_id]) > 0:

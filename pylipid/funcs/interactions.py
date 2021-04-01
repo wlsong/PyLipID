@@ -18,7 +18,7 @@
 """
 import numpy as np
 
-__all__ = ["cal_contact_residues", "Duration", "cal_interaction_frequency"]
+__all__ = ["cal_contact_residues", "Duration", "cal_occupancy", "cal_lipidcount"]
 
 
 def cal_contact_residues(dist_matrix, cutoff):
@@ -128,8 +128,8 @@ class Duration:
         return (count - 1) * self.dt
 
 
-def cal_interaction_frequency(contact_list):
-    """Calculate interaction frequency (occupancy, LipidCount).
+def cal_occupancy(contact_list):
+    """Calculate the percentage of frames in which a contact is formed.
 
     Parameters
     ___________
@@ -140,14 +140,14 @@ def cal_interaction_frequency(contact_list):
     Returns
     -------
     Ocupancy : scalar
-        The percentage of the frames in which any contact is formed
-    LipidCount : scalar
-        The number of contacts that averaged from all the contacting frames.
+        The percentage of frames in which a contact is formed
 
     See also
     --------
     pylipid.funcs.cal_contact_residues
         The function that calculates contact residues from distance matrix.
+    pylipid.funcs.cal_lipidcount
+        The function that calculates the average number of contacts in all frames
 
     """
     if len(contact_list) == 0:
@@ -156,4 +156,40 @@ def cal_interaction_frequency(contact_list):
         contact_counts = [len(item) for item in contact_list]
         mask = np.array(contact_counts) > 0
         contact_counts_nonzero = np.array(contact_counts)[mask]
-        return 100 * len(contact_counts_nonzero)/len(contact_list), np.nan_to_num(contact_counts_nonzero.mean())
+        return 100 * len(contact_counts_nonzero)/len(contact_list)
+
+
+def cal_lipidcount(contact_list):
+    """Calculate the average number of contacts at a frame.
+
+    Parameters
+    ___________
+    contact_list : list of lists
+        A list of lists that contains the residues (represented by the row index of dist_matrix)
+        within the cutoff distance to the target in each frame.
+
+    Returns
+    -------
+    LipidCount : scalar
+        The average number of contacts in a frame.
+
+    See also
+    --------
+    pylipid.funcs.cal_contact_residues
+        The function that calculates contact residues from distance matrix.
+    pylipid.funcs.cal_occupancy
+        The function that calculates the percentage of frames in which a contact is formed
+
+    """
+    if len(contact_list) == 0:
+        return 0, 0
+    else:
+        contact_counts = [len(item) for item in contact_list]
+        mask = np.array(contact_counts) > 0
+        contact_counts_nonzero = np.array(contact_counts)[mask]
+
+        if len(contact_counts_nonzero) == 0:
+            return 0
+        else:
+            return np.nan_to_num(contact_counts_nonzero.mean())
+

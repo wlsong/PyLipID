@@ -28,7 +28,8 @@ from sklearn.decomposition import PCA
 import pandas as pd
 from tqdm import trange, tqdm
 from ..funcs import cal_contact_residues
-from ..funcs import cal_interaction_frequency, Duration, cal_koff
+from ..funcs import Duration, cal_koff
+from ..funcs import cal_lipidcount, cal_occupancy
 from ..funcs import get_node_list
 from ..funcs import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
 from ..funcs import cluster_DBSCAN, cluster_KMeans
@@ -46,16 +47,15 @@ class LipidInteraction:
         """The outer layer class that integrates calculations and handles workflow.
 
         `LipidInteraction` reads trajectory information via `mdtraj.load()`, and calculate interactions
-        of the specified lipid with the protein in the trajectories. `LipidInteraction` can calculate
-        interactions per protein residue and per binding site. 'LipidInteraction' also has a couple of assisting
-        functions to plot the interaction data and save the generated data.
+        of the specified lipid for both protein residues and the calculated binding sites. 'LipidInteraction' also
+        has a couple of assisting functions to plot the interaction data and save the generated data.
 
         Parameters
         ----------
         trajfile_list : str or a list of str
             Trajectory filename(s) for `mdtraj.load()` to read the trajectory data.
 
-        cutoffs : float or a list of two floats, default=[0.475, 0.7]
+        cutoffs : list of two scalar or a scalar, default=[0.475, 0.7]
             Cutoff value(s) for defining contacts. When a list of two floats are supplied, the dual-cutoff scheme
             will be used, whereas a single float
 
@@ -68,10 +68,31 @@ class LipidInteraction:
             to supply this information. See
             `mdtraj.load() <https://mdtraj.org>`_. for more information.
 
+        lipid_atoms : list of str, default=None
+            Atom names of the lipid used for calculation of contacts. If None, all atoms of the lipid molecule
+            will be used.
+
+        nprot : int, default=1
+            Number of protein copies in the system. If the system has N copies of the protein, 'nprot=N' will report
+            averaged values from the N copies, but 'nprot=1' in this case will report interaction values for each copy.
+
+        resi_offset : int, default=0
+            Shift the residue index in the reported results from what is indicated in the topology. Can be useful for
+            MARTINI force field.
+
+        save_dir : str, default=None
+            The root directory to store the generated data. All the generated dataset and created directories will be
+            put under this directory.
+
+        timeunit : {"us", "ns"}, default="us"
+            The time unit used for reporting results. "us" is micro-second and "ns" is nanosecond.
+
         stride : int, default=1
             Only read every stride-th frame. The same as stride in mdtraj.load().
 
-        dt_traj : None or float, default=None
+        dt_traj : float, default=None
+            Timestep of trajectories. It is required when trajectories do not have timestep information. Not needed for
+            trajectory formats of e.g. xtc, trr etc.
 
 
         """
@@ -89,7 +110,7 @@ class LipidInteraction:
         elif len(np.atleast_1d(cutoffs)) == 2:
             self._cutoffs = np.sort(np.array(cutoffs, dtype=float))
         else:
-            raise ValueError("cutoffs should be either a float or a list of two flaots.")
+            raise ValueError("cutoffs should be either a scalar or a list of two scalars.")
 
         self._dt_traj = dt_traj
         self._lipid = lipid
@@ -101,7 +122,6 @@ class LipidInteraction:
         self.dataset = pd.DataFrame()
         self._save_dir = check_dir(os.getcwd(), "Interaction_{}".format(self._lipid)) if save_dir is None \
             else check_dir(save_dir, "Interaction_{}".format(self._lipid))
-
         return
 
     #############################################
@@ -109,59 +129,71 @@ class LipidInteraction:
     #############################################
     @property
     def residue_list(self):
-        """Obtain a list of the protein residues with their residue names and index."""
+        """A list of residue labels with residue names and index."""
         return self._residue_list
 
     @property
     def node_list(self):
+        """A list of binding site residue IDs."""
         return self._node_list
 
     @property
     def lipid(self):
+        """Lipid residue name."""
         return self._lipid
 
     @property
     def lipid_atoms(self):
+        """Names of lipid atoms for calculating contacts. """
         return self._lipid_atoms
 
     @property
     def cutoffs(self):
+        """Cutoffs used for calculating contacts. """
         return self._cutoffs
 
     @property
     def nprot(self):
+        """Number of protein copies in system. """
         return self._nprot
 
     @property
     def stride(self):
+        """Stride every stride-th frame of the trajectories for analysis . """
         return self._stride
 
     @property
     def trajfile_list(self):
+        """A list of trajectory file names. """
         return self._trajfile_list
 
     @property
     def topfile_list(self):
+        """A list of topology file names. """
         return self._topfile_list
 
     @property
     def dt_traj(self):
+        """Time step of trajectory. """
         return self._dt_traj
 
     @property
     def resi_offset(self):
+        """Residue index offset values. """
         return self._resi_offset
 
     @property
     def save_dir(self):
+        """Root directory for saving data. """
         return self._save_dir
 
     @property
     def timeunit(self):
+        """Time unit used for reporting results. """
         return self._timeunit
 
     def koff(self, residue_id=None, residue_name=None):
-        """Return koff of the specified residue"""
+        """Residue koff"""
         if residue_id is not None and residue_name is not None:
             assert self.dataset[self.dataset["Residue ID"] == residue_id]["Residue"] == residue_name, \
                 "residue_id and residue_name are pointing to different residues!"
@@ -172,7 +204,7 @@ class LipidInteraction:
             return self._koff[self._residue_map[residue_name]]
 
     def res_time(self, residue_id=None, residue_name=None):
-        """Return residence time of the specified residue"""
+        """Residue residence time"""
         if residue_id is not None and residue_name is not None:
             assert self.dataset[self.dataset["Residue ID"] == residue_id]["Residue"] == residue_name, \
                 "residue_id and residue_name are pointing to different residues!"
@@ -183,17 +215,33 @@ class LipidInteraction:
             return self._res_time[self._residue_map[residue_name]]
 
     def koff_bs(self, bs_id):
-        """Return koff of the specified binding site. """
+        """Binding site koff"""
         return self._koff_BS[bs_id]
 
     def res_time_bs(self, bs_id):
-        """Return residence time of the specified binding site. """
+        """Binding site residence time"""
         return self._res_time_BS[bs_id]
 
     def residue(self, residue_id=None, residue_name=None, print_data=True):
-        """Obtain the calculated information for a residue
+        """Obtain the lipid interaction information for a residue
 
-        Use either residue_id or residue_name to obtain the information"""
+        Use either residue_id or residue_name to obtain the information.
+        Return the information in a pandas.DataFrame object.
+
+        Parameters
+        ----------
+        residue_id : int or list of int, default=None
+            The residue ID that is used by PyLipID for identifying residues. The ID starts from 0, i.e. the ID
+            of N-th residue of the protein is (N-1). If None, all residues are selected.
+        residue_name : str or list of str, default=None
+            The residue name as stored in PyLipID dataset. The residue name is in the format of resi+resn
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            A pandas.DataFrame of interaction information of the residue.
+
+        """
         if residue_id is not None and residue_name is not None:
             assert self.dataset[self.dataset["Residue ID"] == residue_id]["Residue"] == residue_name, \
                 "residue_id and residue_name are pointing to different residues!"
@@ -207,8 +255,14 @@ class LipidInteraction:
         return df
 
     def binding_site(self, binding_site_id, print_data=True, sort_residue="Residence Time"):
-        """Obtain the calculated information for a binding site. """
-        df = self.dataset[self.dataset["Binding Site ID"] == binding_site_id]
+        """Obtain the lipid interaction information for a binding site.
+
+        Use binding site ID to access the information. Return the lipid interaction information of the
+        binding site in a pandas.DataFrame object. If print_data is True, the binding site info will be
+        formatted and print out.
+
+        """
+        df = self.dataset[self.dataset["Binding Site ID"] == binding_site_id].sort_values(by="Residence Time")
         if print_data:
             text = self._format_BS_print_info(binding_site_id, self._node_list[binding_site_id], sort_residue)
             print(text)
@@ -217,24 +271,15 @@ class LipidInteraction:
     ########################################
     #     interaction calculation
     ########################################
-    def collect_residue_contacts(self, write_log=True, print_log=True, fn_log=None):
-        """Calculate durations, occupancy and lipid count from trajectories.
+    def collect_residue_contacts(self):
+        """Calculate lipid contact list per residue per frame.
 
         """
-        # initialise variables for interaction of residues
-        self.durations = defaultdict(list)
-        self.occupancy = defaultdict(list)
-        self.lipid_count = defaultdict(list)
-        self.contact_residues_high = defaultdict(list)
-        self.contact_residues_low = defaultdict(list)
-        self._residue_list = None
-        self._protein_residue_id = []
-        self.interaction_corrcoef = None
-        self.dataset = None
         self._protein_ref = None
         self._lipid_ref = None
         self._T_total = []
         self._timesteps = []
+        self._protein_residue_id = []
         # initialise data for interaction matrix
         col = []
         row = []
@@ -260,11 +305,18 @@ class LipidInteraction:
                 self._protein_residue_id = traj_info["protein_residue_id"]
                 self._residue_list = traj_info["residue_list"]
                 self._nresi_per_protein = len(self._residue_list)
+                self._duration = {residue_id: [] for residue_id in self._protein_residue_id}
+                self._occupancy = {residue_id: [] for residue_id in self._protein_residue_id}
+                self._lipid_count = {residue_id: [] for residue_id in self._protein_residue_id}
+                self._contact_residues_high = {residue_id: [] for residue_id in self._protein_residue_id}
+                self._contact_residues_low = {residue_id: [] for residue_id in self._protein_residue_id}
                 self._koff = np.zeros(self._nresi_per_protein)
+                self._koff_boot = np.zeros(self._nresi_per_protein)
                 self._r_squared = np.zeros(self._nresi_per_protein)
+                self._r_squared_boot = np.zeros(self._nresi_per_protein)
                 self._res_time = np.zeros(self._nresi_per_protein)
-                self._koff_b = np.zeros(self._nresi_per_protein)
-                self._residue_map = {resn: resi for resn, resi in zip(self._protein_residue_id, self._residue_list)}
+                self._residue_map = {residue_name: residue_id
+                                     for residue_id, residue_name in zip(self._protein_residue_id, self._residue_list)}
             else:
                 assert len(self._protein_residue_id) == len(traj_info["protein_residue_id"]), \
                     "Trajectory {} contains {} residues whereas trajectory {} contains {} residues".format(
@@ -277,18 +329,10 @@ class LipidInteraction:
                     dist_matrix = np.array([np.min(
                         md.compute_distances(traj, np.array(list(product(residue_atom_indices, lipid_atom_indices)))),
                         axis=1) for lipid_atom_indices in traj_info["lipid_residue_atomid_list"]])
-                    contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix,
-                                                                                           self._cutoffs[0])
+                    contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix, self._cutoffs[0])
                     contact_high, _, _ = cal_contact_residues(dist_matrix, self._cutoffs[1])
-                    self.contact_residues_high[residue_id].append(contact_high)
-                    self.contact_residues_low[residue_id].append(contact_low)
-                    self.durations[residue_id].append(
-                        Duration(contact_low, contact_high, timestep).cal_durations())
-                    with warnings.catch_warnings():  # mute the warnings for empty list.
-                        warnings.simplefilter("ignore")
-                        occupancy, lipid_count = cal_interaction_frequency(contact_low)
-                    self.occupancy[residue_id].append(occupancy)
-                    self.lipid_count[residue_id].append(lipid_count)
+                    self._contact_residues_high[residue_id].append(contact_high)
+                    self._contact_residues_low[residue_id].append(contact_low)
                     # update coordinates for coo_matrix
                     col.append([ncol_start + ncol_per_protein * protein_idx + lipid_id * traj.n_frames +
                                 frame_id for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low)])
@@ -301,28 +345,114 @@ class LipidInteraction:
         data = np.concatenate(data)
         contact_info = coo_matrix((data, (row, col)), shape=(self._nresi_per_protein, ncol_start))
         self.interaction_corrcoef = sparse_corrcoef(contact_info)
-        # wrap up trajectory information
-        self._wrapup_in_logfile(write_log=write_log, print_log=print_log, fn_log=fn_log)
-
         self.dataset = pd.DataFrame({"Residue": [residue for residue in self._residue_list],
-                                     "Residue ID": self._protein_residue_id,
-                                     "Occupancy": [np.mean(self.occupancy[residue_id])
-                                                   for residue_id in self._protein_residue_id],
-                                     "Occupancy std": [np.std(self.occupancy[residue_id])
-                                                       for residue_id in self._protein_residue_id],
-                                     "Duration": [np.mean(np.concatenate(self.durations[residue_id]))
-                                                  for residue_id in self._protein_residue_id],
-                                     "Duration std": [np.std(np.concatenate(self.durations[residue_id]))
-                                                      for residue_id in self._protein_residue_id],
-                                     "Lipid Count": [np.mean(self.lipid_count[residue_id])
-                                                     for residue_id in self._protein_residue_id],
-                                     "Lipid Count std": [np.std(self.lipid_count[residue_id])
-                                                         for residue_id in self._protein_residue_id]})
-
+                                     "Residue ID": self._protein_residue_id})
         return
 
+    def compute_residue_duration(self, residue_id=None):
+        """Calculate the durations of lipid contacts for residues
+
+        Parameters
+        ----------
+        residue_id : int or list of int, default=None
+
+        Returns
+        -------
+        durations : list of len(residue_id) lists
+
+        """
+        self._check_calculation("Residue", self.collect_residue_contacts)
+        if residue_id is None:
+            selected_residue_id = self._protein_residue_id
+        else:
+            selected_residue_id = np.atleast_1d(residue_id)
+
+        for residue_id in selected_residue_id:
+            self._duration[residue_id] = [
+                        Duration(self._contact_residues_low[residue_id][traj_idx*protein_idx],
+                                 self._contact_residues_high[residue_id][traj_idx*protein_idx],
+                                 self._timesteps[traj_idx]).cal_durations()
+                        for traj_idx in np.arange(len(self.trajfile_list))
+                        for protein_idx in np.arange(self._nprot, dtype=int)]
+        self.dataset["Duration"] = [np.mean(np.concatenate(self._duration[residue_id]))
+                                    if len(self._duration[residue_id]) > 0 else 0
+                                    for residue_id in self._protein_residue_id]
+        self.dataset["Duration std"] = [np.std(np.concatenate(self._duration[residue_id]))
+                                        if len(self._duration[residue_id]) > 0 else 0
+                                        for residue_id in self._protein_residue_id]
+
+        if len(selected_residue_id) == 1:
+            return self._duration[residue_id]
+        else:
+            return [self._duration[residue_id] for residue_id in selected_residue_id]
+
+    def compute_residue_occupancy(self, residue_id=None):
+        """Calculate the percentage of frames in which lipids formed contacts with residues.
+
+        Parameters
+        ----------
+        residue_id : int or list of int, default=None
+
+        Returns
+        -------
+        occupancies : list of len(residue_id) lists
+
+        """
+        self._check_calculation("Residue", self.collect_residue_contacts)
+        if residue_id is None:
+            selected_residue_id = self._protein_residue_id
+        else:
+            selected_residue_id = np.atleast_1d(residue_id)
+        for residue_id in selected_residue_id:
+            self._occupancy[residue_id] = [cal_occupancy(self._contact_residues_low[residue_id][traj_idx*protein_idx])
+                                          for traj_idx in np.arange(len(self.trajfile_list))
+                                          for protein_idx in np.arange(self._nprot, dtype=int)]
+        self.dataset["Occupancy"] = [np.mean(self._occupancy[residue_id])
+                                     if len(self._occupancy[residue_id]) > 0 else 0
+                                     for residue_id in self._protein_residue_id]
+        self.dataset["Occupancy std"] = [np.std(self._occupancy[residue_id])
+                                         if len(self._occupancy[residue_id]) > 0 else 0
+                                         for residue_id in self._protein_residue_id]
+
+        if len(selected_residue_id) == 1:
+            return self._occupancy[residue_id]
+        else:
+            return [self._occupancy[residue_id] for residue_id in selected_residue_id]
+
+    def compute_residue_lipidcount(self, residue_id=None):
+        """Calculate the average number of surrounding lipids for residues.
+
+        Parameters
+        ----------
+        residue_id : int or list of int, default=None
+
+        Returns
+        -------
+        lipidcounts : list of len(residue_id) lists
+
+        """
+        self._check_calculation("Residue", self.collect_residue_contacts)
+        if residue_id is None:
+            selected_residue_id = self._protein_residue_id
+        else:
+            selected_residue_id = np.atleast_1d(residue_id)
+        for residue_id in selected_residue_id:
+            self._lipid_count[residue_id] = [cal_lipidcount(self._contact_residues_low[residue_id][traj_idx * protein_idx])
+                                           for traj_idx in np.arange(len(self.trajfile_list))
+                                           for protein_idx in np.arange(self._nprot, dtype=int)]
+            self.dataset["Lipid Count"] = [np.mean(self._lipid_count[residue_id])
+                                           if len(self._lipid_count[residue_id]) > 0 else 0
+                                           for residue_id in self._protein_residue_id]
+            self.dataset["Lipid Count std"] = [np.std(self._lipid_count[residue_id])
+                                               if len(self._lipid_count[residue_id]) > 0 else 0
+                                               for residue_id in self._protein_residue_id]
+        if len(selected_residue_id) == 1:
+            self._lipid_count[residue_id]
+        else:
+            return [self._lipid_count[residue_id] for residue_id in selected_residue_id]
+
     def compute_residue_koff(self, residue_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                             save_dir=None, print_data=True, plot_data=True, fig_close=True):
+                             save_dir=None, plot_data=True, fig_close=True):
         """Calculate interaction koff for residues.
 
         Parameters
@@ -337,14 +467,15 @@ class LipidInteraction:
 
         Returns
         ---------
-        koff : scalar
-        restime : scalar
+        koff : scalar or list of scalar
+        restime : scalar or list of scalar
 
         """
+        self._check_calculation("Residue", self.compute_residue_koff)
         if plot_data:
             koff_dir = check_dir(save_dir, "Reisidue_koffs_{}".format(self._lipid)) if save_dir is not None \
                 else check_dir(self._save_dir, "Residue_koffs_{}".format(self._lipid))
-        self._check_BS_calculation("Residue", self.collect_residue_contacts, write_log=True, print_log=False)
+        self._check_calculation("Residue", self.collect_residue_contacts)
         if len(set(self._residue_list)) != len(self._residue_list):
             residue_name_set = ["{}_ResidueID{}".format(residue, residue_id) for residue, residue_id in
                                 zip(self._residue_list, self._protein_residue_id)]
@@ -354,6 +485,10 @@ class LipidInteraction:
             selected_residue_id = np.atleast_1d(residue_id)
         else:
             selected_residue_id = self._protein_residue_id
+        residues_missing_durations = [residue_id for residue_id in selected_residue_id
+                                      if len(self._duration[residue_id]) == 0]
+        if len(residues_missing_durations) > 0:
+            self.compute_residue_duration(residue_id=residues_missing_durations)
         t_total = np.max(self._T_total)
         same_length = np.all(np.array(self._T_total) == t_total)
         if not same_length:
@@ -365,18 +500,15 @@ class LipidInteraction:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
 
-        for residue_id in selected_residue_id:
-            if residue_id not in self.durations.keys():
-                raise ValueError("Residue ID {} is not valid.".format(residue_id))
-            durations = np.concatenate(self.durations[residue_id])
+        for residue_id in tqdm(selected_residue_id,desc="CALCULATE KOFF FOR RESIDUES", total=len(selected_residue_id)):
+            durations = np.concatenate(self._duration[residue_id])
             residue = residue_name_set[residue_id]
             if np.sum(durations) == 0:
                 self._koff[residue_id] = 0
                 self._res_time[residue_id] = 0
                 self._r_squared[residue_id] = 0
-                self._koff_b[residue_id] = 0
-                if print_data:
-                    print("No interaction was detected for {}!".format(residue))
+                self._koff_boot[residue_id] = 0
+                self._r_squared_boot[residue_id] = 0
             else:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
@@ -384,26 +516,20 @@ class LipidInteraction:
                 self._koff[residue_id] = koff
                 self._res_time[residue_id] = restime
                 self._r_squared[residue_id] = properties["r_squared"]
-                self._koff_b[residue_id] = np.mean(properties["ks_boot_set"], axis=0)[0]
+                self._koff_boot[residue_id] = np.mean(properties["ks_boot_set"], axis=0)[0]
+                self._r_squared_boot[residue_id] = np.mean(properties["r_squared_boot_set"])
                 if plot_data:
                     text = self._format_koff_text(properties)
                     plot_koff(durations, properties["delta_t_list"], properties["survival_rates"],
                               properties["n_fitted"], survival_rates_bootstraps=properties["survival_rates_boot_set"],
                               fig_fn=os.path.join(koff_dir, "{}.pdf".format(residue)), title=residue,
                               timeunit=self._timeunit, t_total=t_total, text=text, fig_close=fig_close)
-                if print_data:
-                    print("{:15s}: {}".format("Residue", residue))
-                    print("{:15s}: {}".format("Residue ID", residue_id))
-                    print("{:15s}: {:.3f} {:2s}^(-1)".format("Koff", koff, self._timeunit))
-                    print("{:15s}: {:.3f} {:2s}".format("Residence Time", restime, self._timeunit))
-                    print("{:15s}: {:.3f} {:2s}".format("Duration", self.dataset.iloc[residue_id]["Duration"], self._timeunit))
-                    print("{:15s}: {:.3f} %".format("Occupancy", self.dataset.iloc[residue_id]["Occupancy"]))
-                    print("{:15s}: {:.3f}".format("Lipid Count", self.dataset.iloc[residue_id]["Lipid Count"]))
         # update dataset
         self.dataset["Koff"] = self._koff
         self.dataset["Residence Time"] = self._res_time
         self.dataset["R Squared"] = self._r_squared
-        self.dataset["Koff Bootstrap avg"] = self._koff_b
+        self.dataset["Koff Bootstrap avg"] = self._koff_boot
+        self.dataset["R Squared Bootstrap avg"] = self._r_squared_boot
 
         if len(selected_residue_id) == 1:
             return self._koff[selected_residue_id[0]], self._res_time[selected_residue_id[0]]
@@ -412,13 +538,13 @@ class LipidInteraction:
                    [self._res_time[residue_id] for residue_id in selected_residue_id]
 
     def compute_binding_nodes(self, threshold=4, print_data=True):
-        """Calculate binding sites.
+        """Calculate binding sites via computing the community structures.
 
         Parameters
         ----------
-        threshold : int, optional, default=4
-        save_dir : str or None, optional, default=None
-        print : bool, optional, default=True
+        threshold : int, default=4
+        save_dir : str or None, default=None
+        print : bool, default=True
 
         Returns
         -------
@@ -426,26 +552,31 @@ class LipidInteraction:
         modularity : float or None
 
         """
+        self._check_calculation("Residue", self.compute_residue_koff)
         corrcoef_raw = np.nan_to_num(self.interaction_corrcoef)
         corrcoef = np.copy(corrcoef_raw)
         node_list, modularity = get_node_list(corrcoef, threshold=threshold)
         self._node_list = node_list
         self._network_modularity = modularity
         if len(self._node_list) == 0:
-            print("No binding site detected!!")
+            print("*"*30)
+            print(" No binding site detected!!")
+            print("*"*30)
         else:
             residue_BS_identifiers = np.ones(self._nresi_per_protein, dtype=int) * -1
             for bs_id, nodes in enumerate(self._node_list):
-                residue_BS_identifiers[nodes] = bs_id
+                residue_BS_identifiers[nodes] = int(bs_id)
             # update dataset
             self.dataset["Binding Site ID"] = residue_BS_identifiers
             # initialise variable for binding site interactions
-            self._durations_BS = [[] for dummy in self._node_list]
-            self._occupancy_BS = [[] for dummy in self._node_list]
-            self._lipid_count_BS = [[] for dummy in self._node_list]
+            self._duration_BS = {bs_id:[] for bs_id in np.arange(len(self._node_list))}
+            self._occupancy_BS = {bs_id:[] for bs_id in np.arange(len(self._node_list))}
+            self._lipid_count_BS = {bs_id:[] for bs_id in np.arange(len(self._node_list))}
             self._koff_BS = np.zeros(len(self._node_list))
+            self._koff_BS_boot = np.zeros(len(self._node_list))
             self._res_time_BS = np.zeros(len(self._node_list))
             self._r_squared_BS = np.zeros(len(self._node_list))
+            self._r_squared_BS_boot = np.zeros(len(self._node_list))
             if print_data:
                 print(f"Network modularity: {modularity:.3f}")
                 for bs_id, nodes in enumerate(self._node_list):
@@ -457,20 +588,142 @@ class LipidInteraction:
                     print("#" * 25)
         return node_list, modularity
 
+    def compute_site_duration(self, binding_site_id=None):
+        """Calculate interaction durations for binding sites.
+
+        Parameters
+        ----------
+        binding_site_id : int of list of int, default=None
+
+        Returns
+        -------
+        durations_BS : list of len(bs_id) lists
+
+        """
+        self._check_calculation("Residue", self.collect_residue_contacts)
+        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+        selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
+            else np.arange(len(self._node_list), dtype=int)
+        for bs_id in selected_bs_id:
+            nodes = self._node_list[bs_id]
+            durations_BS = []
+            for traj_idx in np.arange(len(self._trajfile_list), dtype=int):
+                for protein_idx in np.arange(self._nprot, dtype=int):
+                    list_to_take = traj_idx * self._nprot + protein_idx
+                    n_frames = len(self._contact_residues_low[nodes[0]][list_to_take])
+                    contact_BS_low = [np.unique(np.concatenate(
+                        [self._contact_residues_low[node][list_to_take][frame_idx] for node in nodes]))
+                        for frame_idx in np.arange(n_frames)]
+                    contact_BS_high = [np.unique(np.concatenate(
+                        [self._contact_residues_high[node][list_to_take][frame_idx] for node in nodes]))
+                        for frame_idx in np.arange(n_frames)]
+                    durations_BS.append(
+                        Duration(contact_BS_low, contact_BS_high, self._timesteps[traj_idx]).cal_durations())
+            self._duration_BS[bs_id] = durations_BS
+        # update dataset
+        durations_BS_per_residue = np.zeros(self._nresi_per_protein)
+        for bs_id, nodes in enumerate(self._node_list):
+            durations_BS_per_residue[nodes] = np.mean(np.concatenate(self._duration_BS[bs_id])) \
+                if len(self._duration_BS[bs_id]) > 0 else 0
+        self.dataset["Binding Site Duration"] = durations_BS_per_residue
+
+        if len(selected_bs_id) == 1:
+            return self._duration_BS[bs_id]
+        else:
+            return [self._duration_BS[bs_id] for bs_id in selected_bs_id]
+
+    def compute_site_occupancy(self, binding_site_id=None):
+        """Calculate the percentage of frames in which lipids formed contacts with binding sites.
+
+        Parameters
+        ----------
+        binding_site_id : int or list of int, default=None
+
+        Returns
+        -------
+        occupancy_BS : list of len(binding_site_id) lists
+
+        """
+        self._check_calculation("Residue", self.collect_residue_contacts)
+        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+        selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
+            else np.arange(len(self._node_list), dtype=int)
+        for bs_id in selected_bs_id:
+            nodes = self._node_list[bs_id]
+            occupancy_BS = []
+            for traj_idx in np.arange(len(self._trajfile_list), dtype=int):
+                for protein_idx in np.arange(self._nprot, dtype=int):
+                    list_to_take = traj_idx * self._nprot + protein_idx
+                    n_frames = len(self._contact_residues_low[nodes[0]][list_to_take])
+                    contact_BS_low = [np.unique(np.concatenate(
+                        [self._contact_residues_low[node][list_to_take][frame_idx] for node in nodes]))
+                        for frame_idx in np.arange(n_frames)]
+                    occupancy_BS.append(cal_occupancy(contact_BS_low))
+            self._occupancy_BS[bs_id] = occupancy_BS
+        # update dataset
+        occupancy_BS_per_residue = np.zeros(self._nresi_per_protein)
+        for bs_id, nodes in enumerate(self._node_list):
+            occupancy_BS_per_residue[nodes] = np.mean(self._occupancy_BS[bs_id]) \
+                if len(self._occupancy_BS[bs_id]) > 0 else 0
+        self.dataset["Binding Site Occupancy"] = occupancy_BS_per_residue
+
+        if len(selected_bs_id) == 1:
+            return self._occupancy_BS[bs_id]
+        else:
+            return [self._occupancy_BS[bs_id] for bs_id in selected_bs_id]
+
+    def compute_site_lipidcount(self, binding_site_id=None):
+        """Calculate the average number of surrounding lipids for binding sites.
+
+        Parameters
+        ----------
+        binding_site_id : int or list of int, default=None
+
+        Returns
+        -------
+        lipidcount_BS : list of len(binding_site_id) lists
+
+        """
+        self._check_calculation("Residue", self.collect_residue_contacts)
+        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+        selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
+            else np.arange(len(self._node_list), dtype=int)
+        for bs_id in selected_bs_id:
+            nodes = self._node_list[bs_id]
+            lipidcount_BS = []
+            for traj_idx in np.arange(len(self._trajfile_list), dtype=int):
+                for protein_idx in np.arange(self._nprot, dtype=int):
+                    list_to_take = traj_idx * self._nprot + protein_idx
+                    n_frames = len(self._contact_residues_low[nodes[0]][list_to_take])
+                    contact_BS_low = [np.unique(np.concatenate(
+                        [self._contact_residues_low[node][list_to_take][frame_idx] for node in nodes]))
+                        for frame_idx in np.arange(n_frames)]
+                    lipidcount_BS.append(cal_occupancy(contact_BS_low))
+            self._lipid_count_BS[bs_id] = lipidcount_BS
+        # update dataset
+        lipidcount_BS_per_residue = np.zeros(self._nresi_per_protein)
+        for bs_id, nodes in enumerate(self._node_list):
+            lipidcount_BS_per_residue[nodes] = np.mean(self._lipid_count_BS[bs_id]) \
+                if len(self._lipid_count_BS[bs_id]) > 0 else 0
+        self.dataset["Binding Site Lipid Count"] = lipidcount_BS_per_residue
+
+        if len(selected_bs_id) == 1:
+            return self._lipid_count_BS[bs_id]
+        else:
+            return [self._lipid_count_BS[bs_id] for bs_id in selected_bs_id]
+
     def compute_site_koff(self, binding_site_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                          save_dir=None, print_data=True, plot_data=True, sort_residue="Residence Time",
-                          fig_close=True):
+                          save_dir=None, plot_data=True, fig_close=True):
         """Calculate interactions for binding sites.
 
         Parameters
         ----------
-        binding_site_id : int or array_like or None, optional, default=None
-        nbootstrap : int, optional, default=10
+        binding_site_id : int or array_like or None, default=None
+        nbootstrap : int, default=10
         initial_guess : array_like, default=None
-        save_dir : str, optional, default=None
-        print_data : bool, optional, default=True
-        sort_residue : str, optional, default="Residence Time"
-        plot_data : bool, optional, default=True
+        save_dir : str, default=None
+        plot_data : bool, default=True
+        fig_close : bool, default=True
 
         Returns
         ---------
@@ -478,15 +731,18 @@ class LipidInteraction:
         restimes : list
 
         """
-        self._check_BS_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
-        if print_data or plot_data:
-            self._check_BS_calculation("Residence Time", self.compute_residue_koff, print_data=False, plot_data=False)
+        self._check_calculation("Residue", self.collect_residue_contacts)
+        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         if plot_data:
             BS_dir = check_dir(save_dir, "Binding_Sites_koffs_{}".format(self._lipid)) if save_dir is not None \
                 else check_dir(self._save_dir, "Binding_Sites_koffs_{}".format(self._lipid))
 
         selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
+        binding_sites_missing_durations = [bs_id for bs_id in selected_bs_id
+                                           if len(self._duration_BS[bs_id]) == 0]
+        if len(binding_sites_missing_durations) > 0:
+            self.compute_site_duration(binding_site_id=binding_sites_missing_durations)
         t_total = np.max(self._T_total)
         same_length = np.all(np.array(self._T_total) == t_total)
         if not same_length:
@@ -497,57 +753,17 @@ class LipidInteraction:
         if not same_timestep:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
-
-        if "Binding Site Koff" in self.dataset.columns:
-            # keep existing data
-            koff_BS_per_residue = np.array(self.dataset["Binding Site Koff"].tolist())
-            res_time_BS_per_residue = np.array(self.dataset["Binding Site Residence Time"].tolist())
-            durations_BS_per_residue = np.array(self.dataset["Binding Site Duration"].tolist())
-            occupancy_BS_per_residue = np.array(self.dataset["Binding Site Occupancy"].tolist())
-            lipid_count_BS_per_residue = np.array(self.dataset["Binding Site Lipid Count"].tolist())
-            r_squared_BS_per_residue = np.array(self.dataset["Binding Site R Squared"].tolist())
-        else:
-            koff_BS_per_residue = np.zeros(self._nresi_per_protein)
-            res_time_BS_per_residue = np.zeros(self._nresi_per_protein)
-            durations_BS_per_residue = np.zeros(self._nresi_per_protein)
-            occupancy_BS_per_residue = np.zeros(self._nresi_per_protein)
-            lipid_count_BS_per_residue = np.zeros(self._nresi_per_protein)
-            r_squared_BS_per_residue = np.zeros(self._nresi_per_protein)
-
-        # calculate interactions for binding sites
-        for bs_id in tqdm(selected_bs_id, desc="CALCULATE INTERACTIONS FOR BINDING SITES",
-                          total=len(selected_bs_id)):
-            nodes = self._node_list[bs_id]
-            # calculate durations, occupancy and lipid count
-            for traj_idx in np.arange(len(self._trajfile_list), dtype=int):
-                for protein_idx in np.arange(self._nprot, dtype=int):
-                    list_to_take = traj_idx * self._nprot + protein_idx
-                    n_frames = len(self.contact_residues_low[nodes[0]][list_to_take])
-                    contact_BS_low = [np.unique(np.concatenate(
-                        [self.contact_residues_low[node][list_to_take][frame_idx] for node in nodes]))
-                        for frame_idx in np.arange(n_frames)]
-                    contact_BS_high = [np.unique(np.concatenate(
-                        [self.contact_residues_high[node][list_to_take][frame_idx] for node in nodes]))
-                        for frame_idx in np.arange(n_frames)]
-                    self._durations_BS[bs_id].append(
-                        Duration(contact_BS_low, contact_BS_high, timestep).cal_durations())
-                    occupancy_BS, lipid_count_BS = cal_interaction_frequency(contact_BS_low)
-                    self._occupancy_BS[bs_id].append(occupancy_BS)
-                    self._lipid_count_BS[bs_id].append(lipid_count_BS)
-            # calculate BS koff and BS residence time
-            durations = np.concatenate(self._durations_BS[bs_id])
+        # calculate koff for binding sites
+        for bs_id in tqdm(selected_bs_id, desc="CALCULATE KOFF FOR BINDING SITES", total=len(selected_bs_id)):
+            durations = np.concatenate(self._duration_BS[bs_id])
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 koff_BS, restime_BS, properties_BS = cal_koff(durations, t_total, timestep, nbootstrap, initial_guess)
             self._koff_BS[bs_id] = koff_BS
+            self._koff_BS_boot[bs_id] = np.mean(properties_BS["ks_boot_set"], axis=0)[0]
             self._res_time_BS[bs_id] = restime_BS
             self._r_squared_BS[bs_id] = properties_BS["r_squared"]
-            koff_BS_per_residue[nodes] = koff_BS
-            res_time_BS_per_residue[nodes] = restime_BS
-            r_squared_BS_per_residue[nodes] = properties_BS["r_squared"]
-            durations_BS_per_residue[nodes] = np.concatenate(self._durations_BS[bs_id]).mean()
-            occupancy_BS_per_residue[nodes] = np.mean(self._occupancy_BS[bs_id])
-            lipid_count_BS_per_residue[nodes] = np.mean(self._lipid_count_BS[bs_id])
+            self._r_squared_BS_boot[bs_id] = np.mean(properties_BS["r_squared_boot_set"])
             if plot_data:
                 # plot BS koff and BS residence time
                 text = self._format_koff_text(properties_BS)
@@ -556,18 +772,14 @@ class LipidInteraction:
                           fig_fn=os.path.join(BS_dir, f"BS_id{bs_id}.pdf"), title=f"Binding Site {bs_id}",
                           timeunit=self._timeunit, t_total=t_total, text=text, fig_close=fig_close)
         # update dataset
-        self.dataset["Binding Site Koff"] = koff_BS_per_residue
-        self.dataset["Binding Site Residence Time"] = res_time_BS_per_residue
-        self.dataset["Binding Site R Squared"] = r_squared_BS_per_residue
-        self.dataset["Binding Site Duration"] = durations_BS_per_residue
-        self.dataset["Binding Site Occupancy"] = occupancy_BS_per_residue
-        self.dataset["Binding Site Lipid Count"] = lipid_count_BS_per_residue
-        # print binding site info
-        if print_data:
-            for bs_id in selected_bs_id:
-                nodes = self._node_list[bs_id]
-                text = self._format_BS_print_info(bs_id, nodes, sort_residue)
-                print(text)
+        for data, column_name in zip(
+                [self._koff_BS, self._koff_BS_boot, self._res_time_BS, self._r_squared, self._r_squared_BS_boot],
+                ["Binding Site Koff", "Binding Site Koff Bootstrap avg", "Binding Site Residence Time",
+                 "Binding Site R Squared", "Binding Site R Squared Bootstrap avg"]):
+            data_per_residue = np.zeros(self._nresi_per_protein)
+            for bs_id, nodes in enumerate(self._node_list):
+                data_per_residue[nodes] = data[bs_id]
+            self.dataset[column_name] = data_per_residue
 
         if len(selected_bs_id) == 1:
             return self._koff_BS[bs_id], self._res_time_BS[bs_id]
@@ -578,24 +790,35 @@ class LipidInteraction:
     def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
                             kde_bw=0.15, pca_component=0.95, plot_rmsd=True, save_dir=None,
                             n_clusters="auto", eps=None, min_samples=None, metric="euclidean", fig_close=False):
-        """Analyze binding poses.
+        """Analyze bound poses for binding sites.
+
+        This function can find representative bound poses, cluster the bound poses and calculate pose RMSD for
+        binding sites.
 
         Parameters
         ----------
-        binding_site_id : int or list_like or None, optional, default=None
-        n_top_poses : int, optional, default=5
-        pose_format : str, optional, default="pdb"
-        score_weights : dict or None, optional, default=None
-        kde_bw : scalar, optional, default=0.15
+        binding_site_id : int or list_like or None, default=None
+        n_top_poses : int, default=5
+        pose_format : str, default="pdb"
+        score_weights : dict or None, default=None
+        kde_bw : scalar, default=0.15
         pca_component : int, float or ‘mle’, default=0.95
             Set the `n_components` value in `sklearn.decomposition.PCA`
         plot_rmsd : bool, default=True
         n_clusters : int or 'auto'
-            If `n_clusters == 'auto'`,
-        save_dir : str or None, optinal, default=None
+            If `n_clusters == 'auto'`, the number of clusters will be guessed based on density, whereas n_clusters=N
+            will use KMeans to cluster the poses.
+        save_dir : str or None, default=None
+
+        Returns
+        -------
+        pose_pool : dict
+            Coordinates of all bound poses in stored in a python dictionary {binding_site_id: pose coordinates}
+        rmsd_data : pandas.DataFrame
+            Bound poses RMSDs are stored by columns with column name of binding site id.
 
         """
-        self._check_BS_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
 
         pose_dir = check_dir(save_dir, "Bound_Poses_{}".format(self._lipid)) if save_dir is not None \
             else check_dir(self._save_dir, "Bound_Poses_{}".format(self._lipid))
@@ -610,7 +833,7 @@ class LipidInteraction:
 
         # store bound lipid poses
         selected_bs_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
-        pose_pool = collect_bound_poses(selected_bs_map, self.contact_residues_low, self._trajfile_list,
+        pose_pool = collect_bound_poses(selected_bs_map, self._contact_residues_low, self._trajfile_list,
                                         self._topfile_list, self._lipid, stride=self._stride, nprot=self._nprot)
         # analyize bound poses
         RMSD_set = {}
@@ -685,7 +908,7 @@ class LipidInteraction:
         """
         MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
 
-        self._check_BS_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
 
         if "Binding Site Surface Area" in self.dataset.columns:
             # keep existing data
@@ -727,26 +950,6 @@ class LipidInteraction:
                                    fig_close=fig_close)
         return surface_area_data
 
-    def write_site_info(self, sort_residue="Residence Time", save_dir=None, fn_info=None):
-        """Write the binding site information in a txt file. """
-        if len(self._node_list) == 0:
-            print("No binding site was detected!!")
-        else:
-            BS_dir = check_dir(save_dir) if save_dir is not None \
-                else check_dir(self._save_dir)
-            if fn_info is None:
-                fn_info = "BindingSites_Info_{}.txt".format(self._lipid)
-            self._check_BS_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
-            self._check_BS_calculation("Binding Site Koff", self.compute_site_koff, print_data=False)
-            with open(os.path.join(BS_dir, fn_info), "a") as f:
-
-                f.write(f"## Network modularity {self._network_modularity:5.3f}")
-                f.write("\n")
-                for bs_id, nodes in enumerate(self._node_list):
-                    text = self._format_BS_print_info(bs_id, nodes, sort_residue)
-                    f.write(text)
-        return
-
     #################################
     #    save and plots
     #################################
@@ -764,15 +967,15 @@ class LipidInteraction:
             else check_dir(self._save_dir, "Dataset_{}".format(self._lipid))
 
         if item.lower() == "duration":
-            obj = self.durations
+            obj = self._duration
         elif item.lower() == "occupancy":
-            obj = self.occupancy
+            obj = self._occupancy
         elif item.lower() == "lipid count":
-            obj = self.lipid_count
+            obj = self._lipid_count
         elif item.lower() == "corrcoef":
             obj = self.interaction_corrcoef
         elif item.lower() == "duration bs":
-            obj = self._durations_BS
+            obj = self._duration_BS
         elif item.lower() == "occupancy bs":
             obj = self._occupancy_BS
         if 'obj' in locals():
@@ -819,7 +1022,7 @@ class LipidInteraction:
         return
 
     def plot(self, item, save_dir=None, gap=200, fig_close=False):
-        """Plot interactions.
+        """Plot interactions per residue or correlation matrix.
 
         Parameters
         ----------
@@ -900,11 +1103,48 @@ class LipidInteraction:
 
         return
 
-    ############################################
-    #     assisting func
-    ############################################
-    def _wrapup_in_logfile(self, write_log=True, print_log=True, fn_log=None):
-        """Assisting function for formatting the log file text."""
+    def write_site_info(self, sort_residue="Residence Time", save_dir=None, fn=None):
+        """Write out a file containing binding site information.
+
+        The information contains, for each binding site, the binding site residence time, durations, occupancy,
+        lipid count, surface area and some stats on amino acids composition. A list of Lipid interaction of comprising
+        residues of each binding site will follow the binding site information, in a sorted order indicated by
+        `sort_residue`.
+
+        Parameters
+        ----------
+        sort_residue : {"Residence Time", "Duration", "Occupancy", "Lipid Count"}, default="Residence Time"
+        save_dir : str, default=None
+        fn : str, default=None
+
+        """
+        if len(self._node_list) == 0:
+            print("No binding site was detected!!")
+        else:
+            BS_dir = check_dir(save_dir) if save_dir is not None \
+                else check_dir(self._save_dir)
+            if fn is None:
+                fn = "BindingSites_Info_{}.txt".format(self._lipid)
+            self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+            self._check_calculation("Binding Site Koff", self.compute_site_koff, print_data=False)
+            with open(os.path.join(BS_dir, fn), "a") as f:
+                f.write(f"## Network modularity {self._network_modularity:5.3f}")
+                f.write("\n")
+                for bs_id, nodes in enumerate(self._node_list):
+                    text = self._format_BS_print_info(bs_id, nodes, sort_residue)
+                    f.write(text)
+        return
+
+    def show_stats_per_traj(self, write_log=True, print_log=True, fn_log=None):
+        """Show stats of interactions per trajectory.
+
+        Parameters
+        ----------
+        write_log : bool, default=True
+        print_log : bool, default=True
+        fn_log : str, default=None
+
+        """
         if fn_log is None:
             fn_log = "calculation_log_{}.txt".format(self.lipid)
         text = []
@@ -923,15 +1163,15 @@ class LipidInteraction:
             # sort values
             durations = np.array(
                 [np.concatenate(
-                    self.durations[residue_id][traj_idx * self._nprot:(traj_idx + 1) * self._nprot]).mean()
+                    self._duration[residue_id][traj_idx * self._nprot:(traj_idx + 1) * self._nprot]).mean()
                  for residue_id in self._protein_residue_id])
             duration_arg_idx = np.argsort(durations)[::-1]
             occupancies = np.array(
-                [np.mean(self.occupancy[residue_id][traj_idx * self._nprot:(traj_idx + 1) * self._nprot])
+                [np.mean(self._occupancy[residue_id][traj_idx * self._nprot:(traj_idx + 1) * self._nprot])
                  for residue_id in self._protein_residue_id])
             occupancy_arg_idx = np.argsort(occupancies)[::-1]
             lipid_counts = np.array(
-                [np.mean(self.lipid_count[residue_id][traj_idx * self._nprot:(traj_idx + 1) * self._nprot])
+                [np.mean(self._lipid_count[residue_id][traj_idx * self._nprot:(traj_idx + 1) * self._nprot])
                  for residue_id in self._protein_residue_id])
             lipid_count_arg_idx = np.argsort(lipid_counts)[::-1]
 
@@ -963,6 +1203,10 @@ class LipidInteraction:
 
         return
 
+    ############################################
+    #     assisting func
+    ############################################
+
     def _format_koff_text(self, properties):
         """Format text for koff plot. """
         tu = "ns" if self._timeunit == "ns" else r"$\mu$s"
@@ -975,8 +1219,8 @@ class LipidInteraction:
                                                                      tu, cv_avg[0])
         text += "{:18s} = {:.3f} {:2s}$^{{-1}}$ ({:3.1f}%)\n".format("$k_{{off2, boot}}$", ks_boot_avg[1],
                                                                      tu, cv_avg[1])
+        text += "{:14s} = {:.4f}\n".format("$R^2$$_{{boot}}$", np.mean(properties["r_squared_boot_set"]))
         text += "{:18s} = {:.3f} {:2s}".format("$Res. Time$", properties["res_time"], tu)
-
         return text
 
     def _format_BS_print_info(self, bs_id, nodes, sort_item):
@@ -988,16 +1232,24 @@ class LipidInteraction:
                                  "ALA": "Hydrophobic", "VAL": "Hydrophobic", "ILE": "Hydrophobic", "LEU": "Hydrophobic",
                                  "MET": "Hydrophobic", "PHE": "Hydrophobic", "TYR": "Hydrophobic", "TRP": "Hydrophobic"}
         text = "# Binding site {}\n".format(bs_id)
-        text += "{:30s} {:10.3f} {:5s}\n".format(" Binding Site Residence Time:",
-                                                 self._res_time_BS[bs_id], self._timeunit)
-        text += "{:30s} {:10.3f}  R squared: {:7.4f}\n".format(" Binding Site Koff:", self._koff_BS[bs_id],
-                                                               self._r_squared_BS[bs_id])
-        text += "{:30s} {:10.3f} {:5s}\n".format(" Binding Site Duration:",
-                                                 np.concatenate(self._durations_BS[bs_id]).mean(), self._timeunit)
-        text += "{:30s} {:10.3f} %\n".format(" Binding Site Occupancy:",
-                                             np.mean(self._occupancy_BS[bs_id]))
-        text += "{:30s} {:10.3f}\n".format(" Binding Site Lipid Count:",
-                                           np.mean(self._lipid_count_BS[bs_id]))
+        if "Binding Site Residence Time" in self.dataset.columns:
+            text += "{:30s} {:10.3f} {:5s}\n".format(" Binding Site Residence Time:",
+                                                     self._res_time_BS[bs_id], self._timeunit)
+        if "Binding Site R Squared" in self.dataset.columns:
+            text += "{:30s} {:10.3f}  R squared: {:7.4f}\n".format(" Binding Site Koff:", self._koff_BS[bs_id],
+                                                                   self._r_squared_BS[bs_id])
+        if "Binding Site Duration" in self.dataset.columns:
+            text += "{:30s} {:10.3f} {:5s}\n".format(" Binding Site Duration:",
+                                                     np.concatenate(self._duration_BS[bs_id]).mean(), self._timeunit)
+        if "Binding Site Occupancy" in self.dataset.columns:
+            text += "{:30s} {:10.3f} %\n".format(" Binding Site Occupancy:",
+                                                 np.mean(self._occupancy_BS[bs_id]))
+        if "Binding Site Lipid Count" in self.dataset.columns:
+            text += "{:30s} {:10.3f}\n".format(" Binding Site Lipid Count:",
+                                               np.mean(self._lipid_count_BS[bs_id]))
+        if "Binding Site Surface Area" in self.dataset.columns:
+            text += "{:30s} {:10.3f} nm^2\n".format(" Binding Site Surface Area:",
+                            np.mean(self.dataset[self.dataset["Binding Site ID"]==bs_id]["Binding Site Surface Area"]))
         res_stats = {"Pos. Charge": 0, "Neg. Charge": 0, "Polar": 0, "Special": 0, "Hydrophobic": 0}
         # stats on the chemical properties of binding site residues
         for residue in self._residue_list[nodes]:
@@ -1016,17 +1268,18 @@ class LipidInteraction:
                                                                                  "Koff", "R Squared")
         info_dict_set = self.dataset.iloc[nodes].sort_values(by=sort_item, ascending=False).to_dict("records")
         for info_dict in info_dict_set:
+            info_dict_converted = defaultdict(float, info_dict)
             text += "{Residue:^9s}{Residue ID:^7d}{Residence Time:^16.3f}{Duration:^16.3f}" \
-                    "{Occupancy:^15.3f}{Lipid Count:^12.3f}{Koff:^7.3f}{R Squared:^10.3f}\n".format(**info_dict)
+                    "{Occupancy:^15.3f}{Lipid Count:^12.3f}{Koff:^7.3f}{R Squared:^10.3f}\n".format(**info_dict_converted)
         text += "\n"
         text += "\n"
         return text
 
-    def _check_BS_calculation(self, item, calculation, **kwargs):
+    def _check_calculation(self, item, calculation, *args, **kwargs):
         """Check BS calculation. """
         if item not in self.dataset.columns:
             print("#" * 60)
             print(f"{item} has not been calculated. Start the calculation.")
-            calculation(**kwargs)
+            calculation(*args, **kwargs)
             print("Finished the calculation of {}.".format(item))
             print("#" * 60)

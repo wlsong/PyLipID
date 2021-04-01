@@ -3,7 +3,8 @@
 Mics.
 =====
 
-Here we provide a no-brainer python script for lipid interaction analysis using PyLipID.::
+Here we provide a no-brainer python script for lipid interaction analysis using PyLipID. This script works
+for versions later than 1.4. Please update PyLipID to versions later than 1.4 ::
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -27,7 +28,7 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
                           # achieved by using the same value for two cutoffs.
 
     nprot = 1   # if the simulation system has N copies of receptors, "nprot=N" will report interactions
-                # averaged from the N copies, but "nprot=1" will ask pylipid to report interaction for
+                # averaged from the N copies, but "nprot=1" will ask PyLipID to report interaction for
                 # each copy.
 
     binding_site_size = 4  # binding site should contain at least four residues.
@@ -36,6 +37,11 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     save_pose_format = "gro"  # format that poses are written in
     timeunit = "us"  # micro-sec. "ns" is nanosecond. Time unit used for reporting the results.
     resi_offset = 0  # shift the residue index, useful for MARTINI models.
+
+    radii = None  # Radii of protein atoms/beads. In the format of python dictionary {atom_name: radius}
+                  # Used for calculation of binding site surface area. The van der waals radii of common atoms were
+                  # defined by mdtraj (https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56).
+                  # The radii of MARTINI 2.2 beads were included in PyLipID.
 
     pdb_file_to_map = None   # if a pdb coordinate of the receptor is provided, a python script
                              # "show_binding_site_info.py" will be generated which maps the binding
@@ -50,18 +56,24 @@ Here we provide a no-brainer python script for lipid interaction analysis using 
     li = LipidInteraction(trajfile_list, topfile_list=topfile_list, cutoffs=cutoffs, lipid=lipid,
                           lipid_atoms=lipid_atoms, nprot=1, resi_offset=resi_offset,
                           timeunit=timeunit, save_dir=save_dir, stride=stride, dt_traj=dt_traj)
-    li.collect_residue_contacts(write_log=True, print_log=True)
-    li.compute_residue_koff(print_data=False, plot_data=True, fig_close=True)
+    li.collect_residue_contacts()
+    li.compute_residue_duration(residue_id=None)
+    li.compute_residue_occupancy(residue_id=None)
+    li.compute_residue_lipidcount(residue_id=None)
+    li.show_stats_per_traj(write_log=True, print_log=True)
+    li.compute_residue_koff(residue_id=None, plot_data=True, fig_close=True)
     li.compute_binding_nodes(threshold=binding_site_size, print_data=False)
     if len(li.node_list) == 0:
         print("*"*50)
         print("No binding site detected! Skip analysis for binding sites.")
         print("*"*50)
     else:
-        li.compute_site_koff(print_data=True, plot_data=True, sort_residue="Residence Time",
-                             fig_close=True)
-        _, pose_rmsd_data = li.analyze_bound_poses(pose_format=save_pose_format)
-        surface_area_data = li.compute_surface_area()
+        li.compute_site_duration(binding_site_id=None)
+        li.compute_site_occupancy(binding_site_id=None)
+        li.compute_site_lipidcout(binding_site_id=None)
+        li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True)
+        _, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format)
+        surface_area_data = li.compute_surface_area(binding_site_id=None, radii=radii)
         pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir), index=False, header=True)
         surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir), index=False, header=True)
         li.write_site_info(sort_residue="Residence Time")
