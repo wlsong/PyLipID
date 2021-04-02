@@ -315,10 +315,10 @@ def plot_surface_area(surface_area, fig_fn, timeunit=None, fig_close=False):
 
     See also
     ---------
-    pylipid.funcs.calculate_surface_area
+    pylipid.func.calculate_surface_area
         The function that generates surface_area data.
-    pylipid.plots.plot_surface_area_stats
-        The function that plots surface_area in a matplotlib violin plot.
+    pylipid.plot.plot_surface_area_stats
+        The function that plot surface_area in a matplotlib violin plot.
 
     """
     from itertools import cycle as _cycle

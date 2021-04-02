@@ -29,8 +29,8 @@ def plot_koff(durations, delta_t_list, survival_rates, n_fitted,
               timeunit=None, text=None, t_total=None, fig_close=True):
     """Plot the koff figure.
 
-    The koff figure contains two axes. The left axis plots the sorted
-    interaction durations, and the right one plots normalised survival rates.
+    The koff figure contains two axes. The left axis plot the sorted
+    interaction durations, and the right one plot normalised survival rates.
 
     Parameters
     ----------

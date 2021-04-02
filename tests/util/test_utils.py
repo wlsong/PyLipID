@@ -3,11 +3,11 @@ import unittest
 import numpy as np
 import shutil
 import mdtraj as md
-from pylipid.utils import write_pymol_script
-from pylipid.utils import check_dir
-from pylipid.utils import rmsd
-from pylipid.utils import sparse_corrcoef
-from pylipid.utils import get_traj_info
+from pylipid.util import write_pymol_script
+from pylipid.util import check_dir
+from pylipid.util import rmsd
+from pylipid.util import sparse_corrcoef
+from pylipid.util import get_traj_info
 
 class TestScript(unittest.TestCase):
 

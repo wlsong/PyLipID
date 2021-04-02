@@ -2,7 +2,7 @@ import unittest
 import os
 import shutil
 from pylipid.api import LipidInteraction
-from pylipid.utils import check_dir
+from pylipid.util import check_dir
 
 class TestLipidInteraction(unittest.TestCase):
 

@@ -3,9 +3,9 @@ import unittest
 import numpy as np
 import shutil
 import pandas as pd
-from pylipid.utils import check_dir
-from pylipid.plots import plot_residue_data, plot_residue_data_logos
-from pylipid.plots import plot_binding_site_data, plot_surface_area
+from pylipid.util import check_dir
+from pylipid.plot import plot_residue_data, plot_residue_data_logos
+from pylipid.plot import plot_binding_site_data, plot_surface_area
 
 class TestPlot1d(unittest.TestCase):
 

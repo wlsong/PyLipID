@@ -2,7 +2,7 @@ import unittest
 import os
 import shutil
 import numpy as np
-from pylipid.funcs import cal_koff, cal_survival_func
+from pylipid.func import cal_koff, cal_survival_func
 from pylipid import LipidInteraction
 
 class TestKinetics(unittest.TestCase):

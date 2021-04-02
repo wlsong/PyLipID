@@ -63,7 +63,7 @@ def cal_koff(durations, t_total, timestep, nbootstrap=10, initial_guess=[1., 1.,
 
     See also
     -----------
-    pylipid.plots.plot_koff
+    pylipid.plot.plot_koff
             Plotting function for interaction durations and the calculated survival function.
 
     """

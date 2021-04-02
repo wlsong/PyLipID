@@ -2,8 +2,8 @@ import os
 import unittest
 import numpy as np
 import shutil
-from pylipid.utils import check_dir
-from pylipid.plots import plot_corrcoef
+from pylipid.util import check_dir
+from pylipid.plot import plot_corrcoef
 
 
 class TestPlot2d(unittest.TestCase):

@@ -2,9 +2,9 @@ import os
 import unittest
 import numpy as np
 import shutil
-from pylipid.plots import plot_koff
-from pylipid.funcs import cal_koff
-from pylipid.utils import check_dir
+from pylipid.plot import plot_koff
+from pylipid.func import cal_koff
+from pylipid.util import check_dir
 
 class TestPlot(unittest.TestCase):
 

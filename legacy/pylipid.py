@@ -88,7 +88,7 @@ parser.add_argument("-resi_list", nargs="+", default=[], metavar="1-10 20-30", h
                     should be consistent with the indices in your trajectories.")
 parser.add_argument("-nbootstrap", default=10, metavar=10, help="The number of bootstrappings for koff calculation. \
                     The default is 10. The larger the number, the more time-consuming the calculation will be. The bootstrapping results \
-                    are ploted in gray lines in the koff plots.")
+                    are ploted in gray lines in the koff plot.")
 parser.add_argument("-save_dataset", nargs="?", default=True, const=True, metavar="True", help="Save dataset in Pickle. Default is True")
 parser.add_argument("-n_binding_poses", default=5, metavar=5, help="The num. of top-scored lipid binding poses to be written out for each binding \
                     site. The default is 5. A scoring function is generated for each binding site based on the probability density functions (PDF) of \
@@ -1147,7 +1147,7 @@ for bs_id in np.arange(num_of_binding_site):
                 gray_areas[chain_starts[-1]].append([residue_index[idx - 1] + 1, residue_index[idx] - 1])
         chain_starts.append(len(residue_index))
 
-        ######### plots ######
+        ######### plot ######
         bar_color = "#176BA0"
         for chain_idx in np.arange(len(chain_starts[:-1])):
             df = data[chain_starts[chain_idx]:chain_starts[chain_idx + 1]]

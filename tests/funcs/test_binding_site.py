@@ -2,8 +2,8 @@ import unittest
 import os
 import shutil
 import numpy as np
-from pylipid.funcs import get_node_list, collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
-from pylipid.funcs import calculate_site_surface_area
+from pylipid.func import get_node_list, collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
+from pylipid.func import calculate_site_surface_area
 from pylipid import LipidInteraction
 
 

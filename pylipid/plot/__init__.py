@@ -15,11 +15,11 @@
 ##############################################################################
 
 r"""
-plots module
+plot module
 ============
 The ``plot`` module provides functions for aiding in the scientific analysis:
 
-.. currentmodule:: pylipid.plots
+.. currentmodule:: pylipid.plot
 
 .. autosummary::
    :toctree: generated/

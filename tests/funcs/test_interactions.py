@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pylipid.funcs import cal_contact_residues, Duration, cal_occupancy, cal_lipidcount
+from pylipid.func import cal_contact_residues, Duration, cal_occupancy, cal_lipidcount
 
 class TestCutoff(unittest.TestCase):
 

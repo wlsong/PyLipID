@@ -144,9 +144,9 @@ def cal_occupancy(contact_list):
 
     See also
     --------
-    pylipid.funcs.cal_contact_residues
+    pylipid.func.cal_contact_residues
         The function that calculates contact residues from distance matrix.
-    pylipid.funcs.cal_lipidcount
+    pylipid.func.cal_lipidcount
         The function that calculates the average number of contacts in all frames
 
     """
@@ -175,9 +175,9 @@ def cal_lipidcount(contact_list):
 
     See also
     --------
-    pylipid.funcs.cal_contact_residues
+    pylipid.func.cal_contact_residues
         The function that calculates contact residues from distance matrix.
-    pylipid.funcs.cal_occupancy
+    pylipid.func.cal_occupancy
         The function that calculates the percentage of frames in which a contact is formed
 
     """

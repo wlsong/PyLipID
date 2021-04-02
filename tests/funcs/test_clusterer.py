@@ -3,8 +3,8 @@ import os
 import shutil
 import numpy as np
 from sklearn.decomposition import PCA
-from pylipid.funcs import collect_bound_poses, vectorize_poses, write_bound_poses
-from pylipid.funcs import cluster_DBSCAN, cluster_KMeans
+from pylipid.func import collect_bound_poses, vectorize_poses, write_bound_poses
+from pylipid.func import cluster_DBSCAN, cluster_KMeans
 from pylipid import LipidInteraction
 
 class TestCluster(unittest.TestCase):

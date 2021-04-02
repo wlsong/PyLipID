@@ -14,38 +14,30 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
-r"""
-funcs module
-==============
-The ``funcs`` module provides functions for functions that do the heavy-lifting:
 
-.. currentmodule:: pylipid.funcs
+r"""
+util module
+=============
+The ``util`` module contains other assisting functions:
+
+.. currentmodule:: pylipid.util
 
 .. autosummary::
    :toctree: generated/
 
-   cal_koff
-   cal_survival_func
-   Duration
-   cal_contact_residues
-   cal_interaction_frequency
-   get_node_list
-   collect_bound_poses
-   vectorize_poses
-   calculate_scores
-   write_bound_poses
-   cluster_DBSCAN
-   cluster_KMeans
-   calculate_site_surface_area
+   check_dir
+   write_PDB
+   write_pymol_script
+   sparse_corrcoef
+   rmsd
+   get_traj_info
 
 """
 
-from .kinetics import cal_koff
-from .kinetics import cal_survival_func
-from .interactions import Duration
-from .interactions import cal_contact_residues, cal_occupancy, cal_lipidcount
-from .binding_site import get_node_list
-from .binding_site import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
-from .clusterer import cluster_DBSCAN, cluster_KMeans
-from .binding_site import calculate_site_surface_area
 
+from .directory import check_dir
+from .coordinate import write_PDB
+from .pymol_script import write_pymol_script
+from .corrcoef import sparse_corrcoef
+from .rmsd import rmsd
+from .trajectory import get_traj_info

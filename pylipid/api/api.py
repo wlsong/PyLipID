@@ -27,17 +27,17 @@ from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 import pandas as pd
 from tqdm import trange, tqdm
-from ..funcs import cal_contact_residues
-from ..funcs import Duration, cal_koff
-from ..funcs import cal_lipidcount, cal_occupancy
-from ..funcs import get_node_list
-from ..funcs import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
-from ..funcs import cluster_DBSCAN, cluster_KMeans
-from ..funcs import calculate_site_surface_area
-from ..plots import plot_koff
-from ..plots import plot_surface_area, plot_binding_site_data
-from ..plots import plot_residue_data, plot_corrcoef, plot_residue_data_logos
-from ..utils import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, rmsd, get_traj_info
+from ..func import cal_contact_residues
+from ..func import Duration, cal_koff
+from ..func import cal_lipidcount, cal_occupancy
+from ..func import get_node_list
+from ..func import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
+from ..func import cluster_DBSCAN, cluster_KMeans
+from ..func import calculate_site_surface_area
+from ..plot import plot_koff
+from ..plot import plot_surface_area, plot_binding_site_data
+from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logos
+from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, rmsd, get_traj_info
 
 
 class LipidInteraction:
@@ -270,9 +270,9 @@ class LipidInteraction:
     #     interaction calculation
     ########################################
     def collect_residue_contacts(self):
-        """Calculate lipid index for each residue at each frame.
+        """Create contacting lipid index for residues at each frame.
 
-        This function needs to run before the calculation of residue interactions.
+        This function needs to run before any of the calculations.
 
         """
         self._protein_ref = None
@@ -387,7 +387,7 @@ class LipidInteraction:
             return [self._duration[residue_id] for residue_id in selected_residue_id]
 
     def compute_residue_occupancy(self, residue_id=None):
-        """Calculate the percentage of frames in which lipids formed contacts with residues.
+        """Calculate the percentage of frames in which lipid contacts are formed for residues.
 
         Parameters
         ----------
@@ -428,7 +428,7 @@ class LipidInteraction:
 
         Returns
         -------
-        lipidcounts : list of len(residue_id) lists
+        lipidcounts : list, len(lipidcount)=len(residue_id)
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -453,7 +453,7 @@ class LipidInteraction:
 
     def compute_residue_koff(self, residue_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
                              save_dir=None, plot_data=True, fig_close=True):
-        """Calculate interaction koff for residues.
+        """Calculate interaction koff and residence time for residues.
 
         Parameters
         ----------
@@ -633,7 +633,7 @@ class LipidInteraction:
             return [self._duration_BS[bs_id] for bs_id in selected_bs_id]
 
     def compute_site_occupancy(self, binding_site_id=None):
-        """Calculate the percentage of frames in which lipids formed contacts with binding sites.
+        """Calculate the percentage of frames in which lipid contacts are formed for binding sites.
 
         Parameters
         ----------
@@ -714,7 +714,7 @@ class LipidInteraction:
 
     def compute_site_koff(self, binding_site_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
                           save_dir=None, plot_data=True, fig_close=True):
-        """Calculate interactions for binding sites.
+        """Calculate interactions koff and residence time for binding sites.
 
         Parameters
         ----------
@@ -900,10 +900,10 @@ class LipidInteraction:
 
         Parameters
         -----------
-        binding_site_id : int or array_like or None, optional, default=None
-        radii : dict or None, optional, default=None
-        plot_data : bool, optional, default=True
-        save_dir : str or None, optional, default=None
+        binding_site_id : int or array_like or None, default=None
+        radii : dict or None, default=None
+        plot_data : bool, default=True
+        save_dir : str or None, default=None
 
         """
         MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
@@ -951,10 +951,10 @@ class LipidInteraction:
         return surface_area_data
 
     #################################
-    #    save and plots
+    #    save and plot
     #################################
     def save_data(self, item, save_dir=None):
-        """Assisting function for save data set.
+        """Assisting function for saving data.
 
         Parameters
         ----------
@@ -988,12 +988,12 @@ class LipidInteraction:
         return
 
     def save_coordinate(self, item, save_dir=None, fn_coord=None):
-        """Save lipid interactions in the b factor column of a protein PDB coordinates.
+        """Save protein coordinates in PDB format with interaction data in the B factor column.
 
         parameters
         -----------
         item : {"Residence Time", "Duration", "Occupancy", "Lipid Count"}
-        save_dir : str or None, optional, default=None
+        save_dir : str or None, default=None
 
         """
         coord_dir = check_dir(save_dir, "Coordinate_{}".format(self._lipid)) if save_dir is not None \
@@ -1022,7 +1022,9 @@ class LipidInteraction:
         return
 
     def plot(self, item, save_dir=None, gap=200, fig_close=False):
-        """Plot interactions per residue or correlation matrix.
+        """Assisting function for plotting interaction data.
+
+        Plot interactions per residue or plot interaction correlation matrix.
 
         Parameters
         ----------
@@ -1104,11 +1106,11 @@ class LipidInteraction:
         return
 
     def write_site_info(self, sort_residue="Residence Time", save_dir=None, fn=None):
-        """Write out a file containing binding site information.
+        """Write a report on binding site with lipid interaction information.
 
-        The information contains, for each binding site, the binding site residence time, durations, occupancy,
-        lipid count, surface area and some stats on amino acids composition. A list of Lipid interaction of comprising
-        residues of each binding site will follow the binding site information, in a sorted order indicated by
+        The report contains information of the binding site residence time, durations, occupancy,
+        lipid count, surface area and some stats on amino acids composition. A list of lipid interactions with
+        comprising residues will follow after the binding site information, in a sorted order provided by
         `sort_residue`.
 
         Parameters

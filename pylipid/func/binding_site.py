@@ -89,7 +89,7 @@ def collect_bound_poses(binding_site_map, contact_residue_index, trajfile_list, 
 
     See also
     --------
-    pylipid.funcs.cal_contact_residues
+    pylipid.func.cal_contact_residues
         The function that calculates the contact residues from distance matrix
 
     """
@@ -181,8 +181,8 @@ def calculate_scores(data, kde_bw=0.15, pca_component=0.95, score_weights=None):
 
     See also
     --------
-    pylipid.funcs.collect_bound_poses
-    pylipid.funcs.vectorize_poses
+    pylipid.func.collect_bound_poses
+    pylipid.func.vectorize_poses
 
     """
     weights = {atom_idx: 1 for atom_idx in np.arange(np.shape(data)[0])}

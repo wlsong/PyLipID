@@ -14,7 +14,7 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
-"""This module contains functions for 2D plots.
+"""This module contains functions for 2D plot.
 """
 
 import os
