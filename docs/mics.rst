@@ -4,7 +4,7 @@ Mics.
 =====
 
 Here we provide a no-brainer python script for lipid interaction analysis using PyLipID. This script works
-for versions later than 1.4. Please update PyLipID to versions later than 1.4 ::
+for versions later than 1.4. Please update PyLipID to the latest version ::
 
     import numpy as np
     import matplotlib.pyplot as plt
