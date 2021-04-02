@@ -53,47 +53,45 @@ class LipidInteraction:
         Parameters
         ----------
         trajfile_list : str or a list of str
-            Trajectory filename(s) for `mdtraj.load()` to read the trajectory data.
+            Trajectory filename(s). Read by mdtraj.load() to obtain trajectory information.
 
         cutoffs : list of two scalar or a scalar, default=[0.475, 0.7]
-            Cutoff value(s) for defining contacts. When a list of two floats are supplied, the dual-cutoff scheme
-            will be used, whereas a single float
+            Cutoff value(s) for defining contacts. When a list of two scalar are provided, the dual-cutoff scheme
+            will be used.
 
         lipid : str, default="CHOL"
             The lipid residue name.
 
         topfile_list : str or a list of str, default=None
-            Topology filename(s). Most trajectory formats do not contain topology information. Pass in either
+            Topology filename(s). Most trajectory formats do not contain topology information. Provide either
             the path to a RCSB PDB file, a trajectory, or a topology for each trajectory in `trajfile_list`
-            to supply this information. See
-            `mdtraj.load() <https://mdtraj.org>`_. for more information.
+            for the topology information. See `mdtraj.load() <https://mdtraj.org>`_. for more information.
 
         lipid_atoms : list of str, default=None
-            Atom names of the lipid used for calculation of contacts. If None, all atoms of the lipid molecule
-            will be used.
+            Lipid atom names. Only interactions of the provided atoms will be considered for the calculation of contacts.
+            If None, all atoms of the lipid molecule will be used.
 
         nprot : int, default=1
             Number of protein copies in the system. If the system has N copies of the protein, 'nprot=N' will report
-            averaged values from the N copies, but 'nprot=1' in this case will report interaction values for each copy.
+            averaged values from the N copies, but 'nprot=1' will report interaction values for each copy.
 
         resi_offset : int, default=0
-            Shift the residue index in the reported results from what is indicated in the topology. Can be useful for
+            Shift residue index in the reported results from what is shown in the topology. Can be useful for
             MARTINI force field.
 
         save_dir : str, default=None
-            The root directory to store the generated data. All the generated dataset and created directories will be
+            The root directory to store the data. All the generated dataset and created directories will be
             put under this directory.
 
         timeunit : {"us", "ns"}, default="us"
             The time unit used for reporting results. "us" is micro-second and "ns" is nanosecond.
 
         stride : int, default=1
-            Only read every stride-th frame. The same as stride in mdtraj.load().
+            Only read every stride-th frame. The same stride in mdtraj.load().
 
         dt_traj : float, default=None
             Timestep of trajectories. It is required when trajectories do not have timestep information. Not needed for
-            trajectory formats of e.g. xtc, trr etc.
-
+            trajectory formats of e.g. xtc, trr etc. If None, timestep information will take from trajectories.
 
         """
         self._trajfile_list = np.atleast_1d(trajfile_list)
@@ -129,12 +127,12 @@ class LipidInteraction:
     #############################################
     @property
     def residue_list(self):
-        """A list of residue labels with residue names and index."""
+        """Residue names."""
         return self._residue_list
 
     @property
     def node_list(self):
-        """A list of binding site residue IDs."""
+        """Residue ID list of binding site"""
         return self._node_list
 
     @property
@@ -144,7 +142,7 @@ class LipidInteraction:
 
     @property
     def lipid_atoms(self):
-        """Names of lipid atoms for calculating contacts. """
+        """Lipid atom names"""
         return self._lipid_atoms
 
     @property
@@ -159,32 +157,32 @@ class LipidInteraction:
 
     @property
     def stride(self):
-        """Stride every stride-th frame of the trajectories for analysis . """
+        """Stride"""
         return self._stride
 
     @property
     def trajfile_list(self):
-        """A list of trajectory file names. """
+        """Trajectory filenames """
         return self._trajfile_list
 
     @property
     def topfile_list(self):
-        """A list of topology file names. """
+        """Topology filenames"""
         return self._topfile_list
 
     @property
     def dt_traj(self):
-        """Time step of trajectory. """
+        """Trajectory timestep"""
         return self._dt_traj
 
     @property
     def resi_offset(self):
-        """Residue index offset values. """
+        """Residue index offset"""
         return self._resi_offset
 
     @property
     def save_dir(self):
-        """Root directory for saving data. """
+        """Root directory of the generated data."""
         return self._save_dir
 
     @property
@@ -232,7 +230,7 @@ class LipidInteraction:
         ----------
         residue_id : int or list of int, default=None
             The residue ID that is used by PyLipID for identifying residues. The ID starts from 0, i.e. the ID
-            of N-th residue of the protein is (N-1). If None, all residues are selected.
+            of N-th residue is (N-1). If None, all residues are selected.
         residue_name : str or list of str, default=None
             The residue name as stored in PyLipID dataset. The residue name is in the format of resi+resn
 
@@ -272,7 +270,9 @@ class LipidInteraction:
     #     interaction calculation
     ########################################
     def collect_residue_contacts(self):
-        """Calculate lipid contact list per residue per frame.
+        """Calculate lipid index for each residue at each frame.
+
+        This function needs to run before the calculation of residue interactions.
 
         """
         self._protein_ref = None
@@ -358,7 +358,7 @@ class LipidInteraction:
 
         Returns
         -------
-        durations : list of len(residue_id) lists
+        durations : list, len(durations)=len(residue_id)
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -395,7 +395,7 @@ class LipidInteraction:
 
         Returns
         -------
-        occupancies : list of len(residue_id) lists
+        occupancies : list, len(occupancies)=len(residue_id)
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -457,13 +457,13 @@ class LipidInteraction:
 
         Parameters
         ----------
-        residue_id : int or array_like or None, optional, default=None
-        nbootstrap : int, optional, default=10
+        residue_id : int or array_like or None, default=None
+        nbootstrap : int, default=10
         initial_guess : array_like, default=None
-        save_dir : str, optional, default=None
-        print_data : bool, optional, default=True
-        plot_data : bool, optional, default=True
-        fig_close : bool, optional, default=True
+        save_dir : str, default=None
+        print_data : bool, default=True
+        plot_data : bool, default=True
+        fig_close : bool, default=True
 
         Returns
         ---------
@@ -548,7 +548,7 @@ class LipidInteraction:
 
         Returns
         -------
-        node_list: list of lists
+        node_list: list
         modularity : float or None
 
         """
@@ -597,7 +597,7 @@ class LipidInteraction:
 
         Returns
         -------
-        durations_BS : list of len(bs_id) lists
+        durations_BS : list, len(durations_BS)=len(binding_site_id)
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -641,7 +641,7 @@ class LipidInteraction:
 
         Returns
         -------
-        occupancy_BS : list of len(binding_site_id) lists
+        occupancy_BS : list, len(occupancy_BS)=len(binding_site_id)
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -681,7 +681,7 @@ class LipidInteraction:
 
         Returns
         -------
-        lipidcount_BS : list of len(binding_site_id) lists
+        lipidcount_BS : list, len(lipidcount_BS)=len(binding_site_id)
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -988,7 +988,7 @@ class LipidInteraction:
         return
 
     def save_coordinate(self, item, save_dir=None, fn_coord=None):
-        """Save lipid interactions in the b factor column of a PDB coordinate file
+        """Save lipid interactions in the b factor column of a protein PDB coordinates.
 
         parameters
         -----------
@@ -1027,8 +1027,8 @@ class LipidInteraction:
         Parameters
         ----------
         item : {"Residence Time", "Duration", "Occupancy", "Lipid Count", "CorrCoef"}
-        save_dir : str, optional, default=None
-        gap : int, optional, default=200
+        save_dir : str, default=None
+        gap : int, default=200
 
         """
         figure_dir = check_dir(save_dir, "Figure_{}".format(self._lipid)) if save_dir is not None \
