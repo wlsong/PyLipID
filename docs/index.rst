@@ -13,7 +13,7 @@ the tutorials for examples and the documentations for the API functionalities:
     * Calculation of lipid koff and residence time for protein residues and binding sites.
     * Generation of representative bound poses for binding sites.
     * Analysis of bound poses for binding sites via automated clustering scheme.
-    * Adoption of a dual-cutoff scheme to overcome the 'cage-rattling' effect of coarse-grained simulations.
+    * Adoption of a dual-cutoff scheme to overcome the 'rattling in cage' effect of coarse-grained simulations.
     * Generation of manuscript-ready figures for analysis.
 
 

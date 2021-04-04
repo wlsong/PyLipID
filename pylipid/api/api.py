@@ -60,7 +60,7 @@ class LipidInteraction:
             will be used.
 
         lipid : str, default="CHOL"
-            Lipid residue name.
+            Lipid name in topology.
 
         topfile_list : str or a list of str, default=None
             Topology filename(s). Most trajectory formats do not contain topology information. Provide either
