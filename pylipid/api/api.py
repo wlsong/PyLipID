@@ -864,11 +864,9 @@ class LipidInteraction:
             if n_clusters == 'auto':
                 pose_dir_clustered = check_dir(pose_dir, "BSid{}_clusters".format(bs_id), print_info=False)
                 transformed_data = PCA(n_components=pca_component).fit_transform(lipid_dist_per_pose)
-                cluster_labels = cluster_DBSCAN(transformed_data, eps=eps, min_samples=min_samples,
-                                                metric=metric)
-                cluster_id_set = [label for label in np.unique(cluster_labels) if label != -1]
-                selected_pose_id = [np.random.choice(np.where(cluster_labels == cluster_id)[0], 1)[0]
-                                    for cluster_id in cluster_id_set]
+                _, core_sample_indices = cluster_DBSCAN(transformed_data, eps=eps, min_samples=min_samples,
+                                                        metric=metric)
+                selected_pose_id = [np.random.choice(i_core_sample, 1)[0] for i_core_sample in core_sample_indices]
                 write_bound_poses(pose_traj, selected_pose_id, pose_dir_clustered,
                                   pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
             elif n_clusters > 0:
