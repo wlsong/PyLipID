@@ -27,7 +27,7 @@ The documentaion and tutorials can be found at `pylipid.readthedocs.io <https://
 Installation
 ============
 
-We recommend install PyLipID using the package installer `pip`:
+We recommend installing PyLipID using the package installer `pip`:
 
 ``pip install pylipid``
 
