@@ -70,7 +70,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
     else:
         li.compute_site_duration(binding_site_id=None)
         li.compute_site_occupancy(binding_site_id=None)
-        li.compute_site_lipidcout(binding_site_id=None)
+        li.compute_site_lipidcount(binding_site_id=None)
         li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True)
         _, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format)
         surface_area_data = li.compute_surface_area(binding_site_id=None, radii=radii)

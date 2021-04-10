@@ -48,8 +48,8 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
 
     Returns
     -------
-    labels : array_like, shape=(n_samples)
-    core_sample_indices : array_like, shape=(n_core_samples)
+    labels : array_like, shape=(n_samples,)
+    core_sample_indices : array_like, shape=(n_clusters,)
 
     """
     if len(data) <= len(data[0]):
@@ -77,7 +77,10 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
         min_samples = np.arange(2, len(data)-1, 2)[np.argmax(scores)] # the highest silhouette_score.
     dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
     dbscan.fit(data)
-    return dbscan.labels_, dbscan.core_sample_indices_
+    core_sample_indices = [[] for label in np.unique(dbscan.labels_) if label != -1]
+    for core_sample_index in dbscan.core_sample_indices_:
+        core_sample_indices[dbscan.labels_[core_sample_index]].append(core_sample_index)
+    return dbscan.labels_, core_sample_indices
 
 
 def cluster_KMeans(data, n_clusters):
