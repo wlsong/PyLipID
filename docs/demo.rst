@@ -90,7 +90,6 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
     for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
         li.plot(item=item, fig_close=True)
         li.plot_logo(item=item, fig_close=True)
-    li.plot(item="CorrCoef")
 
     #### plot binding site comparison.
     if len(li.node_list) > 0:
