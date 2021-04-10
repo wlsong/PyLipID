@@ -369,8 +369,8 @@ class LipidInteraction:
 
         for residue_id in selected_residue_id:
             self._duration[residue_id] = [
-                        Duration(self._contact_residues_low[residue_id][traj_idx*protein_idx],
-                                 self._contact_residues_high[residue_id][traj_idx*protein_idx],
+                        Duration(self._contact_residues_low[residue_id][(traj_idx*self._nprot)+protein_idx],
+                                 self._contact_residues_high[residue_id][(traj_idx*self._nprot)+protein_idx],
                                  self._timesteps[traj_idx]).cal_durations()
                         for traj_idx in np.arange(len(self.trajfile_list))
                         for protein_idx in np.arange(self._nprot, dtype=int)]
@@ -387,7 +387,7 @@ class LipidInteraction:
             return [self._duration[residue_id] for residue_id in selected_residue_id]
 
     def compute_residue_occupancy(self, residue_id=None):
-        """Calculate the percentage of frames in which lipid contacts are formed for residues.
+        """Calculate the percentage of frames in which the specified lipid contacts are formed for residues.
 
         Parameters
         ----------
@@ -404,7 +404,7 @@ class LipidInteraction:
         else:
             selected_residue_id = np.atleast_1d(residue_id)
         for residue_id in selected_residue_id:
-            self._occupancy[residue_id] = [cal_occupancy(self._contact_residues_low[residue_id][traj_idx*protein_idx])
+            self._occupancy[residue_id] = [cal_occupancy(self._contact_residues_low[residue_id][(traj_idx*self._nprot)+protein_idx])
                                           for traj_idx in np.arange(len(self.trajfile_list))
                                           for protein_idx in np.arange(self._nprot, dtype=int)]
         self.dataset["Occupancy"] = [np.mean(self._occupancy[residue_id])
@@ -420,7 +420,10 @@ class LipidInteraction:
             return [self._occupancy[residue_id] for residue_id in selected_residue_id]
 
     def compute_residue_lipidcount(self, residue_id=None):
-        """Calculate the average number of surrounding lipids for residues.
+        """Calculate the average number of contacting lipids for residues.
+
+        Only lipids of the specified name will be calculated. The number of contacting lipids are calculated from
+        the frames in which the specified lipid contacts are formed with the residues.
 
         Parameters
         ----------
@@ -437,7 +440,7 @@ class LipidInteraction:
         else:
             selected_residue_id = np.atleast_1d(residue_id)
         for residue_id in selected_residue_id:
-            self._lipid_count[residue_id] = [cal_lipidcount(self._contact_residues_low[residue_id][traj_idx * protein_idx])
+            self._lipid_count[residue_id] = [cal_lipidcount(self._contact_residues_low[residue_id][(traj_idx*self._nprot)+protein_idx])
                                            for traj_idx in np.arange(len(self.trajfile_list))
                                            for protein_idx in np.arange(self._nprot, dtype=int)]
             self.dataset["Lipid Count"] = [np.mean(self._lipid_count[residue_id])
@@ -633,7 +636,7 @@ class LipidInteraction:
             return [self._duration_BS[bs_id] for bs_id in selected_bs_id]
 
     def compute_site_occupancy(self, binding_site_id=None):
-        """Calculate the percentage of frames in which lipid contacts are formed for binding sites.
+        """Calculate the percentage of frames in which the specified lipid contacts are formed for binding sites.
 
         Parameters
         ----------
@@ -673,7 +676,10 @@ class LipidInteraction:
             return [self._occupancy_BS[bs_id] for bs_id in selected_bs_id]
 
     def compute_site_lipidcount(self, binding_site_id=None):
-        """Calculate the average number of surrounding lipids for binding sites.
+        """Calculate the average number of contacting lipids for binding site.
+
+        Only lipids of the specified name will be calculated. The number of contacting lipids are calculated from
+        the frames in which the specified lipid contacts are formed with binding sites.
 
         Parameters
         ----------
@@ -698,7 +704,7 @@ class LipidInteraction:
                     contact_BS_low = [np.unique(np.concatenate(
                         [self._contact_residues_low[node][list_to_take][frame_idx] for node in nodes]))
                         for frame_idx in np.arange(n_frames)]
-                    lipidcount_BS.append(cal_occupancy(contact_BS_low))
+                    lipidcount_BS.append(cal_lipidcount(contact_BS_low))
             self._lipid_count_BS[bs_id] = lipidcount_BS
         # update dataset
         lipidcount_BS_per_residue = np.zeros(self._nresi_per_protein)

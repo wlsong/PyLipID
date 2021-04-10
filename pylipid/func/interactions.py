@@ -151,16 +151,15 @@ def cal_occupancy(contact_list):
 
     """
     if len(contact_list) == 0:
-        return 0, 0
+        return 0
     else:
         contact_counts = [len(item) for item in contact_list]
         mask = np.array(contact_counts) > 0
-        contact_counts_nonzero = np.array(contact_counts)[mask]
-        return 100 * len(contact_counts_nonzero)/len(contact_list)
+        return 100 * np.sum(mask)/len(contact_list)
 
 
 def cal_lipidcount(contact_list):
-    """Calculate the average number of contacts at a frame.
+    """Calculate the average number of surrounding molecules when a contact if formed.
 
     Parameters
     ___________
@@ -182,14 +181,13 @@ def cal_lipidcount(contact_list):
 
     """
     if len(contact_list) == 0:
-        return 0, 0
+        return 0
     else:
-        contact_counts = [len(item) for item in contact_list]
-        mask = np.array(contact_counts) > 0
-        contact_counts_nonzero = np.array(contact_counts)[mask]
-
-        if len(contact_counts_nonzero) == 0:
+        contact_counts = np.array([len(item) for item in contact_list])
+        mask = contact_counts > 0
+        if np.sum(mask) == 0:
             return 0
         else:
+            contact_counts_nonzero = contact_counts[mask]
             return np.nan_to_num(contact_counts_nonzero.mean())
 
