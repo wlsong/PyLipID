@@ -82,8 +82,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
         li.save_pymol_script(pdb_file_to_map)
 
     #### write and save data
-    for item in ["Dataset", "Duration", "Occupancy", "Lipid Count", "CorrCoef",
-                 "Duration BS", "Occupancy BS"]:
+    for item in ["Dataset", "Duration", "Occupancy", "Lipid Count", "CorrCoef"]:
         li.save_data(item=item)
     for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
         li.save_coordinate(item=item)
@@ -93,6 +92,9 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
 
     #### plot binding site comparison.
     if len(li.node_list) > 0:
+    for item in ["Duration BS", "Occupancy BS"]:
+        li.save_data(item=item)
+        
         ylabel_timeunit = 'ns' if li.timeunit == "ns" else r"$\mu$s"
         ylabel_dict = {"Residence Time": "Residence Time ({})".format(ylabel_timeunit),
                        "Duration": "Duration ({})".format(ylabel_timeunit),
