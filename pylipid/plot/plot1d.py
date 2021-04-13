@@ -341,7 +341,10 @@ def plot_surface_area(surface_area, fig_fn, timeunit=None, fig_close=False):
     fig, axes = plt.subplots(len(row_set), len(col_set), figsize=(len(col_set)*2.4, len(row_set)*1.6),
                              sharex=True, sharey=True)
     plt.subplots_adjust(wspace=0.2, hspace=0.16)
-    axes = np.atleast_2d(axes)
+    if len(col_set) == 1:
+        axes = np.atleast_1d(axes)[:, np.newaxis]
+    else:
+        axes = np.atleast_2d(axes)
     for row_idx, row in enumerate(row_set):
         df = surface_area.loc[row]
         for col_idx, bs_name in enumerate(col_set):

@@ -919,15 +919,14 @@ class LipidInteraction:
             surface_area_per_residue = np.array(self.dataset["Binding Site Surface Area"].tolist())
         else:
             surface_area_per_residue = np.zeros(self._nresi_per_protein)
-        if plot_data:
-            selected_bs_id = np.atleast_1d(np.array(binding_site_id, dtype=int)) if binding_site_id is not None \
-                else np.arange(len(self._node_list), dtype=int)
         if radii is None:
             radii_book = MARTINI_CG_radii
         else:
             radii_book = {**MARTINI_CG_radii, **radii}
 
         # calculate binding site surface area
+        selected_bs_id = np.atleast_1d(np.array(binding_site_id, dtype=int)) if binding_site_id is not None \
+            else np.arange(len(self._node_list), dtype=int)
         selected_bs_id_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
         surface_area_data = calculate_site_surface_area(selected_bs_id_map, radii_book, self._trajfile_list,
                                                         self._topfile_list, self._nprot, self._timeunit, self._stride,
