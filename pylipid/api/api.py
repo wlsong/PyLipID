@@ -869,7 +869,7 @@ class LipidInteraction:
                 pose_indices = np.argsort(scores)[::-1][:num_of_poses]
                 write_bound_poses(pose_traj[bs_id], pose_indices, pose_dir_rank, pose_prefix="BSid{}_top".format(bs_id),
                                   pose_format=pose_format)
-                self._write_pose_info([pose_info[bs_id][pose_idx] for pose_idx in [pose_indices]],
+                self._write_pose_info([pose_info[bs_id][int(pose_idx)] for pose_idx in pose_indices],
                                       f"{pose_dir_rank}/pose_info.txt")
             lipid_dist_per_pose = np.array([lipid_dist_per_atom[:, pose_id, :].ravel()
                                             for pose_id in np.arange(lipid_dist_per_atom.shape[1])])
@@ -888,7 +888,7 @@ class LipidInteraction:
                                     for cluster_id in cluster_id_set]
             write_bound_poses(pose_traj[bs_id], selected_pose_id, pose_dir_clustered,
                               pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
-            self._write_pose_info([pose_info[bs_id][pose_idx] for pose_idx in [selected_pose_id]],
+            self._write_pose_info([pose_info[bs_id][int(pose_idx)] for pose_idx in selected_pose_id],
                                   f"{pose_dir_clustered}/pose_info.txt")
             # calculate pose rmsd
             dist_mean = np.mean(lipid_dist_per_pose, axis=0)

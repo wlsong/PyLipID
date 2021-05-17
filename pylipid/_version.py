@@ -14,4 +14,4 @@
 # copies or substantial portions of the Software.
 ##############################################################################
 
-__version__ = '1.4.11'
+__version__ = '1.4.12'
