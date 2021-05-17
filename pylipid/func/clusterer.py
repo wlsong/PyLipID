@@ -20,7 +20,6 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 from kneebow.rotor import Rotor
 
 
@@ -54,8 +53,14 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
     """
     if len(data) <= len(data[0]):
         return np.array([0 for dummy in data]), np.arange(len(data))[np.newaxis, :]
+    if len(data) < 200:
+        min_samples = 2 * len(data[0])
+    elif 200 <= len(data) < 800:
+        min_samples = 5 * len(data[0])
+    elif len(data) >= 800:
+        min_samples = 10 * len(data[0])
     if eps is None:
-        nearest_neighbors = NearestNeighbors(n_neighbors=3)
+        nearest_neighbors = NearestNeighbors(n_neighbors=min_samples)
         nearest_neighbors.fit(data)
         distances, indices = nearest_neighbors.kneighbors(data)
         distances = np.sort(distances, axis=0)[:, 1]
@@ -64,17 +69,6 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
         rotor.fit_rotate(data_vstacked)
         elbow_index = rotor.get_elbow_index()
         eps = distances[elbow_index]
-    if min_samples is None:
-        scores = []
-        for n_sample in np.arange(2, len(data)-1, 2):
-            dbscan = DBSCAN(eps=eps, min_samples=n_sample, metric=metric)
-            dbscan.fit(data)
-            labels = dbscan.labels_
-            if np.all(labels == -1):
-                break
-            else:
-                scores.append(silhouette_score(data, labels))
-        min_samples = np.arange(2, len(data)-1, 2)[np.argmax(scores)] # the highest silhouette_score.
     dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
     dbscan.fit(data)
     core_sample_indices = [[] for label in np.unique(dbscan.labels_) if label != -1]
