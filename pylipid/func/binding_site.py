@@ -69,7 +69,7 @@ def get_node_list(corrcoef, threshold=4):
 
 
 def collect_bound_poses(binding_site_map, contact_residue_index, trajfile_list, topfile_list,
-                        lipid, stride=1, nprot=1):
+                        lipid, protein_ref, lipid_ref, stride=1, nprot=1):
     """Collected the bound poses based on contact_residue_index.
 
     Parameters
@@ -79,13 +79,15 @@ def collect_bound_poses(binding_site_map, contact_residue_index, trajfile_list, 
     trajfile_list : list of str
     topfile_list : list of str
     lipid : str
+    protein_ref : mdtraj.Trajectory
+    lipid_ref : mdtraj.Trajectory
     stride : int,default=1
     nprot : int, default=1
 
     Returns
     ---------
-    pose_pool : dict
-        Coordinates of all bound poses in stored in a python dictionary {binding_site_id: pose coordinates}
+    pose_traj : dict
+        Coordinates of all bound poses in stored in a python dictionary {binding_site_id: mdtraj.Trajectory}
 
     See also
     --------
@@ -93,11 +95,13 @@ def collect_bound_poses(binding_site_map, contact_residue_index, trajfile_list, 
         The function that calculates the contact residues from distance matrix
 
     """
+    joined_top = protein_ref.top.join(lipid_ref.top)
     trajfile_list = np.atleast_1d(trajfile_list)
     topfile_list = np.atleast_1d(topfile_list)
     stride = int(stride)
     nprot = int(nprot)
     pose_pool = defaultdict(list)
+    pose_info = defaultdict(list)
     for traj_idx in np.arange(len(trajfile_list)):
         traj = md.load(trajfile_list[traj_idx], top=topfile_list[traj_idx], stride=stride)
         protein_indices_all = traj.top.select("protein")
@@ -126,42 +130,39 @@ def collect_bound_poses(binding_site_map, contact_residue_index, trajfile_list, 
                             pose_pool[bs_id].append(
                                 [np.copy(traj.xyz[frame_id, np.hstack([protein_indices, lipid_atom_indices])]),
                                  np.copy(traj.unitcell_angles[frame_id]), np.copy(traj.unitcell_lengths[frame_id])])
-        return pose_pool
+                            pose_info[bs_id].append((traj_idx, protein_idx, lipid_residue_index, frame_id*traj.timestep))
+    pose_traj = {}
+    for bs_id in pose_pool.keys():
+        pose_traj[bs_id] = md.Trajectory([frame[0] for frame in pose_pool[bs_id]], joined_top,
+                                          time=None,
+                                          unitcell_angles=[frame[1] for frame in pose_pool[bs_id]],
+                                          unitcell_lengths=[frame[2] for frame in pose_pool[bs_id]])
+
+    return pose_traj, pose_info
 
 
-def vectorize_poses(bound_poses, binding_nodes, protein_ref, lipid_ref):
+def vectorize_poses(bound_poses, binding_nodes, protein_atom_indices, lipid_atom_indices):
     """Calculate distance matrix for bound poses.
 
     Parameters
     ----------
     bound_poses :
     binding_nodes :
-    protein_ref :
-    lipid_ref :
+    protein_atom_indices :
+    lipid_atom_indcies :
 
     Returns
     -------
     dist_matrix :
-    pose_traj : mdtraj.Trajectory
 
     """
-    # prepare topology
-    protein_atom_indices = [[atom.index for atom in residue.atoms] for residue in protein_ref.top.residues]
-    lipid_atoms = [protein_ref.n_atoms + atom_idx for atom_idx in np.arange(lipid_ref.n_atoms)]
-    joined_top = protein_ref.top.join(lipid_ref.top)
-
-    # start pose generation
-    pose_traj = md.Trajectory([frame[0] for frame in bound_poses], joined_top,
-                             time=np.arange(len(bound_poses)),
-                             unitcell_angles=[frame[1] for frame in bound_poses],
-                             unitcell_lengths=[frame[2] for frame in bound_poses])
     # calculate distance to binding site residues for each lipid atom
     dist_per_atom = np.array(
-        [np.array([md.compute_distances(pose_traj,
-                                        list(product([lipid_atoms[idx]], protein_atom_indices[node])),
+        [np.array([md.compute_distances(bound_poses,
+                                        list(product([lipid_atom_indices[idx]], protein_atom_indices[node])),
                                         periodic=True).min(axis=1) for node in binding_nodes]).T
-         for idx in np.arange(lipid_ref.n_atoms)])  # shape: [n_lipid_atoms, n_poses, n_BS_residues]
-    return dist_per_atom, pose_traj
+         for idx in np.arange(len(lipid_atom_indices))])  # shape: [n_lipid_atoms, n_poses, n_BS_residues]
+    return dist_per_atom
 
 
 def calculate_scores(data, kde_bw=0.15, pca_component=0.95, score_weights=None):

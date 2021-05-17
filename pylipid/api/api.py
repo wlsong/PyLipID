@@ -779,7 +779,7 @@ class LipidInteraction:
                           timeunit=self._timeunit, t_total=t_total, text=text, fig_close=fig_close)
         # update dataset
         for data, column_name in zip(
-                [self._koff_BS, self._koff_BS_boot, self._res_time_BS, self._r_squared, self._r_squared_BS_boot],
+                [self._koff_BS, self._koff_BS_boot, self._res_time_BS, self._r_squared_BS, self._r_squared_BS_boot],
                 ["Binding Site Koff", "Binding Site Koff Bootstrap avg", "Binding Site Residence Time",
                  "Binding Site R Squared", "Binding Site R Squared Bootstrap avg"]):
             data_per_residue = np.zeros(self._nresi_per_protein)
@@ -839,17 +839,22 @@ class LipidInteraction:
 
         # store bound lipid poses
         selected_bs_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
-        pose_pool = collect_bound_poses(selected_bs_map, self._contact_residues_low, self._trajfile_list,
-                                        self._topfile_list, self._lipid, stride=self._stride, nprot=self._nprot)
+        pose_traj, pose_info = collect_bound_poses(selected_bs_map, self._contact_residues_low, self._trajfile_list,
+                                                   self._topfile_list, self._lipid, self._protein_ref, self._lipid_ref,
+                                                   stride=self._stride, nprot=self._nprot)
         # analyize bound poses
         RMSD_set = {}
         for bs_id in tqdm(selected_bs_id, desc="ANALYZE BOUND POSES"):
             # lipid_dist_per_atom shape: [n_lipid_atoms, n_bound_poses, n_BS_residues]
-            if len(pose_pool[bs_id]) == 0:
-                print(f"Binding Site {bs_id} is bogus! Possibly due to insufficient sampling.")
+            if len(pose_traj[bs_id]) == 0:
+                print(f"No Bound pose collected from Binding Site {bs_id}! Possibly due to insufficient sampling.")
                 continue
-            lipid_dist_per_atom, pose_traj = vectorize_poses(pose_pool[bs_id], self._node_list[bs_id],
-                                                             self._protein_ref, self._lipid_ref)
+            protein_atom_indices = [[atom.index for atom in residue.atoms]
+                                    for residue in self._protein_ref.top.residues]
+            lipid_atom_indices = [self._protein_ref.n_atoms + atom_idx
+                                  for atom_idx in np.arange(self._lipid_ref.n_atoms)]
+            lipid_dist_per_atom = vectorize_poses(pose_traj[bs_id], self._node_list[bs_id],
+                                                  protein_atom_indices, lipid_atom_indices)
             if n_top_poses > 0:
                 pose_dir_rank = check_dir(pose_dir, "BSid{}_rank".format(bs_id), print_info=False)
                 atom_weights = {atom_idx: 1 for atom_idx in np.arange(self._lipid_ref.n_atoms)}
@@ -860,30 +865,29 @@ class LipidInteraction:
                     atom_weights.update(translate)
                 scores = calculate_scores(lipid_dist_per_atom, kde_bw=kde_bw, pca_component=pca_component,
                                           score_weights=atom_weights)
-                num_of_poses = min(n_top_poses, pose_traj.n_frames)
+                num_of_poses = min(n_top_poses, pose_traj[bs_id].n_frames)
                 pose_indices = np.argsort(scores)[::-1][:num_of_poses]
-                write_bound_poses(pose_traj, pose_indices, pose_dir_rank, pose_prefix="BSid{}_top".format(bs_id),
+                write_bound_poses(pose_traj[bs_id], pose_indices, pose_dir_rank, pose_prefix="BSid{}_top".format(bs_id),
                                   pose_format=pose_format)
+                self._write_pose_info(pose_info[bs_id][pose_indices], f"{pose_dir_rank}/pose_info.txt")
             lipid_dist_per_pose = np.array([lipid_dist_per_atom[:, pose_id, :].ravel()
                                             for pose_id in np.arange(lipid_dist_per_atom.shape[1])])
             # cluster poses
+
+            pose_dir_clustered = check_dir(pose_dir, "BSid{}_clusters".format(bs_id), print_info=False)
+            transformed_data = PCA(n_components=pca_component).fit_transform(lipid_dist_per_pose)
             if n_clusters == 'auto':
-                pose_dir_clustered = check_dir(pose_dir, "BSid{}_clusters".format(bs_id), print_info=False)
-                transformed_data = PCA(n_components=pca_component).fit_transform(lipid_dist_per_pose)
                 _, core_sample_indices = cluster_DBSCAN(transformed_data, eps=eps, min_samples=min_samples,
                                                         metric=metric)
                 selected_pose_id = [np.random.choice(i_core_sample, 1)[0] for i_core_sample in core_sample_indices]
-                write_bound_poses(pose_traj, selected_pose_id, pose_dir_clustered,
-                                  pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
             elif n_clusters > 0:
-                pose_dir_clusters = check_dir(pose_dir, "BSid{}_clusters".format(bs_id), print_info=False)
-                transformed_data = PCA(n_components=pca_component).fit_transform(lipid_dist_per_pose)
                 cluster_labels = cluster_KMeans(transformed_data, n_clusters=n_clusters)
                 cluster_id_set = np.unique(cluster_labels)
                 selected_pose_id = [np.random.choice(np.where(cluster_labels == cluster_id)[0], 1)[0]
                                     for cluster_id in cluster_id_set]
-                write_bound_poses(pose_traj, selected_pose_id, pose_dir_clusters,
-                                  pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
+            write_bound_poses(pose_traj[bs_id], selected_pose_id, pose_dir_clustered,
+                              pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
+            self._write_pose_info(pose_info[bs_id][selected_pose_id], f"{pose_dir_clustered}/pose_info.txt")
             # calculate pose rmsd
             dist_mean = np.mean(lipid_dist_per_pose, axis=0)
             RMSD_set["Binding Site {}".format(bs_id)] = [rmsd(lipid_dist_per_pose[pose_id], dist_mean)
@@ -897,7 +901,7 @@ class LipidInteraction:
         if plot_rmsd and n_top_poses > 0:
             plot_binding_site_data(pose_rmsd_data, os.path.join(pose_dir, "Pose_RMSD_violinplot.pdf"),
                                    title="{}".format(self._lipid), ylabel="RMSD (nm)", fig_close=fig_close)
-        return pose_pool, pose_rmsd_data
+        return pose_traj, pose_rmsd_data
 
     def compute_surface_area(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None, fig_close=False):
         """Calculate binding site surface areas.
@@ -1288,3 +1292,15 @@ class LipidInteraction:
             calculation(*args, **kwargs)
             print("Finished the calculation of {}.".format(item))
             print("#" * 60)
+
+    def _write_pose_info(self, selected_pose_info, fn):
+        """Write pose information for each selected pose. """
+        with open(fn, "w") as f:
+            for idx, info in enumerate(selected_pose_info):
+                f.write("POSE ID : {}\n".format(int(idx)))
+                f.write("TRAJ FN : {}\n".format(self._trajfile_list[info[0]]))
+                f.write("PROT ID : {}\n".format(info[1]))
+                f.write("LIPID ID: {}\n".format(info[2]))
+                f.write("TIME    : {:8.3f} ps\n".format(info[3]))
+                f.write("\n")
+                f.write("\n")
