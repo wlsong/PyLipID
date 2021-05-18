@@ -37,7 +37,8 @@ and calculate binding sites in PyLipID
 
     ~cal_contact_residues
     ~Duration
-    ~cal_interaction_frequency
+    ~cal_occupancy
+    ~cal_lipidcount
 
 
 .. rubric:: kinetics

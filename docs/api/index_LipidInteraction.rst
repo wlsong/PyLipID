@@ -12,12 +12,19 @@ pylipid.api
       :toctree: generated/
 
       ~LipidInteraction.collect_residue_contacts
+      ~LipidInteraction.compute_residue_duration
+      ~LipidInteraction.compute_residue_occupancy
+      ~LipidInteraction.compute_residue_lipidcount
       ~LipidInteraction.compute_residue_koff
       ~LipidInteraction.compute_binding_nodes
+      ~LipidInteraction.compute_site_duration
+      ~LipidInteraction.compute_site_occupancy
+      ~LipidInteraction.compute_site_lipidcount
       ~LipidInteraction.compute_site_koff
       ~LipidInteraction.analyze_bound_poses
       ~LipidInteraction.compute_surface_area
       ~LipidInteraction.write_site_info
+      ~LipidInteraction.show_stats_per_traj
       ~LipidInteraction.save_data
       ~LipidInteraction.save_coordinate
       ~LipidInteraction.save_pymol_script
