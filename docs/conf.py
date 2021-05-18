@@ -52,6 +52,7 @@ napoleon_use_param = True
 napoleon_use_rtype = True
 
 extensions = [
+        'sphinx_rtd_theme',
         'sphinx.ext.intersphinx',
         'sphinx.ext.autodoc',
         'sphinx.ext.autosummary',
