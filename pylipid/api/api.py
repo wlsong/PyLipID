@@ -796,7 +796,7 @@ class LipidInteraction:
                    [self._res_time_BS[bs_id] for bs_id in selected_bs_id]
 
     def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
-                            kde_bw=0.15, pca_component=0.95, plot_rmsd=True, save_dir=None,
+                            kde_bw=0.15, pca_component=0.90, plot_rmsd=True, save_dir=None,
                             n_clusters="auto", eps=None, min_samples=None, metric="euclidean", fig_close=False):
         """Analyze bound poses for binding sites.
 
@@ -810,7 +810,7 @@ class LipidInteraction:
         pose_format : str, default="pdb"
         score_weights : dict or None, default=None
         kde_bw : scalar, default=0.15
-        pca_component : int, float or ‘mle’, default=0.95
+        pca_component : int, float or ‘mle’, default=0.90
             Set the `n_components` value in `sklearn.decomposition.PCA`
         plot_rmsd : bool, default=True
         n_clusters : int or 'auto'
