@@ -18,19 +18,19 @@ The ``funcs`` module contains functions that do the heavy-lifting:
 .. toctree::
    :maxdepth: 1
 
-   index_funcs
+   index_func
 
 The ``plot`` module contains plotting functions for aiding in the scientific analysis:
 
 .. toctree::
    :maxdepth: 1
 
-   index_plots
+   index_plot
 
 The ``utils`` module contains other assisting functions:
 
 .. toctree::
    :maxdepth: 1
 
-   index_utils
+   index_util
 
