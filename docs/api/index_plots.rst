@@ -1,11 +1,11 @@
 
-pylipid.plots
+pylipid.plot
 ==============
 
-The ``plots`` package provides tools to plot the generated data in PyLipID.
+The ``plot`` package provides tools to plot the generated data in PyLipID.
 
 
-.. currentmodule:: pylipid.plots
+.. currentmodule:: pylipid.plot
 
 .. autosummary::
    :toctree: generated/

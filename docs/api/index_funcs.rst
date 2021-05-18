@@ -1,12 +1,12 @@
 
-pylipid.funcs
+pylipid.func
 ==============
 
-The ``funcs`` package provides tools to collect lipid interactions, calculate koff/residence time,
+The ``func`` package provides tools to collect lipid interactions, calculate koff/residence time,
 and calculate binding sites in PyLipID
 
 
-.. currentmodule:: pylipid.funcs
+.. currentmodule:: pylipid.func
 
 .. rubric:: binding_site
 
