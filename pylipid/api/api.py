@@ -323,6 +323,7 @@ class LipidInteraction:
                         traj_idx, len(traj_info["protein_residue_id"]), traj_idx - 1, len(self._protein_residue_id))
             ncol_per_protein = len(traj_info["lipid_residue_atomid_list"]) * traj.n_frames
             for protein_idx in np.arange(self._nprot, dtype=int):
+
                 for residue_id, residue_atom_indices in enumerate(
                         traj_info["protein_residue_atomid_list"][protein_idx]):
                     # calculate interaction per residue
@@ -338,6 +339,7 @@ class LipidInteraction:
                                 frame_id for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low)])
                     row.append([residue_id for dummy in np.arange(len(frame_id_set_low), dtype=int)])
                     data.append(dist_matrix[lipid_id_set_low, frame_id_set_low])
+
             ncol_start += ncol_per_protein * self._nprot
         # calculate correlation coefficient matrix
         row = np.concatenate(row)
