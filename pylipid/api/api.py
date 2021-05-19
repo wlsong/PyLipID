@@ -16,6 +16,7 @@
 
 from collections import defaultdict
 from itertools import product
+from functools import partial
 import pickle
 import os
 import re
@@ -24,20 +25,19 @@ import mdtraj as md
 import numpy as np
 np.seterr(all='ignore')
 from scipy.sparse import coo_matrix
-from sklearn.decomposition import PCA
 import pandas as pd
-from tqdm import trange, tqdm
+from tqdm import trange
+from p_tqdm import p_map
 from ..func import cal_contact_residues
-from ..func import Duration, cal_koff
+from ..func import Duration
 from ..func import cal_lipidcount, cal_occupancy
 from ..func import get_node_list
-from ..func import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
-from ..func import cluster_DBSCAN, cluster_KMeans
+from ..func import collect_bound_poses
+from ..func import analyze_pose_wrapper, cal_koff_wrapper
 from ..func import calculate_site_surface_area
-from ..plot import plot_koff
 from ..plot import plot_surface_area, plot_binding_site_data
 from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logos
-from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, rmsd, get_traj_info
+from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, get_traj_info
 
 
 class LipidInteraction:
@@ -505,30 +505,21 @@ class LipidInteraction:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
 
-        for residue_id in tqdm(selected_residue_id,desc="CALCULATE KOFF FOR RESIDUES", total=len(selected_residue_id)):
-            durations = np.concatenate(self._duration[residue_id])
-            residue = residue_name_set[residue_id]
-            if np.sum(durations) == 0:
-                self._koff[residue_id] = 0
-                self._res_time[residue_id] = 0
-                self._r_squared[residue_id] = 0
-                self._koff_boot[residue_id] = 0
-                self._r_squared_boot[residue_id] = 0
-            else:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    koff, restime, properties = cal_koff(durations, t_total, timestep, nbootstrap, initial_guess)
-                self._koff[residue_id] = koff
-                self._res_time[residue_id] = restime
-                self._r_squared[residue_id] = properties["r_squared"]
-                self._koff_boot[residue_id] = np.mean(properties["ks_boot_set"], axis=0)[0]
-                self._r_squared_boot[residue_id] = np.mean(properties["r_squared_boot_set"])
-                if plot_data:
-                    text = self._format_koff_text(properties)
-                    plot_koff(durations, properties["delta_t_list"], properties["survival_rates"],
-                              properties["n_fitted"], survival_rates_bootstraps=properties["survival_rates_boot_set"],
-                              fig_fn=os.path.join(koff_dir, "{}.pdf".format(residue)), title=residue,
-                              timeunit=self._timeunit, t_total=t_total, text=text, fig_close=fig_close)
+        print("CALCULATE KOFF FOR RESIDUES")
+        returned_values = p_map(partial(cal_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
+                                        initial_guess=initial_guess, plot_data=plot_data, timeunit=self._timeunit,
+                                        fig_close=fig_close),
+                                [np.concatenate(self._duration[residue_id]) for residue_id in selected_residue_id],
+                                [residue_name_set[residue_id] for residue_id in selected_residue_id],
+                                [os.path.join(koff_dir, "{}.pdf".format(residue_name_set[residue_id]))
+                                 for residue_id in selected_residue_id])
+
+        for residue_id, returned_value in zip(selected_residue_id, returned_values):
+            self._koff[residue_id] = returned_value[0]
+            self._res_time[residue_id] = returned_value[1]
+            self._r_squared[residue_id] = returned_value[2]
+            self._koff_boot[residue_id] = returned_value[3]
+            self._r_squared_boot[residue_id] = returned_value[4]
         # update dataset
         self.dataset["Koff"] = self._koff
         self.dataset["Residence Time"] = self._res_time
@@ -761,24 +752,20 @@ class LipidInteraction:
         if not same_timestep:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
-        # calculate koff for binding sites
-        for bs_id in tqdm(selected_bs_id, desc="CALCULATE KOFF FOR BINDING SITES", total=len(selected_bs_id)):
-            durations = np.concatenate(self._duration_BS[bs_id])
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                koff_BS, restime_BS, properties_BS = cal_koff(durations, t_total, timestep, nbootstrap, initial_guess)
-            self._koff_BS[bs_id] = koff_BS
-            self._koff_BS_boot[bs_id] = np.mean(properties_BS["ks_boot_set"], axis=0)[0]
-            self._res_time_BS[bs_id] = restime_BS
-            self._r_squared_BS[bs_id] = properties_BS["r_squared"]
-            self._r_squared_BS_boot[bs_id] = np.mean(properties_BS["r_squared_boot_set"])
-            if plot_data:
-                # plot BS koff and BS residence time
-                text = self._format_koff_text(properties_BS)
-                plot_koff(durations, properties_BS["delta_t_list"], properties_BS["survival_rates"],
-                          properties_BS["n_fitted"], survival_rates_bootstraps=properties_BS["survival_rates_boot_set"],
-                          fig_fn=os.path.join(BS_dir, f"BS_id{bs_id}.pdf"), title=f"Binding Site {bs_id}",
-                          timeunit=self._timeunit, t_total=t_total, text=text, fig_close=fig_close)
+
+        print("CALCULATE KOFF FOR BINDING SITES")
+        returned_values = p_map(partial(cal_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
+                                        initial_guess=initial_guess, plot_data=plot_data, timeunit=self._timeunit,
+                                        fig_close=fig_close),
+                                [np.concatenate(self._duration_BS[bs_id]) for bs_id in selected_bs_id],
+                                [f"Binding Site {bs_id}" for bs_id in selected_bs_id],
+                                [os.path.join(BS_dir, f"BS_id{bs_id}.pdf").format(bs_id) for bs_id in selected_bs_id])
+        for bs_id, returned_value in zip(selected_bs_id, returned_values):
+            self._koff_BS[bs_id] = returned_value[0]
+            self._res_time_BS[bs_id] = returned_value[1]
+            self._r_squared_BS[bs_id] = returned_value[2]
+            self._koff_BS_boot[bs_id] = returned_value[3]
+            self._r_squared_BS_boot[bs_id] = returned_value[4]
         # update dataset
         for data, column_name in zip(
                 [self._koff_BS, self._koff_BS_boot, self._res_time_BS, self._r_squared_BS, self._r_squared_BS_boot],
@@ -788,7 +775,6 @@ class LipidInteraction:
             for bs_id, nodes in enumerate(self._node_list):
                 data_per_residue[nodes] = data[bs_id]
             self.dataset[column_name] = data_per_residue
-
         if len(selected_bs_id) == 1:
             return self._koff_BS[bs_id], self._res_time_BS[bs_id]
         else:
@@ -844,59 +830,32 @@ class LipidInteraction:
         pose_traj, pose_info = collect_bound_poses(selected_bs_map, self._contact_residues_low, self._trajfile_list,
                                                    self._topfile_list, self._lipid, self._protein_ref, self._lipid_ref,
                                                    stride=self._stride, nprot=self._nprot)
-        # analyize bound poses
-        RMSD_set = {}
-        for bs_id in tqdm(selected_bs_id, desc="ANALYZE BOUND POSES"):
-            # lipid_dist_per_atom shape: [n_lipid_atoms, n_bound_poses, n_BS_residues]
-            if len(pose_traj[bs_id]) == 0:
-                print(f"No Bound pose collected from Binding Site {bs_id}! Possibly due to insufficient sampling.")
-                continue
-            protein_atom_indices = [[atom.index for atom in residue.atoms]
-                                    for residue in self._protein_ref.top.residues]
-            lipid_atom_indices = [self._protein_ref.n_atoms + atom_idx
-                                  for atom_idx in np.arange(self._lipid_ref.n_atoms)]
-            lipid_dist_per_atom = vectorize_poses(pose_traj[bs_id], self._node_list[bs_id],
-                                                  protein_atom_indices, lipid_atom_indices)
-            if n_top_poses > 0:
-                pose_dir_rank = check_dir(pose_dir, "BSid{}_rank".format(bs_id), print_info=False)
-                atom_weights = {atom_idx: 1 for atom_idx in np.arange(self._lipid_ref.n_atoms)}
-                if score_weights is not None:
-                    translate = {atom_idx: score_weights[self._lipid_ref.atom(atom_idx)]
-                                 for atom_idx in np.arange(self._lipid_ref.n_atoms)
-                                 if self._lipid_ref.atom(atom_idx) in score_weights.keys()}
-                    atom_weights.update(translate)
-                scores = calculate_scores(lipid_dist_per_atom, kde_bw=kde_bw, pca_component=pca_component,
-                                          score_weights=atom_weights)
-                num_of_poses = min(n_top_poses, pose_traj[bs_id].n_frames)
-                pose_indices = np.argsort(scores)[::-1][:num_of_poses]
-                write_bound_poses(pose_traj[bs_id], pose_indices, pose_dir_rank, pose_prefix="BSid{}_top".format(bs_id),
-                                  pose_format=pose_format)
-                self._write_pose_info([pose_info[bs_id][int(pose_idx)] for pose_idx in pose_indices],
-                                      f"{pose_dir_rank}/pose_info.txt")
-            lipid_dist_per_pose = np.array([lipid_dist_per_atom[:, pose_id, :].ravel()
-                                            for pose_id in np.arange(lipid_dist_per_atom.shape[1])])
-            # cluster poses
+        protein_atom_indices = [[atom.index for atom in residue.atoms]
+                                for residue in self._protein_ref.top.residues]
+        lipid_atom_indices = [self._protein_ref.n_atoms + atom_idx
+                              for atom_idx in np.arange(self._lipid_ref.n_atoms)]
+        atom_weights = {atom_idx: 1 for atom_idx in np.arange(self._lipid_ref.n_atoms)}
+        if score_weights is not None:
+            translate = {atom_idx: score_weights[self._lipid_ref.atom(atom_idx)]
+                         for atom_idx in np.arange(self._lipid_ref.n_atoms)
+                         if self._lipid_ref.atom(atom_idx) in score_weights.keys()}
+            atom_weights.update(translate)
 
-            pose_dir_clustered = check_dir(pose_dir, "BSid{}_clusters".format(bs_id), print_info=False)
-            transformed_data = PCA(n_components=pca_component).fit_transform(lipid_dist_per_pose)
-            if n_clusters == 'auto':
-                _, core_sample_indices = cluster_DBSCAN(transformed_data, eps=eps, min_samples=min_samples,
-                                                        metric=metric)
-                selected_pose_id = [np.random.choice(i_core_sample, 1)[0] for i_core_sample in core_sample_indices]
-            elif n_clusters > 0:
-                cluster_labels = cluster_KMeans(transformed_data, n_clusters=n_clusters)
-                cluster_id_set = np.unique(cluster_labels)
-                selected_pose_id = [np.random.choice(np.where(cluster_labels == cluster_id)[0], 1)[0]
-                                    for cluster_id in cluster_id_set]
-            write_bound_poses(pose_traj[bs_id], selected_pose_id, pose_dir_clustered,
-                              pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
-            self._write_pose_info([pose_info[bs_id][int(pose_idx)] for pose_idx in selected_pose_id],
-                                  f"{pose_dir_clustered}/pose_info.txt")
-            # calculate pose rmsd
-            dist_mean = np.mean(lipid_dist_per_pose, axis=0)
-            RMSD_set["Binding Site {}".format(bs_id)] = [rmsd(lipid_dist_per_pose[pose_id], dist_mean)
-                                                         for pose_id in np.arange(len(lipid_dist_per_pose))]
-            pose_rmsd_per_residue[self._node_list[bs_id]] = np.mean(RMSD_set["Binding Site {}".format(bs_id)])
+        if n_top_poses > 0:
+            print("ANALYZE BOUND POSES")
+            # multiprocessing wrapped under p_tqdm
+            rmsd_set = p_map(partial(analyze_pose_wrapper, protein_atom_indices=protein_atom_indices,
+                                     lipid_atom_indices=lipid_atom_indices, n_top_poses=n_top_poses,
+                                     pose_dir=pose_dir, atom_weights=atom_weights, kde_bw=kde_bw,
+                                     pca_component=pca_component, pose_format=pose_format, n_clusters=n_clusters,
+                                     eps=eps, min_samples=min_samples, metric=metric,
+                                     trajfile_list=self._trajfile_list),
+                             selected_bs_id, [pose_traj[bs_id] for bs_id in selected_bs_id],
+                             [pose_info[bs_id] for bs_id in selected_bs_id])
+            RMSD_set = {}
+            for bs_id, rmsd in zip(selected_bs_id, rmsd_set):
+                RMSD_set["Binding Site {}".format(bs_id)] = rmsd
+                pose_rmsd_per_residue[self._node_list[bs_id]] = np.mean(RMSD_set["Binding Site {}".format(bs_id)])
         # update dataset
         self.dataset["Binding Site Pose RMSD"] = pose_rmsd_per_residue
         pose_rmsd_data = pd.DataFrame(
@@ -1220,22 +1179,6 @@ class LipidInteraction:
     #     assisting func
     ############################################
 
-    def _format_koff_text(self, properties):
-        """Format text for koff plot. """
-        tu = "ns" if self._timeunit == "ns" else r"$\mu$s"
-        text = "{:18s} = {:.3f} {:2s}$^{{-1}} $\n".format("$k_{{off1}}$", properties["ks"][0], tu)
-        text += "{:18s} = {:.3f} {:2s}$^{{-1}} $\n".format("$k_{{off2}}$", properties["ks"][1], tu)
-        text += "{:14s} = {:.4f}\n".format("$R^2$", properties["r_squared"])
-        ks_boot_avg = np.mean(properties["ks_boot_set"], axis=0)
-        cv_avg = 100 * np.std(properties["ks_boot_set"], axis=0) / np.mean(properties["ks_boot_set"], axis=0)
-        text += "{:18s} = {:.3f} {:2s}$^{{-1}}$ ({:3.1f}%)\n".format("$k_{{off1, boot}}$", ks_boot_avg[0],
-                                                                     tu, cv_avg[0])
-        text += "{:18s} = {:.3f} {:2s}$^{{-1}}$ ({:3.1f}%)\n".format("$k_{{off2, boot}}$", ks_boot_avg[1],
-                                                                     tu, cv_avg[1])
-        text += "{:14s} = {:.4f}\n".format("$R^2$$_{{boot}}$", np.mean(properties["r_squared_boot_set"]))
-        text += "{:18s} = {:.3f} {:2s}".format("$Res. Time$", properties["res_time"], tu)
-        return text
-
     def _format_BS_print_info(self, bs_id, nodes, sort_item):
         """Format binding site information."""
         Residue_property_book = {"ARG": "Pos. Charge", "HIS": "Pos. Charge", "LYS": "Pos. Charge",
@@ -1297,14 +1240,3 @@ class LipidInteraction:
             print("Finished the calculation of {}.".format(item))
             print("#" * 60)
 
-    def _write_pose_info(self, selected_pose_info, fn):
-        """Write pose information for each selected pose. """
-        with open(fn, "w") as f:
-            for idx, info in enumerate(selected_pose_info):
-                f.write("POSE ID : {}\n".format(int(idx)))
-                f.write("TRAJ FN : {}\n".format(self._trajfile_list[info[0]]))
-                f.write("PROT ID : {}\n".format(info[1]))
-                f.write("LIPID ID: {}\n".format(info[2]))
-                f.write("TIME    : {:8.3f} ps\n".format(info[3]))
-                f.write("\n")
-                f.write("\n")

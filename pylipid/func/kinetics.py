@@ -16,11 +16,13 @@
 
 """This module contains functions for calculating interaction residence time and koff.
 """
+import warnings
 import numpy as np
 from scipy.optimize import curve_fit
+from ..plot import plot_koff
 
 
-__all__ = ["cal_koff", "cal_survival_func"]
+__all__ = ["cal_koff", "cal_survival_func", "cal_koff_wrapper"]
 
 
 def cal_koff(durations, t_total, timestep, nbootstrap=10, initial_guess=[1., 1., 1., 1.], cap=True):
@@ -185,3 +187,44 @@ def _curve_fitting(survival_func, delta_t_list, initial_guess):
 def _bi_expo(x, k1, k2, A, B):
     """The exponential curve :math:`y=Ae^{-k_1\Delta t}+Be^{-k_2\Delta t}`"""
     return A*np.exp(-k1*x) + B*np.exp(-k2*x)
+
+
+def cal_koff_wrapper(durations, title, fn, t_total=None, timestep=1, nbootstrap=10,
+                     initial_guess=[1., 1., 1., 1.], plot_data=True, timeunit="us", fig_close=True):
+    """Wrapper function that calculates koff and plot koff. """
+    if np.sum(durations) == 0:
+        koff = 0
+        res_time = 0
+        r_squared = 0
+        koff_boot = 0
+        r_squared_boot = 0
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            koff, restime, properties = cal_koff(durations, t_total, timestep, nbootstrap, initial_guess)
+        r_squared = properties["r_squared"]
+        koff_boot = np.mean(properties["ks_boot_set"], axis=0)[0]
+        r_squared_boot = np.mean(properties["r_squared_boot_set"])
+        if plot_data:
+            text = _format_koff_text(properties, timeunit)
+            plot_koff(durations, properties["delta_t_list"], properties["survival_rates"],
+                      properties["n_fitted"], survival_rates_bootstraps=properties["survival_rates_boot_set"],
+                      fig_fn=fn, title=title, timeunit=timeunit, t_total=t_total, text=text, fig_close=fig_close)
+    return koff, res_time, r_squared, koff_boot, r_squared_boot
+
+
+def _format_koff_text(properties, timeunit):
+    """Format text for koff plot. """
+    tu = "ns" if timeunit == "ns" else r"$\mu$s"
+    text = "{:18s} = {:.3f} {:2s}$^{{-1}} $\n".format("$k_{{off1}}$", properties["ks"][0], tu)
+    text += "{:18s} = {:.3f} {:2s}$^{{-1}} $\n".format("$k_{{off2}}$", properties["ks"][1], tu)
+    text += "{:14s} = {:.4f}\n".format("$R^2$", properties["r_squared"])
+    ks_boot_avg = np.mean(properties["ks_boot_set"], axis=0)
+    cv_avg = 100 * np.std(properties["ks_boot_set"], axis=0) / np.mean(properties["ks_boot_set"], axis=0)
+    text += "{:18s} = {:.3f} {:2s}$^{{-1}}$ ({:3.1f}%)\n".format("$k_{{off1, boot}}$", ks_boot_avg[0],
+                                                                 tu, cv_avg[0])
+    text += "{:18s} = {:.3f} {:2s}$^{{-1}}$ ({:3.1f}%)\n".format("$k_{{off2, boot}}$", ks_boot_avg[1],
+                                                                 tu, cv_avg[1])
+    text += "{:14s} = {:.4f}\n".format("$R^2$$_{{boot}}$", np.mean(properties["r_squared_boot_set"]))
+    text += "{:18s} = {:.3f} {:2s}".format("$Res. Time$", properties["res_time"], tu)
+    return text

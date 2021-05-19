@@ -27,10 +27,12 @@ from tqdm import trange
 import mdtraj as md
 from statsmodels.nonparametric.kernel_density import KDEMultivariate as kde
 from sklearn.decomposition import PCA
+from ..util import check_dir, rmsd
+from .clusterer import cluster_DBSCAN, cluster_KMeans
 
 
 __all__ = ["get_node_list", "collect_bound_poses", "vectorize_poses", "calculate_scores", "write_bound_poses",
-           "calculate_site_surface_area"]
+           "calculate_site_surface_area", "analyze_pose_wrapper"]
 
 
 def get_node_list(corrcoef, threshold=4):
@@ -165,7 +167,7 @@ def vectorize_poses(bound_poses, binding_nodes, protein_atom_indices, lipid_atom
     return dist_per_atom
 
 
-def calculate_scores(data, kde_bw=0.15, pca_component=0.95, score_weights=None):
+def calculate_scores(data, kde_bw=0.15, pca_component=0.90, score_weights=None):
     """Calculate scores based on probability density.
 
     Parameters
@@ -269,3 +271,63 @@ def calculate_site_surface_area(binding_site_map, radii_book, trajfile_list, top
             data_keys.append((traj_idx, protein_idx))
     surface_area = pd.concat(surface_data, keys=data_keys)
     return surface_area
+
+
+def analyze_pose_wrapper(bs_id, poses_of_the_site, nodes_of_the_site, pose_info_of_the_site, pose_dir=None,
+                         n_top_poses=3, protein_atom_indices=None, lipid_atom_indices=None, atom_weights=None,
+                         kde_bw=0.15, pca_component=0.90, pose_format="gro", n_clusters="auto",
+                         eps=None, min_samples=None, metric="euclidean", trajfile_list=None):
+    """A wrapper that ranks poses, clusters poses and calculates pose RMSD. """
+    if len(poses_of_the_site) == 0:
+        print(f"No Bound pose collected from Binding Site {bs_id}! Possibly due to insufficient sampling.")
+        return []
+    ## rank poses ##
+    pose_dir_rank = check_dir(pose_dir, "BSid{}_rank".format(bs_id), print_info=False)
+    # lipid_dist_per_atom shape: [n_lipid_atoms, n_bound_poses, n_BS_residues]
+    lipid_dist_per_atom = vectorize_poses(poses_of_the_site, nodes_of_the_site,
+                                          protein_atom_indices, lipid_atom_indices)
+    scores = calculate_scores(lipid_dist_per_atom, kde_bw=kde_bw, pca_component=pca_component,
+                              score_weights=atom_weights)
+    num_of_poses = min(n_top_poses, poses_of_the_site.n_frames)
+    pose_indices = np.argsort(scores)[::-1][:num_of_poses]
+    if len(pose_indices) > 0:
+        write_bound_poses(poses_of_the_site, pose_indices, pose_dir_rank, pose_prefix="BSid{}_top".format(bs_id),
+                          pose_format=pose_format)
+        _write_pose_info([pose_info_of_the_site[int(pose_idx)] for pose_idx in pose_indices],
+                         f"{pose_dir_rank}/pose_info.txt", trajfile_list)
+    ## cluster poses ##
+    lipid_dist_per_pose = np.array([lipid_dist_per_atom[:, pose_id, :].ravel()
+                                    for pose_id in np.arange(lipid_dist_per_atom.shape[1])])
+    pose_dir_clustered = check_dir(pose_dir, "BSid{}_clusters".format(bs_id), print_info=False)
+    transformed_data = PCA(n_components=pca_component).fit_transform(lipid_dist_per_pose)
+    if n_clusters == 'auto':
+        _, core_sample_indices = cluster_DBSCAN(transformed_data, eps=eps, min_samples=min_samples,
+                                                metric=metric)
+        selected_pose_id = [np.random.choice(i_core_sample, 1)[0] for i_core_sample in core_sample_indices]
+    elif n_clusters > 0:
+        cluster_labels = cluster_KMeans(transformed_data, n_clusters=n_clusters)
+        cluster_id_set = np.unique(cluster_labels)
+        selected_pose_id = [np.random.choice(np.where(cluster_labels == cluster_id)[0], 1)[0]
+                            for cluster_id in cluster_id_set]
+    if selected_pose_id > 0:
+        write_bound_poses(poses_of_the_site, selected_pose_id, pose_dir_clustered,
+                          pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
+        _write_pose_info([pose_info_of_the_site[int(pose_idx)] for pose_idx in selected_pose_id],
+                              f"{pose_dir_clustered}/pose_info.txt", trajfile_list)
+    ## calculate RMSD ##
+    dist_mean = np.mean(lipid_dist_per_pose, axis=0)
+    pose_rmsds = [rmsd(lipid_dist_per_pose[pose_id], dist_mean)
+                  for pose_id in np.arange(len(lipid_dist_per_pose))]
+    return pose_rmsds
+
+def _write_pose_info(selected_pose_info, fn, trajfile_list):
+    """Write pose information for each selected pose. """
+    with open(fn, "w") as f:
+        for idx, info in enumerate(selected_pose_info):
+            f.write("POSE ID : {}\n".format(int(idx)))
+            f.write("TRAJ FN : {}\n".format(trajfile_list[info[0]]))
+            f.write("PROT ID : {}\n".format(info[1]))
+            f.write("LIPID ID: {}\n".format(info[2]))
+            f.write("TIME    : {:8.3f} ps\n".format(info[3]))
+            f.write("\n")
+            f.write("\n")

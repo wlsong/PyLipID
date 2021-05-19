@@ -55,6 +55,7 @@ setup(
         "statsmodels",
         "scikit-learn",
         "tqdm",
+        "p_tqdm",
         "kneebow"
     ]
 )

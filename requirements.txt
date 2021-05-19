@@ -9,4 +9,5 @@ logomaker
 statsmodels
 scikit-learn
 tqdm
+p_tqdm
 kneebow
