@@ -737,6 +737,7 @@ class LipidInteraction:
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+        self._check_calculation("Binding Site Duration", self.compute_site_duration)
         if plot_data:
             BS_dir = check_dir(save_dir, "Binding_Sites_koffs_{}".format(self._lipid)) if save_dir is not None \
                 else check_dir(self._save_dir, "Binding_Sites_koffs_{}".format(self._lipid))
@@ -1125,7 +1126,12 @@ class LipidInteraction:
             if fn is None:
                 fn = "BindingSites_Info_{}.txt".format(self._lipid)
             self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
-            self._check_calculation("Binding Site Koff", self.compute_site_koff, print_data=False)
+            self._check_calculation("Binding Site Koff", self.compute_site_koff, plot_data=False)
+            mapping_funcs = {"Residence Time": self.compute_residue_koff,
+                             "Duration": self.compute_residue_duration,
+                             "Occupancy": self.compute_residue_occupancy,
+                             "Lipid Count": self.compute_residue_lipidcount}
+            self._check_calculation(sort_residue, mapping_funcs[sort_residue])
             with open(os.path.join(BS_dir, fn), "a") as f:
                 f.write(f"## Network modularity {self._network_modularity:5.3f}")
                 f.write("\n")
