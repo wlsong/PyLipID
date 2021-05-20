@@ -44,7 +44,7 @@ setup(
     python_requires='>=3.6, <4',
     packages=find_packages(),
     install_requires=[
-        "mdtraj<=1.9.4",
+        "mdtraj",
         "numpy",
         "pandas",
         "matplotlib>=3.3.3",

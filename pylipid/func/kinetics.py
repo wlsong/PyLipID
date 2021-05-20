@@ -201,7 +201,7 @@ def cal_koff_wrapper(durations, title, fn, t_total=None, timestep=1, nbootstrap=
     else:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            koff, restime, properties = cal_koff(durations, t_total, timestep, nbootstrap, initial_guess)
+            koff, res_time, properties = cal_koff(durations, t_total, timestep, nbootstrap, initial_guess)
         r_squared = properties["r_squared"]
         koff_boot = np.mean(properties["ks_boot_set"], axis=0)[0]
         r_squared_boot = np.mean(properties["r_squared_boot_set"])

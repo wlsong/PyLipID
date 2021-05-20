@@ -92,97 +92,97 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
 
     #### plot binding site comparison.
     if len(li.node_list) > 0:
-    for item in ["Duration BS", "Occupancy BS"]:
-        li.save_data(item=item)
-        
-        ylabel_timeunit = 'ns' if li.timeunit == "ns" else r"$\mu$s"
-        ylabel_dict = {"Residence Time": "Residence Time ({})".format(ylabel_timeunit),
-                       "Duration": "Duration ({})".format(ylabel_timeunit),
-                       "Occupancy": "Occuoancy (100%)",
-                       "Lipid Count": "Lipid Count (num.)"}
+        for item in ["Duration BS", "Occupancy BS"]:
+            li.save_data(item=item)
 
-        # plot No. 1
-        binding_site_IDs = np.sort(
-                 [int(bs_id) for bs_id in li.dataset["Binding Site ID"].unique() if bs_id != -1])
-        for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
-            item_values = np.array(
-                      [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site {}".format(item)].unique()[0]
-                       for bs_id in binding_site_IDs])
+            ylabel_timeunit = 'ns' if li.timeunit == "ns" else r"$\mu$s"
+            ylabel_dict = {"Residence Time": "Residence Time ({})".format(ylabel_timeunit),
+                           "Duration": "Duration ({})".format(ylabel_timeunit),
+                           "Occupancy": "Occuoancy (100%)",
+                           "Lipid Count": "Lipid Count (num.)"}
+
+            # plot No. 1
+            binding_site_IDs = np.sort(
+                     [int(bs_id) for bs_id in li.dataset["Binding Site ID"].unique() if bs_id != -1])
+            for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
+                item_values = np.array(
+                          [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site {}".format(item)].unique()[0]
+                           for bs_id in binding_site_IDs])
+                fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
+                ax.scatter(np.arange(len(item_values)), np.sort(item_values)[::-1], s=50, color="red")
+                ax.set_xticks(np.arange(len(item_values)))
+                sorted_index = np.argsort(item_values)[::-1]
+                ax.set_xticklabels(binding_site_IDs[sorted_index])
+                ax.set_xlabel("Binding Site ID", fontsize=12)
+                ax.set_ylabel(ylabel_dict[item], fontsize=12)
+                for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
+                    plt.setp(label, fontsize=12, weight="normal")
+                plt.tight_layout()
+                plt.savefig("{}/{}_{}_v_binding_site.pdf".format(li.save_dir, li.lipid, "_".join(item.split())), dpi=200)
+                plt.close()
+
+            # plot No. 2
+            binding_site_IDs_RMSD = np.sort([int(bs_id) for bs_id in binding_site_IDs
+                                            if f"Binding Site {bs_id}" in pose_rmsd_data.columns])
+            RMSD_averages = np.array(
+                         [pose_rmsd_data[f"Binding Site {bs_id}"].dropna(inplace=False).mean()
+                          for bs_id in binding_site_IDs_RMSD])
             fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
-            ax.scatter(np.arange(len(item_values)), np.sort(item_values)[::-1], s=50, color="red")
-            ax.set_xticks(np.arange(len(item_values)))
-            sorted_index = np.argsort(item_values)[::-1]
-            ax.set_xticklabels(binding_site_IDs[sorted_index])
+            ax.scatter(np.arange(len(RMSD_averages)), np.sort(RMSD_averages)[::-1], s=50, color="red")
+            ax.set_xticks(np.arange(len(RMSD_averages)))
+            sorted_index = np.argsort(RMSD_averages)[::-1]
+            ax.set_xticklabels(binding_site_IDs_RMSD[sorted_index])
             ax.set_xlabel("Binding Site ID", fontsize=12)
-            ax.set_ylabel(ylabel_dict[item], fontsize=12)
+            ax.set_ylabel("RMSD (nm)", fontsize=12)
             for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
                 plt.setp(label, fontsize=12, weight="normal")
             plt.tight_layout()
-            plt.savefig("{}/{}_{}_v_binding_site.pdf".format(li.save_dir, li.lipid, "_".join(item.split())), dpi=200)
+            plt.savefig("{}/{}_RMSD_v_binding_site.pdf".format(li.save_dir, li.lipid), dpi=200)
             plt.close()
 
-        # plot No. 2
-        binding_site_IDs_RMSD = np.sort([int(bs_id) for bs_id in binding_site_IDs
-                                        if f"Binding Site {bs_id}" in pose_rmsd_data.columns])
-        RMSD_averages = np.array(
-                     [pose_rmsd_data[f"Binding Site {bs_id}"].dropna(inplace=False).mean()
-                      for bs_id in binding_site_IDs_RMSD])
-        fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
-        ax.scatter(np.arange(len(RMSD_averages)), np.sort(RMSD_averages)[::-1], s=50, color="red")
-        ax.set_xticks(np.arange(len(RMSD_averages)))
-        sorted_index = np.argsort(RMSD_averages)[::-1]
-        ax.set_xticklabels(binding_site_IDs_RMSD[sorted_index])
-        ax.set_xlabel("Binding Site ID", fontsize=12)
-        ax.set_ylabel("RMSD (nm)", fontsize=12)
-        for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
-            plt.setp(label, fontsize=12, weight="normal")
-        plt.tight_layout()
-        plt.savefig("{}/{}_RMSD_v_binding_site.pdf".format(li.save_dir, li.lipid), dpi=200)
-        plt.close()
+            # plot No. 3
+            surface_area_averages = np.array(
+                           [surface_area_data["Binding Site {}".format(bs_id)].dropna(inplace=False).mean()
+                            for bs_id in binding_site_IDs])
+            fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
+            ax.scatter(np.arange(len(surface_area_averages)), np.sort(surface_area_averages)[::-1], s=50, color="red")
+            ax.set_xticks(np.arange(len(surface_area_averages)))
+            sorted_index = np.argsort(surface_area_averages)[::-1]
+            ax.set_xticklabels(binding_site_IDs[sorted_index])
+            ax.set_xlabel("Binding Site ID", fontsize=12)
+            ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=12)
+            for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
+                plt.setp(label, fontsize=12, weight="normal")
+            plt.tight_layout()
+            plt.savefig("{}/{}_surface_area_v_binding_site.pdf".format(li.save_dir, li.lipid), dpi=200)
+            plt.close()
 
-        # plot No. 3
-        surface_area_averages = np.array(
-                       [surface_area_data["Binding Site {}".format(bs_id)].dropna(inplace=False).mean()
-                        for bs_id in binding_site_IDs])
-        fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
-        ax.scatter(np.arange(len(surface_area_averages)), np.sort(surface_area_averages)[::-1], s=50, color="red")
-        ax.set_xticks(np.arange(len(surface_area_averages)))
-        sorted_index = np.argsort(surface_area_averages)[::-1]
-        ax.set_xticklabels(binding_site_IDs[sorted_index])
-        ax.set_xlabel("Binding Site ID", fontsize=12)
-        ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=12)
-        for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
-            plt.setp(label, fontsize=12, weight="normal")
-        plt.tight_layout()
-        plt.savefig("{}/{}_surface_area_v_binding_site.pdf".format(li.save_dir, li.lipid), dpi=200)
-        plt.close()
+            # plot No. 4
+            res_time_BS = np.array(
+                      [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
+                       for bs_id in binding_site_IDs_RMSD])
+            fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
+            ax.scatter(res_time_BS, RMSD_averages, s=50, color="red")
+            ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
+            ax.set_ylabel("RMSD (nm)", fontsize=12)
+            for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
+                plt.setp(label, fontsize=12, weight="normal")
+            plt.tight_layout()
+            plt.savefig("{}/{}_Residence_Time_v_RMSD.pdf".format(li.save_dir, li.lipid), dpi=200)
+            plt.close()
 
-        # plot No. 4
-        res_time_BS = np.array(
-                  [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
-                   for bs_id in binding_site_IDs_RMSD])
-        fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
-        ax.scatter(res_time_BS, RMSD_averages, s=50, color="red")
-        ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
-        ax.set_ylabel("RMSD (nm)", fontsize=12)
-        for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
-            plt.setp(label, fontsize=12, weight="normal")
-        plt.tight_layout()
-        plt.savefig("{}/{}_Residence_Time_v_RMSD.pdf".format(li.save_dir, li.lipid), dpi=200)
-        plt.close()
-
-        # plot No. 5
-        res_time_BS = np.array(
-                  [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
-                   for bs_id in binding_site_IDs])
-        fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
-        ax.scatter(res_time_BS, surface_area_averages, s=50, color="red")
-        ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
-        ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=12)
-        for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
-            plt.setp(label, fontsize=12, weight="normal")
-        plt.tight_layout()
-        plt.savefig("{}/{}_Residence_Time_v_surface_area.pdf".format(li.save_dir, li.lipid), dpi=200)
-        plt.close()
+            # plot No. 5
+            res_time_BS = np.array(
+                      [li.dataset[li.dataset["Binding Site ID"]==bs_id]["Binding Site Residence Time"].unique()[0]
+                       for bs_id in binding_site_IDs])
+            fig, ax = plt.subplots(1, 1, figsize=(len(li.node_list)*0.5, 2.6))
+            ax.scatter(res_time_BS, surface_area_averages, s=50, color="red")
+            ax.set_xlabel(ylabel_dict["Residence Time"], fontsize=12)
+            ax.set_ylabel(r"Surface Area (nm$^2$)", fontsize=12)
+            for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
+                plt.setp(label, fontsize=12, weight="normal")
+            plt.tight_layout()
+            plt.savefig("{}/{}_Residence_Time_v_surface_area.pdf".format(li.save_dir, li.lipid), dpi=200)
+            plt.close()
 
 

@@ -289,11 +289,11 @@ def analyze_pose_wrapper(bs_id, poses_of_the_site, nodes_of_the_site, pose_info_
     scores = calculate_scores(lipid_dist_per_atom, kde_bw=kde_bw, pca_component=pca_component,
                               score_weights=atom_weights)
     num_of_poses = min(n_top_poses, poses_of_the_site.n_frames)
-    pose_indices = np.argsort(scores)[::-1][:num_of_poses]
-    if len(pose_indices) > 0:
-        write_bound_poses(poses_of_the_site, pose_indices, pose_dir_rank, pose_prefix="BSid{}_top".format(bs_id),
+    selected_pose_indices = np.argsort(scores)[::-1][:num_of_poses]
+    if len(selected_pose_indices) > 0:
+        write_bound_poses(poses_of_the_site, selected_pose_indices, pose_dir_rank, pose_prefix="BSid{}_top".format(bs_id),
                           pose_format=pose_format)
-        _write_pose_info([pose_info_of_the_site[int(pose_idx)] for pose_idx in pose_indices],
+        _write_pose_info([pose_info_of_the_site[int(pose_idx)] for pose_idx in selected_pose_indices],
                          f"{pose_dir_rank}/pose_info.txt", trajfile_list)
     ## cluster poses ##
     lipid_dist_per_pose = np.array([lipid_dist_per_atom[:, pose_id, :].ravel()
@@ -303,16 +303,16 @@ def analyze_pose_wrapper(bs_id, poses_of_the_site, nodes_of_the_site, pose_info_
     if n_clusters == 'auto':
         _, core_sample_indices = cluster_DBSCAN(transformed_data, eps=eps, min_samples=min_samples,
                                                 metric=metric)
-        selected_pose_id = [np.random.choice(i_core_sample, 1)[0] for i_core_sample in core_sample_indices]
+        selected_pose_indices = [np.random.choice(i_core_sample, 1)[0] for i_core_sample in core_sample_indices]
     elif n_clusters > 0:
         cluster_labels = cluster_KMeans(transformed_data, n_clusters=n_clusters)
         cluster_id_set = np.unique(cluster_labels)
-        selected_pose_id = [np.random.choice(np.where(cluster_labels == cluster_id)[0], 1)[0]
+        selected_pose_indices = [np.random.choice(np.where(cluster_labels == cluster_id)[0], 1)[0]
                             for cluster_id in cluster_id_set]
-    if selected_pose_id > 0:
-        write_bound_poses(poses_of_the_site, selected_pose_id, pose_dir_clustered,
+    if len(selected_pose_indices) > 0:
+        write_bound_poses(poses_of_the_site, selected_pose_indices, pose_dir_clustered,
                           pose_prefix="BSid{}_cluster".format(bs_id), pose_format=pose_format)
-        _write_pose_info([pose_info_of_the_site[int(pose_idx)] for pose_idx in selected_pose_id],
+        _write_pose_info([pose_info_of_the_site[int(pose_idx)] for pose_idx in selected_pose_indices],
                               f"{pose_dir_clustered}/pose_info.txt", trajfile_list)
     ## calculate RMSD ##
     dist_mean = np.mean(lipid_dist_per_pose, axis=0)

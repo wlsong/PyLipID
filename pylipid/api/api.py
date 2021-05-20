@@ -21,12 +21,13 @@ import pickle
 import os
 import re
 import warnings
+import multiprocessing
 import mdtraj as md
 import numpy as np
 np.seterr(all='ignore')
 from scipy.sparse import coo_matrix
 import pandas as pd
-from tqdm import trange
+from tqdm import trange, tqdm
 from p_tqdm import p_map
 from ..func import cal_contact_residues
 from ..func import Duration
@@ -305,9 +306,9 @@ class LipidInteraction:
                 self._protein_residue_id = traj_info["protein_residue_id"]
                 self._residue_list = traj_info["residue_list"]
                 self._nresi_per_protein = len(self._residue_list)
-                self._duration = {residue_id: [] for residue_id in self._protein_residue_id}
-                self._occupancy = {residue_id: [] for residue_id in self._protein_residue_id}
-                self._lipid_count = {residue_id: [] for residue_id in self._protein_residue_id}
+                self._duration = dict()
+                self._occupancy = dict()
+                self._lipid_count = dict()
                 self._contact_residues_high = {residue_id: [] for residue_id in self._protein_residue_id}
                 self._contact_residues_low = {residue_id: [] for residue_id in self._protein_residue_id}
                 self._koff = np.zeros(self._nresi_per_protein)
@@ -368,14 +369,13 @@ class LipidInteraction:
             selected_residue_id = self._protein_residue_id
         else:
             selected_residue_id = np.atleast_1d(residue_id)
-
-        for residue_id in selected_residue_id:
+        for residue_id in tqdm(selected_residue_id, desc="CALCULATE DURATION PER RESIDUE"):
             self._duration[residue_id] = [
                         Duration(self._contact_residues_low[residue_id][(traj_idx*self._nprot)+protein_idx],
                                  self._contact_residues_high[residue_id][(traj_idx*self._nprot)+protein_idx],
                                  self._timesteps[traj_idx]).cal_durations()
                         for traj_idx in np.arange(len(self.trajfile_list))
-                        for protein_idx in np.arange(self._nprot, dtype=int)]
+                        for protein_idx in np.arange(self._nprot, dtype=int)]       
         self.dataset["Duration"] = [np.mean(np.concatenate(self._duration[residue_id]))
                                     if len(self._duration[residue_id]) > 0 else 0
                                     for residue_id in self._protein_residue_id]
@@ -405,7 +405,7 @@ class LipidInteraction:
             selected_residue_id = self._protein_residue_id
         else:
             selected_residue_id = np.atleast_1d(residue_id)
-        for residue_id in selected_residue_id:
+        for residue_id in tqdm(selected_residue_id, desc="CALCULATE OCCUPANCY"):
             self._occupancy[residue_id] = [cal_occupancy(self._contact_residues_low[residue_id][(traj_idx*self._nprot)+protein_idx])
                                           for traj_idx in np.arange(len(self.trajfile_list))
                                           for protein_idx in np.arange(self._nprot, dtype=int)]
@@ -441,23 +441,23 @@ class LipidInteraction:
             selected_residue_id = self._protein_residue_id
         else:
             selected_residue_id = np.atleast_1d(residue_id)
-        for residue_id in selected_residue_id:
+        for residue_id in tqdm(selected_residue_id, desc="CALCULATE RESIDUE LIPIDCOUNT"):
             self._lipid_count[residue_id] = [cal_lipidcount(self._contact_residues_low[residue_id][(traj_idx*self._nprot)+protein_idx])
                                            for traj_idx in np.arange(len(self.trajfile_list))
                                            for protein_idx in np.arange(self._nprot, dtype=int)]
-            self.dataset["Lipid Count"] = [np.mean(self._lipid_count[residue_id])
+        self.dataset["Lipid Count"] = [np.mean(self._lipid_count[residue_id])
+                                       if len(self._lipid_count[residue_id]) > 0 else 0
+                                       for residue_id in self._protein_residue_id]
+        self.dataset["Lipid Count std"] = [np.std(self._lipid_count[residue_id])
                                            if len(self._lipid_count[residue_id]) > 0 else 0
                                            for residue_id in self._protein_residue_id]
-            self.dataset["Lipid Count std"] = [np.std(self._lipid_count[residue_id])
-                                               if len(self._lipid_count[residue_id]) > 0 else 0
-                                               for residue_id in self._protein_residue_id]
         if len(selected_residue_id) == 1:
             self._lipid_count[residue_id]
         else:
             return [self._lipid_count[residue_id] for residue_id in selected_residue_id]
 
     def compute_residue_koff(self, residue_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                             save_dir=None, plot_data=True, fig_close=True):
+                             save_dir=None, plot_data=True, fig_close=True, num_cpus=None):
         """Calculate interaction koff and residence time for residues.
 
         Parameters
@@ -469,6 +469,7 @@ class LipidInteraction:
         print_data : bool, default=True
         plot_data : bool, default=True
         fig_close : bool, default=True
+        num_cpus : int or None, default=None
 
         Returns
         ---------
@@ -504,15 +505,18 @@ class LipidInteraction:
         if not same_timestep:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
-
-        print("CALCULATE KOFF FOR RESIDUES")
+        if plot_data:
+            fn_set = [os.path.join(koff_dir, "{}.pdf".format(residue_name_set[residue_id]))
+                      for residue_id in selected_residue_id]
+        else:
+            fn_set = [False for dummy in selected_residue_id]
+                
         returned_values = p_map(partial(cal_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
                                         initial_guess=initial_guess, plot_data=plot_data, timeunit=self._timeunit,
                                         fig_close=fig_close),
                                 [np.concatenate(self._duration[residue_id]) for residue_id in selected_residue_id],
                                 [residue_name_set[residue_id] for residue_id in selected_residue_id],
-                                [os.path.join(koff_dir, "{}.pdf".format(residue_name_set[residue_id]))
-                                 for residue_id in selected_residue_id])
+                                fn_set, num_cpus=num_cpus, desc="CALCULATE KOFF FOR RESIDUES")
 
         for residue_id, returned_value in zip(selected_residue_id, returned_values):
             self._koff[residue_id] = returned_value[0]
@@ -565,9 +569,9 @@ class LipidInteraction:
             # update dataset
             self.dataset["Binding Site ID"] = residue_BS_identifiers
             # initialise variable for binding site interactions
-            self._duration_BS = {bs_id:[] for bs_id in np.arange(len(self._node_list))}
-            self._occupancy_BS = {bs_id:[] for bs_id in np.arange(len(self._node_list))}
-            self._lipid_count_BS = {bs_id:[] for bs_id in np.arange(len(self._node_list))}
+            self._duration_BS = dict()
+            self._occupancy_BS = dict()
+            self._lipid_count_BS = dict()
             self._koff_BS = np.zeros(len(self._node_list))
             self._koff_BS_boot = np.zeros(len(self._node_list))
             self._res_time_BS = np.zeros(len(self._node_list))
@@ -600,7 +604,7 @@ class LipidInteraction:
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
-        for bs_id in selected_bs_id:
+        for bs_id in tqdm(selected_bs_id, desc="CALCULATE DURATION PER BINDING SITE"):
             nodes = self._node_list[bs_id]
             durations_BS = []
             for traj_idx in np.arange(len(self._trajfile_list), dtype=int):
@@ -644,7 +648,7 @@ class LipidInteraction:
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
-        for bs_id in selected_bs_id:
+        for bs_id in tqdm(selected_bs_id, desc="CALCULATE OCCUPANCY PER BINDING SITE"):
             nodes = self._node_list[bs_id]
             occupancy_BS = []
             for traj_idx in np.arange(len(self._trajfile_list), dtype=int):
@@ -687,7 +691,7 @@ class LipidInteraction:
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
-        for bs_id in selected_bs_id:
+        for bs_id in tqdm(selected_bs_id, desc="CALCULATE LIPIDCOUNT PER BINDING SITE"):
             nodes = self._node_list[bs_id]
             lipidcount_BS = []
             for traj_idx in np.arange(len(self._trajfile_list), dtype=int):
@@ -712,7 +716,7 @@ class LipidInteraction:
             return [self._lipid_count_BS[bs_id] for bs_id in selected_bs_id]
 
     def compute_site_koff(self, binding_site_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                          save_dir=None, plot_data=True, fig_close=True):
+                          save_dir=None, plot_data=True, fig_close=True, num_cpus=None):
         """Calculate interactions koff and residence time for binding sites.
 
         Parameters
@@ -723,6 +727,7 @@ class LipidInteraction:
         save_dir : str, default=None
         plot_data : bool, default=True
         fig_close : bool, default=True
+        num_cpus : int or None, default=None
 
         Returns
         ---------
@@ -752,14 +757,16 @@ class LipidInteraction:
         if not same_timestep:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
-
-        print("CALCULATE KOFF FOR BINDING SITES")
+        if plot_data:
+            fn_set = [os.path.join(BS_dir, f"BS_id{bs_id}.pdf").format(bs_id) for bs_id in selected_bs_id]
+        else:
+            fn_set = [False for dummy in selected_bs_id]
         returned_values = p_map(partial(cal_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
                                         initial_guess=initial_guess, plot_data=plot_data, timeunit=self._timeunit,
                                         fig_close=fig_close),
                                 [np.concatenate(self._duration_BS[bs_id]) for bs_id in selected_bs_id],
                                 [f"Binding Site {bs_id}" for bs_id in selected_bs_id],
-                                [os.path.join(BS_dir, f"BS_id{bs_id}.pdf").format(bs_id) for bs_id in selected_bs_id])
+                                fn_set, num_cpus=num_cpus, desc="CALCULATE KOFF FOR BINDING SITES")
         for bs_id, returned_value in zip(selected_bs_id, returned_values):
             self._koff_BS[bs_id] = returned_value[0]
             self._res_time_BS[bs_id] = returned_value[1]
@@ -783,7 +790,8 @@ class LipidInteraction:
 
     def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
                             kde_bw=0.15, pca_component=0.90, plot_rmsd=True, save_dir=None,
-                            n_clusters="auto", eps=None, min_samples=None, metric="euclidean", fig_close=False):
+                            n_clusters="auto", eps=None, min_samples=None, metric="euclidean", 
+                            fig_close=False, num_cpus=None):
         """Analyze bound poses for binding sites.
 
         This function can find representative bound poses, cluster the bound poses and calculate pose RMSD for
@@ -802,7 +810,26 @@ class LipidInteraction:
         n_clusters : int or 'auto'
             If `n_clusters == 'auto'`, the number of clusters will be guessed based on density, whereas n_clusters=N
             will use KMeans to cluster the poses.
+        eps : float or None, default=None
+            The minimum neighbour distance used by `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_
+            if None, the value will determined from as the elbow point of the sorted minimum neighbour distance 
+            of all the data points. 
+        min_samples : int or None, default=None
+            The minimum number of samples to be considered as core samples used by 
+            `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_ .
+            If None, the value will be automatically determined based on the size of data. 
+        metric : str, default='euclidean'
+            The metric used to calculated neighbour distance used by 
+            `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_ .
+            Default is the Euclidean distance. 
+        fig_close : bool, default=False
+            This parameter control whether to close the plotted figures using plt.close(). It can save memory if 
+            many figures are generated. 
+        num_cpus : int or None default=None
+            The number of CPUs used to rank the poses and cluster poses. Python multiprocessing deployed by 
+            `p_tqdm <https://github.com/swansonk14/p_tqdm>`_ is used to speed up these calculations. 
         save_dir : str or None, default=None
+        
 
         Returns
         -------
@@ -842,7 +869,6 @@ class LipidInteraction:
             atom_weights.update(translate)
 
         if n_top_poses > 0:
-            print("ANALYZE BOUND POSES")
             # multiprocessing wrapped under p_tqdm
             rmsd_set = p_map(partial(analyze_pose_wrapper, protein_atom_indices=protein_atom_indices,
                                      lipid_atom_indices=lipid_atom_indices, n_top_poses=n_top_poses,
@@ -851,7 +877,8 @@ class LipidInteraction:
                                      eps=eps, min_samples=min_samples, metric=metric,
                                      trajfile_list=self._trajfile_list),
                              selected_bs_id, [pose_traj[bs_id] for bs_id in selected_bs_id],
-                             [pose_info[bs_id] for bs_id in selected_bs_id])
+                             [self._node_list[bs_id] for bs_id in selected_bs_id],
+                             [pose_info[bs_id] for bs_id in selected_bs_id], num_cpus=num_cpus, desc="ANALYZE BOUND POSES")
             RMSD_set = {}
             for bs_id, rmsd in zip(selected_bs_id, rmsd_set):
                 RMSD_set["Binding Site {}".format(bs_id)] = rmsd
