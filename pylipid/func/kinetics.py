@@ -22,7 +22,7 @@ from scipy.optimize import curve_fit
 from ..plot import plot_koff
 
 
-__all__ = ["cal_koff", "cal_survival_func", "cal_koff_wrapper"]
+__all__ = ["cal_koff", "cal_survival_func", "calculate_koff_wrapper"]
 
 
 def cal_koff(durations, t_total, timestep, nbootstrap=10, initial_guess=[1., 1., 1., 1.], cap=True):
@@ -189,8 +189,8 @@ def _bi_expo(x, k1, k2, A, B):
     return A*np.exp(-k1*x) + B*np.exp(-k2*x)
 
 
-def cal_koff_wrapper(durations, title, fn, t_total=None, timestep=1, nbootstrap=10,
-                     initial_guess=[1., 1., 1., 1.], plot_data=True, timeunit="us", fig_close=True):
+def calculate_koff_wrapper(durations, title, fn, t_total=None, timestep=1, nbootstrap=10,
+                           initial_guess=[1., 1., 1., 1.], plot_data=True, timeunit="us", fig_close=True):
     """Wrapper function that calculates koff and plot koff. """
     if np.sum(durations) == 0:
         koff = 0

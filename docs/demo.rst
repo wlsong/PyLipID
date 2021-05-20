@@ -6,6 +6,7 @@ Demo
 Here we provide a no-brainer demo script for lipid interaction analysis using PyLipID. This script works
 for versions later than 1.4. Please update PyLipID to the latest version ::
 
+    import pickle
     import numpy as np
     import matplotlib.pyplot as plt
     from pylipid.api import LipidInteraction
@@ -72,11 +73,13 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
         li.compute_site_occupancy(binding_site_id=None)
         li.compute_site_lipidcount(binding_site_id=None)
         li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True)
-        _, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format)
+        pose_traj, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format)
         surface_area_data = li.compute_surface_area(binding_site_id=None, radii=radii)
         pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir), index=False, header=True)
-        surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir), index=False, header=True)
+        surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir), index=True, header=True)
         li.write_site_info(sort_residue="Residence Time")
+        with open("{}/Bound_Poses_{}/pose_traj.pickle".format(li.save_dir, lipid), "wb") as f:
+            pickle.dump(pose_traj, f, 2)
 
     if pdb_file_to_map is not None:
         li.save_pymol_script(pdb_file_to_map)

@@ -47,7 +47,7 @@ from .interactions import cal_contact_residues, cal_occupancy, cal_lipidcount
 from .binding_site import get_node_list
 from .binding_site import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
 from .clusterer import cluster_DBSCAN, cluster_KMeans
-from .binding_site import calculate_site_surface_area
 from .binding_site import analyze_pose_wrapper
-from .kinetics import cal_koff_wrapper
+from .binding_site import calculate_surface_area_wrapper
+from .kinetics import calculate_koff_wrapper
 

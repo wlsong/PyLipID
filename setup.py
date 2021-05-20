@@ -41,7 +41,7 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     keywords='simulation tools, network community, binding site',
-    python_requires='>=3.6, <4',
+    python_requires='>=3.6, <4, !=3.8.*',
     packages=find_packages(),
     install_requires=[
         "mdtraj",

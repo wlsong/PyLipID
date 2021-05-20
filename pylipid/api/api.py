@@ -21,7 +21,6 @@ import pickle
 import os
 import re
 import warnings
-import multiprocessing
 import mdtraj as md
 import numpy as np
 np.seterr(all='ignore')
@@ -34,8 +33,7 @@ from ..func import Duration
 from ..func import cal_lipidcount, cal_occupancy
 from ..func import get_node_list
 from ..func import collect_bound_poses
-from ..func import analyze_pose_wrapper, cal_koff_wrapper
-from ..func import calculate_site_surface_area
+from ..func import analyze_pose_wrapper, calculate_koff_wrapper, calculate_surface_area_wrapper
 from ..plot import plot_surface_area, plot_binding_site_data
 from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logos
 from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, get_traj_info
@@ -511,7 +509,7 @@ class LipidInteraction:
         else:
             fn_set = [False for dummy in selected_residue_id]
                 
-        returned_values = p_map(partial(cal_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
+        returned_values = p_map(partial(calculate_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
                                         initial_guess=initial_guess, plot_data=plot_data, timeunit=self._timeunit,
                                         fig_close=fig_close),
                                 [np.concatenate(self._duration[residue_id]) for residue_id in selected_residue_id],
@@ -762,7 +760,7 @@ class LipidInteraction:
             fn_set = [os.path.join(BS_dir, f"BS_id{bs_id}.pdf").format(bs_id) for bs_id in selected_bs_id]
         else:
             fn_set = [False for dummy in selected_bs_id]
-        returned_values = p_map(partial(cal_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
+        returned_values = p_map(partial(calculate_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
                                         initial_guess=initial_guess, plot_data=plot_data, timeunit=self._timeunit,
                                         fig_close=fig_close),
                                 [np.concatenate(self._duration_BS[bs_id]) for bs_id in selected_bs_id],
@@ -894,7 +892,8 @@ class LipidInteraction:
                                    title="{}".format(self._lipid), ylabel="RMSD (nm)", fig_close=fig_close)
         return pose_traj, pose_rmsd_data
 
-    def compute_surface_area(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None, fig_close=False):
+    def compute_surface_area(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None,
+                             fig_close=False, num_cpus=None):
         """Calculate binding site surface areas.
 
         Parameters
@@ -903,6 +902,12 @@ class LipidInteraction:
         radii : dict or None, default=None
         plot_data : bool, default=True
         save_dir : str or None, default=None
+        fig_close : bool, default=False
+        num_cpus : int or None, default=None
+
+        Returns
+        -----------
+        surface_area : pandas.DataFrame
 
         """
         MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
@@ -923,9 +928,18 @@ class LipidInteraction:
         selected_bs_id = np.atleast_1d(np.array(binding_site_id, dtype=int)) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
         selected_bs_id_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
-        surface_area_data = calculate_site_surface_area(selected_bs_id_map, radii_book, self._trajfile_list,
-                                                        self._topfile_list, self._nprot, self._timeunit, self._stride,
-                                                        dt_traj=self._dt_traj)
+        returned_values = p_map(partial(calculate_surface_area_wrapper, binding_site_map=selected_bs_id_map,
+                                        nprot=self._nprot, timeunit=self._timeunit, stride=self._stride,
+                                        dt_traj=self._dt_traj, radii_book=radii_book), self._trajfile_list,
+                                self._topfile_list, np.arange(len(self._trajfile_list), dtype=int),
+                                num_cpus=num_cpus, desc="CALCULATE BINDING SITE SURFACE AREA")
+        surface_data = []
+        data_keys = []
+        for returned_tuple in returned_values:
+             for idx in np.arange(len(returned_tuple[0])):
+                surface_data.append(returned_tuple[0][idx])
+                data_keys.append(returned_tuple[1][idx])
+        surface_area_data = pd.concat(surface_data, keys=data_keys)
         # update dataset
         for bs_id in selected_bs_id:
             nodes = self._node_list[bs_id]

@@ -32,7 +32,7 @@ from .clusterer import cluster_DBSCAN, cluster_KMeans
 
 
 __all__ = ["get_node_list", "collect_bound_poses", "vectorize_poses", "calculate_scores", "write_bound_poses",
-           "calculate_site_surface_area", "analyze_pose_wrapper"]
+           "calculate_surface_area_wrapper", "analyze_pose_wrapper"]
 
 
 def get_node_list(corrcoef, threshold=4):
@@ -227,51 +227,30 @@ def write_bound_poses(pose_traj, pose_indices, save_dir, pose_prefix="BoundPose"
         pose_traj[pose_id].save(os.path.join(save_dir, "{}{}.{}".format(pose_prefix, idx, pose_format)))
     return
 
-
-def calculate_site_surface_area(binding_site_map, radii_book, trajfile_list, topfile_list,
-                                nprot, timeunit, stride, dt_traj=None):
-    """Calculate the surface area (in unit of nm^2) as a function of time.
-
-    Parameters
-    ----------
-    binding_site_map : dict
-    trajfile : str or list of str
-    topfile : str or list of str
-    nprot : int
-    timeunit : str, {ns, us}
-    stride : int
-    dt_traj : scalar or None, optional, default=None
-
-    Returns
-    -------
-    surface_area : pandas.DataFrame
-
-    """
+def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map={}, nprot=1, timeunit="us",
+                                   stride=1, dt_traj=None, radii_book=None):
+    """A wrapper function for calculating surface area. """
+    traj = md.load(trajfile, top=topfile, stride=stride)
+    if dt_traj is None:
+        traj_times = traj.time / 1000000.0 if timeunit == "us" else traj.time / 1000.0
+    else:
+        traj_times = float(dt_traj * stride) * np.arange(traj.n_frames)
+    protein_indices_all = traj.top.select("protein")
+    natoms_per_protein = int(len(protein_indices_all) / nprot)
     surface_data = []
     data_keys = []
-    for traj_idx in trange(len(trajfile_list), desc="CALCULATE SURFACE AREA PER TRAJ", total=len(trajfile_list)):
-        trajfile, topfile = trajfile_list[traj_idx], topfile_list[traj_idx]
-        traj = md.load(trajfile, top=topfile, stride=stride)
-        if dt_traj is None:
-            traj_times = traj.time / 1000000.0 if timeunit == "us" else traj.time / 1000.0
-        else:
-            traj_times = float(dt_traj * stride) * np.arange(traj.n_frames)
-        protein_indices_all = traj.top.select("protein")
-        natoms_per_protein = int(len(protein_indices_all) / nprot)
-        for protein_idx in np.arange(nprot):
-            protein_indices = protein_indices_all[
-                              protein_idx * natoms_per_protein:(protein_idx + 1) * natoms_per_protein]
-            new_traj = traj.atom_slice(protein_indices, inplace=False)
-            area_all = md.shrake_rupley(new_traj, mode='residue', change_radii=radii_book)
-            selected_data = [area_all[:, nodes].sum(axis=1) for bs_id, nodes in binding_site_map.items()]
-            selected_data.append(traj_times)
-            column_names = ["Binding Site {}".format(bs_id) for bs_id, nodes in binding_site_map.items()]
-            column_names.append("Time")
-            surface_data.append(pd.DataFrame(np.array(selected_data).T, columns=column_names))
-            data_keys.append((traj_idx, protein_idx))
-    surface_area = pd.concat(surface_data, keys=data_keys)
-    return surface_area
-
+    for protein_idx in np.arange(nprot):
+        protein_indices = protein_indices_all[
+                          protein_idx * natoms_per_protein:(protein_idx + 1) * natoms_per_protein]
+        new_traj = traj.atom_slice(protein_indices, inplace=False)
+        area_all = md.shrake_rupley(new_traj, mode='residue', change_radii=radii_book)
+        selected_data = [area_all[:, nodes].sum(axis=1) for bs_id, nodes in binding_site_map.items()]
+        selected_data.append(traj_times)
+        column_names = ["Binding Site {}".format(bs_id) for bs_id, nodes in binding_site_map.items()]
+        column_names.append("Time")
+        surface_data.append(pd.DataFrame(np.array(selected_data).T, columns=column_names))
+        data_keys.append((traj_idx, protein_idx))
+    return surface_data, data_keys
 
 def analyze_pose_wrapper(bs_id, poses_of_the_site, nodes_of_the_site, pose_info_of_the_site, pose_dir=None,
                          n_top_poses=3, protein_atom_indices=None, lipid_atom_indices=None, atom_weights=None,
