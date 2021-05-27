@@ -53,12 +53,14 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
     """
     if len(data) <= len(data[0]):
         return np.array([0 for dummy in data]), np.arange(len(data))[np.newaxis, :]
-    if len(data) < 200:
-        min_samples = 2 * len(data[0])
+    if len(data) < 50:
+        min_samples = np.min(len(data), len(data[0]))
+    elif 50 <= len(data) < 200:
+        min_samples = np.min(2 * len(data[0]), len(data))
     elif 200 <= len(data) < 800:
-        min_samples = 5 * len(data[0])
+        min_samples = np.min(5 * len(data[0]), len(data))
     elif len(data) >= 800:
-        min_samples = 10 * len(data[0])
+        min_samples = np.min(10 * len(data[0]), len(data))
     if eps is None:
         nearest_neighbors = NearestNeighbors(n_neighbors=min_samples)
         nearest_neighbors.fit(data)
