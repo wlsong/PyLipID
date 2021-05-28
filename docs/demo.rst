@@ -37,6 +37,11 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
 
     save_dir = None  # save at current working directory if it is None.
     save_pose_format = "gro"  # format that poses are written in
+    save_pose_traj = True  # save all the bound poses in a trajectory for each binding site. The generated
+                           # trajectories can take some disk space (up to a couple GB depending on your system).
+    save_pose_traj_format = "xtc"  # The format for the saved pose trajectories. Can take any format that is supported
+                                   # by mdtraj.
+
     timeunit = "us"  # micro-sec. "ns" is nanosecond. Time unit used for reporting the results.
     resi_offset = 0  # shift the residue index, useful for MARTINI models.
 
@@ -79,14 +84,17 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
         li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True, fig_format=fig_format)
         pose_traj, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format,
                                                            fig_format=fig_format)
+        # save pose trajectories
+        if save_pose_traj:
+            for bs_id in pose_traj.keys():
+                pose_traj.save("{}/Bound_Poses_{}/Pose_traj_BSid{}.{}".format(li.save_dir, li.lipid, bs_id,
+                                                                              save_pose_traj_format))
+        del pose_traj  # save memory space
         surface_area_data = li.compute_surface_area(binding_site_id=None, radii=radii, fig_format=fig_format)
-        # save data
         data_dir = check_dir(li.save_dir, "Dataset_{}".format(self.lipid))
         pose_rmsd_data.to_csv("{}/Pose_RMSD_data.csv".format(data_dir), index=False, header=True)
         surface_area_data.to_csv("{}/Surface_Area_data.csv".format(data_dir), index=True, header=True)
         li.write_site_info(sort_residue="Residence Time")
-        with open("{}/Bound_Poses_{}/Pose_Traj.pickle".format(li.save_dir, lipid), "wb") as f:
-            pickle.dump(pose_traj, f, 2)
 
     if pdb_file_to_map is not None:
         li.save_pymol_script(pdb_file_to_map)

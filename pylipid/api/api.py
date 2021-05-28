@@ -1095,8 +1095,9 @@ class LipidInteraction:
         save_dir : str, optional, default=None
 
         """
-        script_dir = check_dir(save_dir) if save_dir is not None else check_dir(self._save_dir)
-        data_fname = os.path.join(script_dir, "Dataset_{}.csv".format(self._lipid))
+        script_dir = check_dir(save_dir) if save_dir is not None else \
+            check_dir(os.path.join(self._save_dir, "Dataset_{}".format(self._lipid)))
+        data_fname = os.path.join(script_dir, "Dataset.csv".format(self._lipid))
         if not os.path.isfile(data_fname):
             self.dataset.to_csv(data_fname, index=False, header=True)
         write_pymol_script(os.path.join(script_dir, "show_binding_site_info.py"), pdb_file, data_fname,
