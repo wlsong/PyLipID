@@ -10,6 +10,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
     import numpy as np
     import matplotlib.pyplot as plt
     from pylipid.api import LipidInteraction
+    from pylipid.util import check_dir
 
     ##################################################################
     ##### This part needs changes according to your setting ##########
@@ -49,6 +50,9 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
                              # site information to the structure in PyMol. As PyMol cannot recognize
                              # coarse-grained structures, an atomistic structure of the receptor is needed.
 
+    fig_format = "pdf"  # format for all pylipid produced figures. Allow for formats that are supported by
+                        # matplotlib.pyplot.savefig().
+
     #####################################
     ###### no changes needed below ######
     #####################################
@@ -62,7 +66,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
     li.compute_residue_occupancy(residue_id=None)
     li.compute_residue_lipidcount(residue_id=None)
     li.show_stats_per_traj(write_log=True, print_log=True)
-    li.compute_residue_koff(residue_id=None, plot_data=True, fig_close=True)
+    li.compute_residue_koff(residue_id=None, plot_data=True, fig_close=True, fig_format=fig_format)
     li.compute_binding_nodes(threshold=binding_site_size, print_data=False)
     if len(li.node_list) == 0:
         print("*"*50)
@@ -72,13 +76,16 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
         li.compute_site_duration(binding_site_id=None)
         li.compute_site_occupancy(binding_site_id=None)
         li.compute_site_lipidcount(binding_site_id=None)
-        li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True)
-        pose_traj, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format)
-        surface_area_data = li.compute_surface_area(binding_site_id=None, radii=radii)
-        pose_rmsd_data.to_csv("{}/pose_rmsd_data.csv".format(li.save_dir), index=False, header=True)
-        surface_area_data.to_csv("{}/surface_area_data.csv".format(li.save_dir), index=True, header=True)
+        li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True, fig_format=fig_format)
+        pose_traj, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format,
+                                                           fig_format=fig_format)
+        surface_area_data = li.compute_surface_area(binding_site_id=None, radii=radii, fig_format=fig_format)
+        # save data
+        data_dir = check_dir(li.save_dir, "Dataset_{}".format(self.lipid))
+        pose_rmsd_data.to_csv("{}/Pose_RMSD_data.csv".format(data_dir), index=False, header=True)
+        surface_area_data.to_csv("{}/Surface_Area_data.csv".format(data_dir), index=True, header=True)
         li.write_site_info(sort_residue="Residence Time")
-        with open("{}/Bound_Poses_{}/pose_traj.pickle".format(li.save_dir, lipid), "wb") as f:
+        with open("{}/Bound_Poses_{}/Pose_Traj.pickle".format(li.save_dir, lipid), "wb") as f:
             pickle.dump(pose_traj, f, 2)
 
     if pdb_file_to_map is not None:
@@ -90,8 +97,8 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
     for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
         li.save_coordinate(item=item)
     for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
-        li.plot(item=item, fig_close=True)
-        li.plot_logo(item=item, fig_close=True)
+        li.plot(item=item, fig_close=True, fig_format=fig_format)
+        li.plot_logo(item=item, fig_close=True, fig_format=fig_format)
 
     #### plot binding site comparison.
     if len(li.node_list) > 0:
@@ -121,7 +128,8 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
                 for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
                     plt.setp(label, fontsize=12, weight="normal")
                 plt.tight_layout()
-                plt.savefig("{}/{}_{}_v_binding_site.pdf".format(li.save_dir, li.lipid, "_".join(item.split())), dpi=200)
+                plt.savefig("{}/{}_{}_v_binding_site.{}".format(li.save_dir, li.lipid, "_".join(item.split()), fig_format),
+                            dpi=200)
                 plt.close()
 
             # plot No. 2
@@ -140,7 +148,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
             for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
                 plt.setp(label, fontsize=12, weight="normal")
             plt.tight_layout()
-            plt.savefig("{}/{}_RMSD_v_binding_site.pdf".format(li.save_dir, li.lipid), dpi=200)
+            plt.savefig("{}/{}_RMSD_v_binding_site.{}".format(li.save_dir, li.lipid, fig_format), dpi=200)
             plt.close()
 
             # plot No. 3
@@ -157,7 +165,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
             for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
                 plt.setp(label, fontsize=12, weight="normal")
             plt.tight_layout()
-            plt.savefig("{}/{}_surface_area_v_binding_site.pdf".format(li.save_dir, li.lipid), dpi=200)
+            plt.savefig("{}/{}_surface_area_v_binding_site.{}".format(li.save_dir, li.lipid, fig_format), dpi=200)
             plt.close()
 
             # plot No. 4
@@ -171,7 +179,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
             for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
                 plt.setp(label, fontsize=12, weight="normal")
             plt.tight_layout()
-            plt.savefig("{}/{}_Residence_Time_v_RMSD.pdf".format(li.save_dir, li.lipid), dpi=200)
+            plt.savefig("{}/{}_Residence_Time_v_RMSD.{}".format(li.save_dir, li.lipid, fig_format), dpi=200)
             plt.close()
 
             # plot No. 5
@@ -185,7 +193,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
             for label in ax.xaxis.get_ticklabels()+ax.yaxis.get_ticklabels():
                 plt.setp(label, fontsize=12, weight="normal")
             plt.tight_layout()
-            plt.savefig("{}/{}_Residence_Time_v_surface_area.pdf".format(li.save_dir, li.lipid), dpi=200)
+            plt.savefig("{}/{}_Residence_Time_v_surface_area.{}".format(li.save_dir, li.lipid, fig_format), dpi=200)
             plt.close()
 
 

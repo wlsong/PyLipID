@@ -455,7 +455,7 @@ class LipidInteraction:
             return [self._lipid_count[residue_id] for residue_id in selected_residue_id]
 
     def compute_residue_koff(self, residue_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                             save_dir=None, plot_data=True, fig_close=True, num_cpus=None):
+                             save_dir=None, plot_data=True, fig_close=True, fig_format="pdf", num_cpus=None):
         """Calculate interaction koff and residence time for residues.
 
         Parameters
@@ -467,6 +467,7 @@ class LipidInteraction:
         print_data : bool, default=True
         plot_data : bool, default=True
         fig_close : bool, default=True
+        fig_format : str, default="pdf"
         num_cpus : int or None, default=None
 
         Returns
@@ -504,7 +505,7 @@ class LipidInteraction:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
         if plot_data:
-            fn_set = [os.path.join(koff_dir, "{}.pdf".format(residue_name_set[residue_id]))
+            fn_set = [os.path.join(koff_dir, "{}.{}".format(residue_name_set[residue_id], fig_format))
                       for residue_id in selected_residue_id]
         else:
             fn_set = [False for dummy in selected_residue_id]
@@ -714,7 +715,7 @@ class LipidInteraction:
             return [self._lipid_count_BS[bs_id] for bs_id in selected_bs_id]
 
     def compute_site_koff(self, binding_site_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
-                          save_dir=None, plot_data=True, fig_close=True, num_cpus=None):
+                          save_dir=None, plot_data=True, fig_close=True, fig_format="pdf", num_cpus=None):
         """Calculate interactions koff and residence time for binding sites.
 
         Parameters
@@ -725,6 +726,7 @@ class LipidInteraction:
         save_dir : str, default=None
         plot_data : bool, default=True
         fig_close : bool, default=True
+        fig_format : str, default="pdf"
         num_cpus : int or None, default=None
 
         Returns
@@ -757,7 +759,7 @@ class LipidInteraction:
             warnings.warn(
                 "Trajectories have different timesteps. This will impair the accuracy of koff calculation!")
         if plot_data:
-            fn_set = [os.path.join(BS_dir, f"BS_id{bs_id}.pdf").format(bs_id) for bs_id in selected_bs_id]
+            fn_set = [os.path.join(BS_dir, f"BS_id{bs_id}.{fig_format}") for bs_id in selected_bs_id]
         else:
             fn_set = [False for dummy in selected_bs_id]
         returned_values = p_map(partial(calculate_koff_wrapper, t_total=t_total, timestep=timestep, nbootstrap=nbootstrap,
@@ -790,7 +792,7 @@ class LipidInteraction:
     def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
                             kde_bw=0.15, pca_component=0.90, plot_rmsd=True, save_dir=None,
                             n_clusters="auto", eps=None, min_samples=None, metric="euclidean", 
-                            fig_close=False, num_cpus=None):
+                            fig_close=False, fig_format="pdf", num_cpus=None):
         """Analyze bound poses for binding sites.
 
         This function can find representative bound poses, cluster the bound poses and calculate pose RMSD for
@@ -824,6 +826,8 @@ class LipidInteraction:
         fig_close : bool, default=False
             This parameter control whether to close the plotted figures using plt.close(). It can save memory if 
             many figures are generated. 
+        fig_format : str, default="pdf"
+            The figure format. Use the format supported by matplotlib.pyplot.
         num_cpus : int or None default=None
             The number of CPUs used to rank the poses and cluster poses. Python multiprocessing deployed by 
             `p_tqdm <https://github.com/swansonk14/p_tqdm>`_ is used to speed up these calculations. 
@@ -888,12 +892,12 @@ class LipidInteraction:
             dict([(bs_label, pd.Series(rmsd_set)) for bs_label, rmsd_set in RMSD_set.items()]))
         # plot RMSD
         if plot_rmsd and n_top_poses > 0:
-            plot_binding_site_data(pose_rmsd_data, os.path.join(pose_dir, "Pose_RMSD_violinplot.pdf"),
+            plot_binding_site_data(pose_rmsd_data, os.path.join(pose_dir, f"Pose_RMSD_violinplot.{fig_format}"),
                                    title="{}".format(self._lipid), ylabel="RMSD (nm)", fig_close=fig_close)
         return pose_traj, pose_rmsd_data
 
     def compute_surface_area(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None,
-                             fig_close=False, num_cpus=None):
+                             fig_close=False, fig_format="pdf", num_cpus=None):
         """Calculate binding site surface areas.
 
         Parameters
@@ -903,6 +907,7 @@ class LipidInteraction:
         plot_data : bool, default=True
         save_dir : str or None, default=None
         fig_close : bool, default=False
+        fig_format : str, default="pdf"
         num_cpus : int or None, default=None
 
         Returns
@@ -950,14 +955,16 @@ class LipidInteraction:
             if save_dir is not None:
                 surface_area_dir = check_dir(save_dir)
             else:
-                surface_area_dir = check_dir(self._save_dir)
+                surface_area_dir = check_dir(self._save_dir, "Bound_Poses_{}".format(self._lipid))
             plot_surface_area(surface_area_data,
-                              os.path.join(surface_area_dir, "Surface_Area_{}_timeseries.pdf".format(self._lipid)),
+                              os.path.join(surface_area_dir,
+                                           "Surface_Area_{}_timeseries.{}".format(self._lipid, fig_format)),
                               timeunit=self._timeunit, fig_close=fig_close)
             selected_columns = [column for column in surface_area_data.columns if column != "Time"]
             surface_data_noTimeSeries = surface_area_data[selected_columns]
             plot_binding_site_data(surface_data_noTimeSeries,
-                                   os.path.join(surface_area_dir, "Surface_Area_{}_violinplot.pdf".format(self._lipid)),
+                                   os.path.join(surface_area_dir,
+                                                "Surface_Area_{}_violinplot.{}".format(self._lipid, fig_format)),
                                    title="{}".format(self._lipid), ylabel=r"Surface Area (nm$^2$)",
                                    fig_close=fig_close)
         return surface_area_data
@@ -995,7 +1002,7 @@ class LipidInteraction:
                 pickle.dump(obj, f, 2)
 
         if item.lower() == "dataset":
-            self.dataset.to_csv(os.path.join(data_dir, "dataset.csv"), header=True, index=False)
+            self.dataset.to_csv(os.path.join(data_dir, "Dataset.csv"), header=True, index=False)
 
         return
 
@@ -1033,7 +1040,7 @@ class LipidInteraction:
                            self._lipid, len(self._node_list))
         return
 
-    def plot(self, item, save_dir=None, gap=200, fig_close=False):
+    def plot(self, item, save_dir=None, gap=200, fig_close=False, fig_format="pdf"):
         """Assisting function for plotting interaction data.
 
         Plot interactions per residue or plot interaction correlation matrix.
@@ -1043,6 +1050,8 @@ class LipidInteraction:
         item : {"Residence Time", "Duration", "Occupancy", "Lipid Count", "CorrCoef"}
         save_dir : str, default=None
         gap : int, default=200
+        fig_close : bool, default=False
+        fig_format : str, default="pdf"
 
         """
         figure_dir = check_dir(save_dir, "Figure_{}".format(self._lipid)) if save_dir is not None \
@@ -1059,19 +1068,21 @@ class LipidInteraction:
         if "ylabel" in locals():
             data = self.dataset[item]
             title = "{} {}".format(self._lipid, item)
-            fig_fn = os.path.join(figure_dir, "{}.pdf".format("_".join(item.split())))
+            fig_fn = os.path.join(figure_dir, "{}.{}".format("_".join(item.split()), fig_format))
             residue_index = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self._residue_list])
             plot_residue_data(residue_index, data, gap=gap, ylabel=ylabel, fn=fig_fn, title=title,
                               fig_close=fig_close)
 
         if item == "CorrCoef":
             residue_index = np.array([int(re.findall("^[0-9]+", residue)[0]) for residue in self._residue_list])
-            plot_corrcoef(self.interaction_corrcoef, residue_index, fn=os.path.join(figure_dir, "CorrCoef.pdf"),
+            plot_corrcoef(self.interaction_corrcoef, residue_index, fn=os.path.join(figure_dir,
+                                                                                    f"CorrCoef.{fig_format}"),
                           title="{} Correlation Coeffient".format(self._lipid), fig_close=fig_close)
 
         return
 
-    def plot_logo(self, item, save_dir=None, gap=2000, letter_map=None, color_scheme="chemistry", fig_close=False):
+    def plot_logo(self, item, save_dir=None, gap=2000, letter_map=None, color_scheme="chemistry",
+                  fig_close=False, fig_format="pdf"):
         """Plot interactions using logomaker.
 
         Parameters
@@ -1081,6 +1092,8 @@ class LipidInteraction:
         gap : int, optional, default=2000
         letter_map : dict or None, optional, default=None
         color_scheme : str, optional, default="chemistry"
+        fig_close : bool, default=False
+        fig_format : str, default="pdf"
 
         """
         figure_dir = check_dir(save_dir, "Figure_{}".format(self._lipid)) if save_dir is not None \
@@ -1108,7 +1121,7 @@ class LipidInteraction:
         if "ylabel" in locals():
             data = self.dataset[item]
             title = "{} {} Logo".format(self._lipid, item)
-            fig_fn = os.path.join(figure_dir, "{}_logo.pdf".format("_".join(item.split())))
+            fig_fn = os.path.join(figure_dir, "{}_logo.{}".format("_".join(item.split()), fig_format))
             plot_residue_data_logos(residue_index, resname_set, data, ylabel=ylabel,
                                     fn=fig_fn, title=title, letter_map=letter_map, color_scheme=color_scheme,
                                     fig_close=fig_close)
