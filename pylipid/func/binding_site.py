@@ -227,6 +227,52 @@ def write_bound_poses(pose_traj, pose_indices, save_dir, pose_prefix="BoundPose"
         pose_traj[pose_id].save(os.path.join(save_dir, "{}{}.{}".format(pose_prefix, idx, pose_format)))
     return
 
+
+def calculate_surface_area(trajfile_list, topfile_list, binding_site_map, nprot=1, timeunit="us",
+                            stride=1, dt_traj=None, radii_book=None):
+    """Calculate surface area in a serial manner.
+
+    Parameters
+    ----------
+    trajfile_lsit : list of str
+    topfile_list : list of str
+    binding_site_map : dict,
+    nprot : int, default=1
+    timeunit : str, default='us'
+    stride : int, default=1
+    dr_traj : float or None, default=None
+    radii_book : dict, default=None
+
+    Returns
+    -------
+    surface_area : pandas.DataFrame
+
+    """
+    surface_data = []
+    data_keys = []
+    for traj_idx in trange(len(trajfile_list), desc="CALCULATE BINDING SITE SURFACE AREA PER TRAJ"):
+        traj = md.load(trajfile_list[traj_idx], top=topfile_list[traj_idx])
+        if dt_traj is None:
+            traj_times = traj.time / 1000000.0 if timeunit == "us" else traj.time / 1000.0
+        else:
+            traj_times = float(dt_traj * stride) * np.arange(traj.n_frames)
+        protein_indices_all = traj.top.select("protein")
+        natoms_per_protein = int(len(protein_indices_all) / nprot)
+        for protein_idx in np.arange(nprot):
+            protein_indices = protein_indices_all[
+                              protein_idx * natoms_per_protein:(protein_idx + 1) * natoms_per_protein]
+            new_traj = traj.atom_slice(protein_indices, inplace=False)
+            area_all = md.shrake_rupley(new_traj, mode='residue', change_radii=radii_book)
+            selected_data = [area_all[:, nodes].sum(axis=1) for bs_id, nodes in binding_site_map.items()]
+            selected_data.append(traj_times)
+            column_names = ["Binding Site {}".format(bs_id) for bs_id, nodes in binding_site_map.items()]
+            column_names.append("Time")
+            surface_data.append(pd.DataFrame(np.array(selected_data).T, columns=column_names))
+            data_keys.append((traj_idx, protein_idx))
+    surface_area_data = pd.concat(surface_data, keys=data_keys)
+    return surface_area_data
+
+
 def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map={}, nprot=1, timeunit="us",
                                    stride=1, dt_traj=None, radii_book=None):
     """A wrapper function for calculating surface area. """
@@ -251,6 +297,7 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
         surface_data.append(pd.DataFrame(np.array(selected_data).T, columns=column_names))
         data_keys.append((traj_idx, protein_idx))
     return surface_data, data_keys
+
 
 def analyze_pose_wrapper(bs_id, poses_of_the_site, nodes_of_the_site, pose_info_of_the_site, pose_dir=None,
                          n_top_poses=3, protein_atom_indices=None, lipid_atom_indices=None, atom_weights=None,
@@ -298,6 +345,7 @@ def analyze_pose_wrapper(bs_id, poses_of_the_site, nodes_of_the_site, pose_info_
     pose_rmsds = [rmsd(lipid_dist_per_pose[pose_id], dist_mean)
                   for pose_id in np.arange(len(lipid_dist_per_pose))]
     return pose_rmsds
+
 
 def _write_pose_info(selected_pose_info, fn, trajfile_list):
     """Write pose information for each selected pose. """

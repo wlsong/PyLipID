@@ -32,7 +32,7 @@ from ..func import cal_contact_residues
 from ..func import Duration
 from ..func import cal_lipidcount, cal_occupancy
 from ..func import get_node_list
-from ..func import collect_bound_poses
+from ..func import collect_bound_poses, calculate_surface_area
 from ..func import analyze_pose_wrapper, calculate_koff_wrapper, calculate_surface_area_wrapper
 from ..plot import plot_surface_area, plot_binding_site_data
 from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logos
@@ -945,6 +945,69 @@ class LipidInteraction:
                 surface_data.append(returned_tuple[0][idx])
                 data_keys.append(returned_tuple[1][idx])
         surface_area_data = pd.concat(surface_data, keys=data_keys)
+        # update dataset
+        for bs_id in selected_bs_id:
+            nodes = self._node_list[bs_id]
+            surface_area_per_residue[nodes] = surface_area_data["Binding Site {}".format(bs_id)].mean()
+        self.dataset["Binding Site Surface Area"] = surface_area_per_residue
+        # plot surface area
+        if plot_data:
+            if save_dir is not None:
+                surface_area_dir = check_dir(save_dir)
+            else:
+                surface_area_dir = check_dir(self._save_dir, "Bound_Poses_{}".format(self._lipid))
+            plot_surface_area(surface_area_data,
+                              os.path.join(surface_area_dir,
+                                           "Surface_Area_{}_timeseries.{}".format(self._lipid, fig_format)),
+                              timeunit=self._timeunit, fig_close=fig_close)
+            selected_columns = [column for column in surface_area_data.columns if column != "Time"]
+            surface_data_noTimeSeries = surface_area_data[selected_columns]
+            plot_binding_site_data(surface_data_noTimeSeries,
+                                   os.path.join(surface_area_dir,
+                                                "Surface_Area_{}_violinplot.{}".format(self._lipid, fig_format)),
+                                   title="{}".format(self._lipid), ylabel=r"Surface Area (nm$^2$)",
+                                   fig_close=fig_close)
+        return surface_area_data
+
+    def compute_surface_area_serial(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None,
+                             fig_close=False, fig_format="pdf"):
+        """Calculate binding site surface areas.
+
+        Parameters
+        -----------
+        binding_site_id : int or array_like or None, default=None
+        radii : dict or None, default=None
+        plot_data : bool, default=True
+        save_dir : str or None, default=None
+        fig_close : bool, default=False
+        fig_format : str, default="pdf"
+
+        Returns
+        -----------
+        surface_area : pandas.DataFrame
+
+        """
+        MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
+
+        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
+
+        if "Binding Site Surface Area" in self.dataset.columns:
+            # keep existing data
+            surface_area_per_residue = np.array(self.dataset["Binding Site Surface Area"].tolist())
+        else:
+            surface_area_per_residue = np.zeros(self._nresi_per_protein)
+        if radii is None:
+            radii_book = MARTINI_CG_radii
+        else:
+            radii_book = {**MARTINI_CG_radii, **radii}
+
+        # calculate binding site surface area
+        selected_bs_id = np.atleast_1d(np.array(binding_site_id, dtype=int)) if binding_site_id is not None \
+            else np.arange(len(self._node_list), dtype=int)
+        selected_bs_id_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
+        surface_area_data = calculate_surface_area(self._trajfile_list, self._topfile_list, selected_bs_id_map,
+                                                   nprot=self._nprot, timeunit=self._timeunit,stride=1,
+                                                   dt_traj=self._dt_traj, radii_book=radii_book)
         # update dataset
         for bs_id in selected_bs_id:
             nodes = self._node_list[bs_id]
