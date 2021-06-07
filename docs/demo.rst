@@ -6,7 +6,6 @@ Demo
 Here we provide a no-brainer demo script for lipid interaction analysis using PyLipID. This script works
 for versions later than 1.4. Please update PyLipID to the latest version ::
 
-    import pickle
     import numpy as np
     import matplotlib.pyplot as plt
     from pylipid.api import LipidInteraction

@@ -327,7 +327,8 @@ class LipidInteraction:
                         traj_info["protein_residue_atomid_list"][protein_idx]):
                     # calculate interaction per residue
                     dist_matrix = np.array([np.min(
-                        md.compute_distances(traj, np.array(list(product(residue_atom_indices, lipid_atom_indices)))),
+                        md.compute_distances(traj, np.array(list(product(residue_atom_indices, lipid_atom_indices))),
+                                             periodic=True, opt=True),
                         axis=1) for lipid_atom_indices in traj_info["lipid_residue_atomid_list"]])
                     contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix, self._cutoffs[0])
                     contact_high, _, _ = cal_contact_residues(dist_matrix, self._cutoffs[1])
