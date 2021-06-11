@@ -86,11 +86,11 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
         # save pose trajectories
         if save_pose_traj:
             for bs_id in pose_traj.keys():
-                pose_traj.save("{}/Bound_Poses_{}/Pose_traj_BSid{}.{}".format(li.save_dir, li.lipid, bs_id,
+                pose_traj[bs_id].save("{}/Bound_Poses_{}/Pose_traj_BSid{}.{}".format(li.save_dir, li.lipid, bs_id,
                                                                               save_pose_traj_format))
         del pose_traj  # save memory space
         surface_area_data = li.compute_surface_area(binding_site_id=None, radii=radii, fig_format=fig_format)
-        data_dir = check_dir(li.save_dir, "Dataset_{}".format(self.lipid))
+        data_dir = check_dir(li.save_dir, "Dataset_{}".format(li.lipid))
         pose_rmsd_data.to_csv("{}/Pose_RMSD_data.csv".format(data_dir), index=False, header=True)
         surface_area_data.to_csv("{}/Surface_Area_data.csv".format(data_dir), index=True, header=True)
         li.write_site_info(sort_residue="Residence Time")
