@@ -867,9 +867,9 @@ class LipidInteraction:
                               for atom_idx in np.arange(self._lipid_ref.n_atoms)]
         atom_weights = {atom_idx: 1 for atom_idx in np.arange(self._lipid_ref.n_atoms)}
         if score_weights is not None:
-            translate = {atom_idx: score_weights[self._lipid_ref.atom(atom_idx)]
+            translate = {atom_idx: score_weights[self._lipid_ref.top.atom(atom_idx).name]
                          for atom_idx in np.arange(self._lipid_ref.n_atoms)
-                         if self._lipid_ref.atom(atom_idx) in score_weights.keys()}
+                         if self._lipid_ref.top.atom(atom_idx).name in score_weights.keys()}
             atom_weights.update(translate)
 
         if n_top_poses > 0:
