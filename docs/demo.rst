@@ -34,6 +34,11 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
 
     binding_site_size = 4  # binding site should contain at least four residues.
 
+    n_top_poses = 3     # write out num. of representative bound poses for each binding site.
+    n_clusters = "auto"  # cluster the bound poses for a binding site into num. of clusters. PyLipID
+                         # will write out a pose conformation for each of the cluster. By default, i.e.
+                         # "auto", PyLipID will use a density based clusterer to find possible clusters.
+
     save_dir = None  # save at current working directory if it is None.
     save_pose_format = "gro"  # format that poses are written in
     save_pose_traj = True  # save all the bound poses in a trajectory for each binding site. The generated
@@ -57,6 +62,10 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
     fig_format = "pdf"  # format for all pylipid produced figures. Allow for formats that are supported by
                         # matplotlib.pyplot.savefig().
 
+    num_cpus = None  # the number of cpu to use when functions are using multiprocessing. By default,
+                     # i.e. None, the functions will use up all the cpus available. This can use up all the memory in
+                     # some cases.
+
     #####################################
     ###### no changes needed below ######
     #####################################
@@ -70,7 +79,8 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
     li.compute_residue_occupancy(residue_id=None)
     li.compute_residue_lipidcount(residue_id=None)
     li.show_stats_per_traj(write_log=True, print_log=True)
-    li.compute_residue_koff(residue_id=None, plot_data=True, fig_close=True, fig_format=fig_format)
+    li.compute_residue_koff(residue_id=None, plot_data=True, fig_close=True,
+                            fig_format=fig_format, num_cpus=num_cpus)
     li.compute_binding_nodes(threshold=binding_site_size, print_data=False)
     if len(li.node_list) == 0:
         print("*"*50)
@@ -80,9 +90,11 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
         li.compute_site_duration(binding_site_id=None)
         li.compute_site_occupancy(binding_site_id=None)
         li.compute_site_lipidcount(binding_site_id=None)
-        li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True, fig_format=fig_format)
+        li.compute_site_koff(binding_site_id=None, plot_data=True, fig_close=True,
+                             fig_format=fig_format, num_cpus=num_cpus)
         pose_traj, pose_rmsd_data = li.analyze_bound_poses(binding_site_id=None, pose_format=save_pose_format,
-                                                           fig_format=fig_format)
+                                                           n_top_poses=n_top_poses, n_clusters=n_clusters,
+                                                           fig_format=fig_format, num_cpus=num_cpus)
         # save pose trajectories
         if save_pose_traj:
             for bs_id in pose_traj.keys():
