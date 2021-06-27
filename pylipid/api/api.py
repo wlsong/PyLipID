@@ -43,11 +43,32 @@ class LipidInteraction:
     def __init__(self, trajfile_list, cutoffs=[0.475, 0.7], lipid="CHOL", topfile_list=None, lipid_atoms=None,
                  nprot=1, resi_offset=0, save_dir=None, timeunit="us", stride=1, dt_traj=None):
 
-        """The outer layer class that integrates calculations and handles workflow.
+        """The main class that handles calculation and controls workflow.
 
-        `LipidInteraction` reads trajectory information via `mdtraj.load()`, and calculate interactions
-        of the specified lipid for both protein residues and the calculated binding sites. 'LipidInteraction' also
-        has a couple of assisting functions to plot the interaction data and save the generated data.
+        ``LipidInteraction`` reads trajectory information via `mdtraj.load()`, so it supports most of the trajectory
+        formats. ``LipidInteraction`` calculates lipid interactions with both protein residues and the calculated
+        binding sites, and provides a couple of assisting functions to plot data and present data in various forms.
+
+        The methods of ``LipidInteraction`` can be divided into three groups based on their roles: one for calculation
+        of interaction with protein residues, one for binding site and the last that contains assisting functions for
+        plotting and generating data. Each of the first two groups has a core function to collect/calculate the required
+        data for the rest of the functions in that group, i.e. ``collect_residue_contacts`` that builds lipid index for
+        residues as a function of time for residue analysis; and ``compute_binding_sites`` that calculates the binding
+        sites using the interaction network of the residues. The rest of the methods in each group are independent of
+        each other.
+
+        ``LipidInteraction`` also has an attribute, named ``dataset``, which stores the calculation interaction data in
+        a `pandas.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_ object
+        and updates automatically after calculation. It records interaction data for protein residues by
+        rows, including, for each residue, the interaction residence times, averaged durations, occupancy and lipid
+        count etc., and binding site IDs and the various interaction data of the belonging binding site.
+
+        For the computing-demanding functions of, i.e. ``compute_residue_koff``, ``compute_site_koff``,
+        ``analyze_bound_poses``, and ``compute_surface_area``, PyLipID uses the python multiprocessing library
+        to speed up the calculation. Users can specify the number of CPUs these functions can use, otherwise all the
+        CPUs in the system will be used by default.
+
+
 
         Parameters
         ----------
@@ -56,7 +77,9 @@ class LipidInteraction:
 
         cutoffs : list of two scalar or a scalar, default=[0.475, 0.7]
             Cutoff value(s) for defining contacts. When a list of two scalar are provided, the dual-cutoff scheme
-            will be used.
+            will be used. A contact in the dual-cutoff scheme starts when a lipid gets closer than the lower cutoff,
+            and ends when this lipid moves farther than the upper cutoff. The duration between the two time points is
+            the duration of this contact.
 
         lipid : str, default="CHOL"
             Lipid name in topology.
@@ -79,8 +102,8 @@ class LipidInteraction:
             MARTINI force field.
 
         save_dir : str, default=None
-            The root directory to store the data. All the generated dataset and created directories will be
-            put under this directory.
+            The root directory to store the generated data. By default, a directory Interaction_{lipid} will be created
+            in the current working directory, under which all the generated data are stored.
 
         timeunit : {"us", "ns"}, default="us"
             The time unit used for reporting results. "us" is micro-second and "ns" is nanosecond.
@@ -125,13 +148,18 @@ class LipidInteraction:
     #     attributes
     #############################################
     @property
+    def dataset(self):
+        """Summary of lipid interaction stored in a pandas.DataFrame() object."""
+        return self.dataset
+
+    @property
     def residue_list(self):
-        """Residue names."""
+        """A list of Residue names."""
         return self._residue_list
 
     @property
     def node_list(self):
-        """Residue ID list of binding site"""
+        """A list of binding site residue indices. """
         return self._node_list
 
     @property
@@ -181,7 +209,7 @@ class LipidInteraction:
 
     @property
     def save_dir(self):
-        """Root directory of the generated data."""
+        """Root directory for the generated data."""
         return self._save_dir
 
     @property
@@ -222,8 +250,8 @@ class LipidInteraction:
     def residue(self, residue_id=None, residue_name=None, print_data=True):
         """Obtain the lipid interaction information for a residue
 
-        Use either residue_id or residue_name to obtain the information.
-        Return the information in a pandas.DataFrame object.
+        Use either residue_id or residue_name to indicate the residue identity.
+        Return the interaction information in a pandas.DataFrame object.
 
         Parameters
         ----------
@@ -269,9 +297,26 @@ class LipidInteraction:
     #     interaction calculation
     ########################################
     def collect_residue_contacts(self):
-        """Create contacting lipid index for residues at each frame.
+        r"""Create contacting lipid index for residues.
 
-        This function needs to run before any of the calculations.
+        This function creates contacting lipid index for residues that are used for the rest of calculation in PyLipID.
+        The design of contacting lipid index is to assist the calculation of contacts using a dual-cutoff scheme, which
+        considers a lipid as being in contact when the lipid moves closer than the lower cutoff and as being dissociated
+        when the lipid moves farther than the upper cutoff.
+
+        The lipid indices created by this method are stored in the private class variables of
+        ``_contact_residue_high`` and ``_contact_residue_low`` for each of the cutoffs. These indices are python
+        dictionary objects with residue indices as their keys. For each residue, the lipid index stores the residue index
+        of contacting lipid molecules from each trajectory frame in a list.
+
+        The lipid index of the lower cutoff, i.e. ``_contact_residue_low`` is used to calculate lipid occupancy and lipid
+        count.
+
+        The Pearson correlation matrix of lipid interactions for protein residues is also calculated in this function and
+        stored in the class variable of ``interaction_corrcoef``.
+
+        The class attribute :meth:`~LipidInteraction.dataset` which stores the summary of lipid interaction as a
+        pandas.DataFrame object, is initialized in this method.
 
         """
         self._protein_ref = None
@@ -352,15 +397,45 @@ class LipidInteraction:
         return
 
     def compute_residue_duration(self, residue_id=None):
-        """Calculate the durations of lipid contacts for residues
+        r"""Calculate lipid contact durations for residues
+
+        PyLipID calculates lipid contacts using a dual-cutoff scheme. In this scheme, a continuous contact starts when
+        a molecule moves closer than the lower distance cutoff and ends when the molecule moves out of the upper cutoff.
+        The duration between these two time points is the duration of the contact.
+
+        PyLipID implements this dual-cutoff tactic by creating a lipid index for the lower and upper
+        cutoff respectively, which records the lipid molecules within that distance cutoff at each trajectory frame
+        for residues. Such lipid indices are created by the method :meth:`~LipidInteraction.collect_residue_contacts`,
+        and are stored in the private class variables of ``_contact_residue_high`` and ``_contact_residue_low`` for
+        each of the cutoffs.
+
+        For calculation of contact durations, a lipid molecule that appears in the lipid index of the lower cutoff is
+        searched in the subsequent frames of the upper lipid index for that residue and the search then stops if this
+        molecule disappears from the upper cutoff index. This lipid molecule is labeled as 'checked' in the searched
+        frames in both lipid indices, and the duration of this contact is calculated from the number of frames in which
+        this lipid molecule appears in the lipid indices. This calculation iterates until all lipid molecules in the
+        lower lipid index are labeled as 'checked'.
+
+        This function returns a list of contact durations or lists of contact durations if multiple residue IDs are
+        provided.
 
         Parameters
         ----------
         residue_id : int or list of int, default=None
+            The residue ID, or residue index, that is used by PyLipID for identifying residues. The ID starts from 0,
+            i.e. the ID of N-th residue is (N-1). If None, all residues are selected.
 
         Returns
         -------
-        durations : list, len(durations)=len(residue_id)
+        durations : list
+            A list of contact durations or lists of contact durations if multiple residue IDs are provided.
+
+        See Also
+        --------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_site_duration
+            Ccalculate durations of contacts with binding sites.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -388,15 +463,31 @@ class LipidInteraction:
             return [self._duration[residue_id] for residue_id in selected_residue_id]
 
     def compute_residue_occupancy(self, residue_id=None):
-        """Calculate the percentage of frames in which the specified lipid contacts are formed for residues.
+        """Calculate the percentage of frames in which the specified residue formed lipid contacts for residues.
+
+        The lipid occupancy is calculated using the lower cutoff, and calculated as the percentage of frames in which
+        the specified lipid species formed contact with residues within the lower distance cutoff.
+
+        The returned occupancy list contains data from all protein copies and all trajectories.
 
         Parameters
         ----------
         residue_id : int or list of int, default=None
+            The residue ID, or residue index, that is used by PyLipID for identifying residues. The ID starts from 0,
+            i.e. the ID of N-th residue is (N-1). If None, all residues are selected.
 
         Returns
         -------
-        occupancies : list, len(occupancies)=len(residue_id)
+        occupancies : list
+            A list of lipid occupancies, of length of n_trajs x n_proteins, or lists of lipid occupancies if multiple
+            residue IDs are provided.
+
+        See Also
+        --------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_site_occupancy
+            Calculate binding site occupancy
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -423,16 +514,31 @@ class LipidInteraction:
     def compute_residue_lipidcount(self, residue_id=None):
         """Calculate the average number of contacting lipids for residues.
 
-        Only lipids of the specified name will be calculated. The number of contacting lipids are calculated from
-        the frames in which the specified lipid contacts are formed with the residues.
+        This method calculates the number of specified lipid within the lower distance cutoff to a residue. The
+        reported value is averaged from the trajectory frames in which interaction between the specified lipid and the
+        residue is formed. Thus the returned values report the average number of surrounding lipid molecules when
+        the lipids are bound.
+
+        The returned lipid count list contains data from each of the protein copies and each of the trajectories.
 
         Parameters
         ----------
         residue_id : int or list of int, default=None
+            The residue ID, or residue index, that is used by PyLipID for identifying residues. The ID starts from 0,
+            i.e. the ID of N-th residue is (N-1). If None, all residues are selected.
 
         Returns
         -------
-        lipidcounts : list, len(lipidcount)=len(residue_id)
+        lipidcounts : list
+            A list of lipid counts, of length of n_trajs x n_proteins, or lists of lipid counts if multiple
+            residue IDs are provided.
+
+        See Also
+        --------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_site_lipidcount
+            Calculate binding site lipid count.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -457,24 +563,94 @@ class LipidInteraction:
 
     def compute_residue_koff(self, residue_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
                              save_dir=None, plot_data=True, fig_close=True, fig_format="pdf", num_cpus=None):
-        """Calculate interaction koff and residence time for residues.
+        r"""Calculate interaction koff and residence time for residues.
+
+        The koff is calculated from a survival time correlation function which describes the relaxation of the bound
+        lipids [1]_. Often the interactions between lipid and protein surface are be divided into prolonged interactions and
+        quick diffusive contacts. Thus PyLipID fits the normalised survival function to a bi-exponential curve which
+        describes the long and short decay periods.
+
+        The survival time correlation function σ(t) is calculated as follow
+
+        .. math::
+
+            \sigma(t) = \frac{1}{N_{j}} \frac{1}{T-t} \sum_{j=1}^{N_{j}} \sum_{v=0}^{T-t}\tilde{n}_{j}(v, v+t)
+
+        where T is the length of the simulation trajectory, :math:`N_{j}` is the total number of lipid contacts and
+        :math:`\sum_{v=0}^{T-t} \tilde{n}_{j}(v, v+t)` is a binary function that takes the value 1 if the contact of
+        lipid j lasts from time ν to time v+t and 0 otherwise. The values of :math:`\sigma(t)` are calculated for every
+        value of t from 0 to T ns, for each time step of the trajectories, and normalized by dividing by :math:`\sigma(t)`,
+        so that the survival time-correlation function has value 1 at t = 0.
+
+        The normalized survival function is then fitted to a biexponential to model the long and short decays of
+        lipid relaxation:
+
+        .. math::
+            \sigma(t) \sim A e^{-k_{1} t}+B e^{-k_{2} t}\left(k_{1} \leq k_{2}\right)
+
+        PyLipID takes :math:`k_{1}` as the the dissociation :math:`k_{off}`, and calculates the residence time as
+        :math:`\tau=1 / k_{o f f}`. PyLipID raises a warning for the impact on the accuracy of :math:`k_{off}`
+        calculation if trajectories are of different lengths when multiple trajectories are provided. PyLipID measures
+        the :math:`r^{2}` of the biexponential fitting to the survival function to show the quality of the
+        :math:`k_{off}` estimation. In addition, PyLipID bootstraps the contact durations and measures the
+        :math:`k_{off}` of the bootstrapped data, to report how well lipid contacts are sampled from simulations. The
+        lipid contact sampling, the curve-fitting and the bootstrap results can be conveniently checked via the
+        :math:`k_{off}` plot.
+
+        The calculation of koff for residues can be time-consuming, thus PyLipID uses python multiprocessing to
+        parallize the calculation. The number of CPUs used for multiprocessing can be specificed, otherwise all the
+        available CPUs will be used by default.
 
         Parameters
         ----------
-        residue_id : int or array_like or None, default=None
+        residue_id : int or list of int, default=None
+            The residue ID, or residue index, that is used by PyLipID for identifying residues. The ID starts from 0,
+            i.e. the ID of N-th residue is (N-1). If None, all residues are selected.
+
         nbootstrap : int, default=10
+            Number of bootstrap on the interaction durations. For each bootstrap, samples of the size of the original
+            dataset are drawn from the collected durations with replacement. :math:`k_{koff}` and :math:`r^{2}` are
+            calculated for each bootstrap.
+
         initial_guess : array_like, default=None
+            The initial guess for the curve-fitting of the biexponential curve. Used by scipy.optimize.curve_fit.
+
         save_dir : str, default=None
-        print_data : bool, default=True
+            The the directory for saving the koff figures of residues if plot_data is True. By default, the koff figures
+            are saved in the directory of Reisidue_koffs_{lipid} under the root directory defined when ``LipidInteraction``
+            was initiated.
+
         plot_data : bool, default=True
+            If True, plot the koff figures fir residues.
+
         fig_close : bool, default=True
+            Use matplotlib.pyplot.close() to close the koff figures. Can save memory if many figures are open and plotted.
+
         fig_format : str, default="pdf"
+            The format of koff figures. Support formats that are supported by matplotlib.pyplot.savefig().
+
         num_cpus : int or None, default=None
+            Number of CPUs used for multiprocessing. If None, all the available CPUs will be used.
 
         Returns
         ---------
         koff : scalar or list of scalar
+            The calculated koffs for selected residues.
+
         restime : scalar or list of scalar
+            The calculated residence times for selected residues.
+
+        See Also
+        ---------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_site_koff
+            Calculate binding site koffs and residence times.
+
+        References
+        -----------
+        .. [1] García, Angel E.Stiller, Lewis. Computation of the mean residence time of water in the hydration shells
+               of biomolecules. 1993. Journal of Computational Chemistry.
 
         """
         self._check_calculation("Residue", self.compute_residue_koff)
@@ -538,18 +714,62 @@ class LipidInteraction:
                    [self._res_time[residue_id] for residue_id in selected_residue_id]
 
     def compute_binding_nodes(self, threshold=4, print_data=True):
-        """Calculate binding sites via computing the community structures.
+        r"""Calculate binding sites.
+
+        Binding sites are defined based on a community analysis of protein residue-interaction networks that are created
+        from the lipid interaction correlation matrix. Given the definition of a lipid binding site, namely a
+        cluster of residues that bind to the same lipid molecule at the same time, PyLipID creates a distance vector
+        for each residue that records the distances to all lipid molecules as a function of time, and calculate the
+        Pearson correlation matrix of protein residues for binding the same lipid molecules. This correlation matrix is
+        calculated by :meth:`~LipidInteraction.collect_residue_contacts()` and stored in the class variable
+        ``interaction_corrcoef``.
+
+        The protein residue interaction network is constructed based on the Pearson correlation matrix.
+        In this network, the nodes are the protein residues and the weights are the Pearson correlation
+        coefficients of pairs of residues. The interaction network is then decomposed into sub-units or communities,
+        which are groups of nodes that are more densely connected internally than with the rest of the network.
+
+        For the calculation of communities, the Louvain algorithm [1]_ is used to find high modularity network partitions.
+        Modularity, which measures the quality of network partiions, is defined as [2]_
+
+        .. math::
+            Q=\frac{1}{2 m} \sum_{i, j}\left[A_{i j}-\frac{k_{i} k_{j}}{2 m}\right] \delta\left(c_{i}, c_{j}\right)
+
+        where :math:`A_{i j}` is the weight of the edge between node i and node j; :math:`k_{i}` is the sum of weights
+        of the nodes attached to the node i, i.e. the degree of the node; :math:`c_{i}` is the community to which node i
+        assigned; :math:`\delta\left(c_{i}, c_{j}\right)` is 1 if i=j and 0 otherwise; and
+        :math:`m=\frac{1}{2} \sum_{i j} A_{i j}` is the number of edges. In the modularity optimization, the Louvain
+        algorithm orders the nodes in the network, and then, one by one, removes and inserts each node in a different
+        community c_i until no significant increase in modularity. After modularity optimization, all the nodes that
+        belong to the same community are merged into a single node, of which the edge weights are the sum of the weights
+        of the comprising nodes. This optimization-aggregation loop is iterated until all nodes are collapsed into one.
+
+        By default, this method returns binding sites of at least 4 residues. This filtering step is particularly helpful
+        for analysis on smaller amount of trajectory frames, in which false correlation is more likely to happen among
+        2 or 3 residues.
 
         Parameters
         ----------
         threshold : int, default=4
-        save_dir : str or None, default=None
+            The minimum size of binding sites. Only binding sites with more residues than the threshold will be returned.
+
         print : bool, default=True
+            If True, print a summary of binding site information.
 
         Returns
         -------
         node_list: list
+            Binding site node list, i.e. a list of binding sites which contains sets of binding site residue indices
         modularity : float or None
+            The modularity of network partition. It measure the quality of network partition. The value is between 1 and
+            -1. The bigger the modularity, the better the partition.
+
+        References
+        ----------
+        .. [1] Blondel, V. D.; Guillaume, J.-L.; Lambiotte, R.; Lefebvre, E., Fast unfolding of communities in large
+               networks. Journal of Statistical Mechanics: Theory and Experiment 2008, 2008 (10), P10008
+
+        .. [2] Newman, M. E. J., Analysis of weighted networks. Physical Review E 2004, 70 (5), 056131.
 
         """
         self._check_calculation("Residue", self.compute_residue_koff)
@@ -591,13 +811,43 @@ class LipidInteraction:
     def compute_site_duration(self, binding_site_id=None):
         """Calculate interaction durations for binding sites.
 
+        PyLipID calculates lipid contacts using a dual-cutoff scheme. In this scheme, a continuous contact starts when
+        a molecule moves closer than the lower distance cutoff and ends when the molecule moves out of the upper cutoff.
+        The duration between these two time points is the duration of the contact.
+
+        PyLipID implements this dual-cutoff tactic by creating a lipid index for the lower and upper
+        cutoff respectively, which records the lipid molecules within that distance cutoff at each trajectory frame
+        for residues. Such lipid indices are created by the method :meth:`~LipidInteraction.collect_residue_contacts`,
+        and are stored in the private class variables of ``_contact_residue_high`` and ``_contact_residue_low`` for
+        each of the cutoffs.
+
+        For calculating contacts for binding sites, the interacting lipid molecules with binding site residues are
+        merged with duplicates removed to form the lipid indices for the upper cutoff and lower cutoff respectively.
+        Similar to the calculation of residues, a contact duration of a binding sites are calculated as the duration
+        between the time point of a lipid molecule appearing in the lipid index of the lower cutoff and of this molecule
+        disappeared from the upper cutoff index.
+
+        This function returns a list of contact durations or lists of contact durations if multiple binding site IDs are
+        provided.
+
         Parameters
         ----------
-        binding_site_id : int of list of int, default=None
+        binding_site_id : int or list of int, default=None
+            The binding site ID used in PyLipID. This ID is the index in the binding site node list that is
+            calculated by the method ``compute_binding_nodes``. The ID of the N-th binding site is (N-1). If None,
+            the contact duration of all binding sites are calculated.
 
         Returns
         -------
-        durations_BS : list, len(durations_BS)=len(binding_site_id)
+        durations_BS : list
+            A list of contact durations or lists of contact durations if multiple binding site IDs are provided.
+
+        See Also
+        ---------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_residue_duration
+            Calculate residue contact durations.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -635,13 +885,30 @@ class LipidInteraction:
     def compute_site_occupancy(self, binding_site_id=None):
         """Calculate the percentage of frames in which the specified lipid contacts are formed for binding sites.
 
+        Similar to calculation on residues, the lipid occupancy is calculated using the lower cutoff, and calculated as
+        the percentage of frames in which the specified lipid species formed contact with the binding site within the
+        lower distance cutoff. The lipid index for a binding site is generated from merging, with duplicates removed,
+
+        The returned list of occupancies contains data from all protein copies and all trajectories.
+
         Parameters
         ----------
         binding_site_id : int or list of int, default=None
+            The binding site ID used in PyLipID. This ID is the index in the binding site node list that is
+            calculated by the method ``compute_binding_nodes``. The ID of the N-th binding site is (N-1). If None,
+            the contact duration of all binding sites are calculated.
 
         Returns
         -------
-        occupancy_BS : list, len(occupancy_BS)=len(binding_site_id)
+        occupancy_BS : list
+            A list of lipid occupancies or lists of lipid occupancies if multiple binding site IDs are provided.
+
+        See Also
+        ---------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_residue_occupancy
+            Calculate lipid occupancy for residues.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -675,16 +942,31 @@ class LipidInteraction:
     def compute_site_lipidcount(self, binding_site_id=None):
         """Calculate the average number of contacting lipids for binding site.
 
-        Only lipids of the specified name will be calculated. The number of contacting lipids are calculated from
-        the frames in which the specified lipid contacts are formed with binding sites.
+        This method calculates the number of specified lipid within the lower distance cutoff to a binding site. The
+        reported value is averaged from the trajectory frames in which interaction between the specified lipid and the
+        binding site is formed. Thus the returned values report the average number of surrounding lipid molecules when
+        the lipids are bound.
+
+        The returned lipid count list contains data from each of the protein copies and each of the trajectories.
 
         Parameters
         ----------
         binding_site_id : int or list of int, default=None
+            The binding site ID used in PyLipID. This ID is the index in the binding site node list that is
+            calculated by the method ``compute_binding_nodes``. The ID of the N-th binding site is (N-1). If None,
+            the contact duration of all binding sites are calculated.
 
         Returns
         -------
-        lipidcount_BS : list, len(lipidcount_BS)=len(binding_site_id)
+        lipidcount_BS : list
+            A list of lipid counts or lists of lipid counts if multiple binding site IDs are provided.
+
+        See Also
+        ---------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_residue_lipidcount
+            Calculate lipid count for residues.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -717,23 +999,101 @@ class LipidInteraction:
 
     def compute_site_koff(self, binding_site_id=None, nbootstrap=10, initial_guess=[1., 1., 1., 1.],
                           save_dir=None, plot_data=True, fig_close=True, fig_format="pdf", num_cpus=None):
-        """Calculate interactions koff and residence time for binding sites.
+        r"""Calculate interactions koff and residence time for binding sites.
+
+        The koff is calculated from a survival time correlation function which describes the relaxation of the bound
+        lipids [1]_. Often the interactions between lipid and protein surface are be divided into prolonged interactions and
+        quick diffusive contacts. Thus PyLipID fits the normalised survival function to a bi-exponential curve which
+        describes the long and short decay periods.
+
+        The survival time correlation function σ(t) is calculated as follow
+
+        .. math::
+
+            \sigma(t) = \frac{1}{N_{j}} \frac{1}{T-t} \sum_{j=1}^{N_{j}} \sum_{v=0}^{T-t}\tilde{n}_{j}(v, v+t)
+
+        where T is the length of the simulation trajectory, :math:`N_{j}` is the total number of lipid contacts and
+        :math:`\sum_{v=0}^{T-t} \tilde{n}_{j}(v, v+t)` is a binary function that takes the value 1 if the contact of
+        lipid j lasts from time ν to time v+t and 0 otherwise. The values of :math:`\sigma(t)` are calculated for every
+        value of t from 0 to T ns, for each time step of the trajectories, and normalized by dividing by :math:`\sigma(t)`,
+        so that the survival time-correlation function has value 1 at t = 0.
+
+        The normalized survival function is then fitted to a biexponential to model the long and short decays of
+        lipid relaxation:
+
+        .. math::
+            \sigma(t) \sim A e^{-k_{1} t}+B e^{-k_{2} t}\left(k_{1} \leq k_{2}\right)
+
+        PyLipID takes :math:`k_{1}` as the the dissociation :math:`k_{off}`, and calculates the residence time as
+        :math:`\tau=1 / k_{o f f}`. PyLipID raises a warning for the impact on the accuracy of :math:`k_{off}`
+        calculation if trajectories are of different lengths when multiple trajectories are provided. PyLipID measures
+        the :math:`r^{2}` of the biexponential fitting to the survival function to show the quality of the
+        :math:`k_{off}` estimation. In addition, PyLipID bootstraps the contact durations and measures the
+        :math:`k_{off}` of the bootstrapped data, to report how well lipid contacts are sampled from simulations. The
+        lipid contact sampling, the curve-fitting and the bootstrap results can be conveniently checked via the
+        :math:`k_{off}` plot.
+
+        The durations of lipid contact with binding sites are calculated using
+        :meth:`~LipidInteraction.compute_site_duration`. See its page for the definition of lipid contact
+        with binding site.
+
+        The calculation of koff for binding sites can be time-consuming, thus PyLipID uses python multiprocessing to
+        parallize the calculation. The number of CPUs used for multiprocessing can be specificed, otherwise all the
+        available CPUs will be used by default.
 
         Parameters
         ----------
-        binding_site_id : int or array_like or None, default=None
+        binding_site_id : int or list of int, default=None
+            The binding site ID used in PyLipID. This ID is the index in the binding site node list that is
+            calculated by the method ``compute_binding_nodes``. The ID of the N-th binding site is (N-1). If None,
+            the contact duration of all binding sites are calculated.
+
         nbootstrap : int, default=10
+            Number of bootstrap on the interaction durations. For each bootstrap, samples of the size of the original
+            dataset are drawn from the collected durations with replacement. :math:`k_{koff}` and :math:`r^{2}` are
+            calculated for each bootstrap.
+
         initial_guess : array_like, default=None
+            The initial guess for the curve-fitting of the biexponential curve. Used by scipy.optimize.curve_fit.
+
         save_dir : str, default=None
+            The the directory for saving the koff figures of residues if plot_data is True. By default, the koff figures
+            are saved in the directory of Binding_Sites_koffs_{lipid} under the root directory defined when ``LipidInteraction``
+            was initiated.
+
         plot_data : bool, default=True
+            If True, plot the koff figures fir residues.
+
         fig_close : bool, default=True
+            Use matplotlib.pyplot.close() to close the koff figures. Can save memory if many figures are open and plotted.
+
         fig_format : str, default="pdf"
+            The format of koff figures. Support formats that are supported by matplotlib.pyplot.savefig().
+
         num_cpus : int or None, default=None
+            Number of CPUs used for multiprocessing. If None, all the available CPUs will be used.
 
         Returns
         ---------
-        koffs : list
-        restimes : list
+        koff : scalar or list of scalar
+            The calculated koffs for selected binding sites.
+
+        restime : scalar or list of scalar
+            The calculated residence times for selected binding sites.
+
+        See Also
+        ---------
+        pylipid.api.LipidInteraction.collect_residue_contacts
+            Create the lipid index.
+        pylipid.api.LipidInteraction.compute_site_duration
+            Calculate contact durations for binding sites.
+        pylipid.api.LipidInteraction.compute_residue_koff
+            Calculate koffs and residence times for residues.
+
+        References
+        -----------
+        .. [1] García, Angel E.Stiller, Lewis. Computation of the mean residence time of water in the hydration shells
+               of biomolecules. 1993. Journal of Computational Chemistry.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -790,55 +1150,148 @@ class LipidInteraction:
             return [self._koff_BS[bs_id] for bs_id in selected_bs_id], \
                    [self._res_time_BS[bs_id] for bs_id in selected_bs_id]
 
-    def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, pose_format="gro", score_weights=None,
-                            kde_bw=0.15, pca_component=0.90, plot_rmsd=True, save_dir=None,
-                            n_clusters="auto", eps=None, min_samples=None, metric="euclidean", 
+    def analyze_bound_poses(self, binding_site_id=None, n_top_poses=3, n_clusters="auto", pose_format="gro",
+                            score_weights=None, kde_bw=0.15, pca_component=0.90, plot_rmsd=True, save_dir=None,
+                            eps=None, min_samples=None, metric="euclidean",
                             fig_close=False, fig_format="pdf", num_cpus=None):
-        """Analyze bound poses for binding sites.
+        r"""Analyze bound poses for binding sites.
 
         This function can find representative bound poses, cluster the bound poses and calculate pose RMSD for
         binding sites.
 
+        If ``n_top_poses`` is an integer larger than 0, this method will find the representative bound poses for the specified
+        binding sites. To do so, it evaluates all the bound poses in a binding site using a density-based scoring function
+        and ranks the poses using based on the scores. The scoring function is defined as:
+
+        .. math::
+            \text { score }=\sum_{i} W_{i} \cdot \hat{f}_{i, H}(D)
+
+        where :math:`W_{i}` is the weight given to atom i of the lipid molecule, H is the bandwidth and
+        :math:`\hat{f}_{i, H}(D)` is a multivariate kernel density etimation of the position of atom i in the specified
+        binding site. :math:`\hat{f}_{i, H}(D)` is calculated from all the bound lipid poses in that binding site.
+        The position of atom i is a `p`-variant vector, :math:`\left[D_{i 1}, D_{i 2}, \ldots, D_{i p}\right]` where
+        :math:`D_{i p}` is the minimum distance to the residue `p` of the binding site. The multivariant kernel density
+        is estimated by `KDEMultivariate 
+        <https://www.statsmodels.org/devel/generated/statsmodels.nonparametric.kernel_density.KDEMultivariate.html>`_ 
+        provided by Statsmodels. Higher weights can be given to e.g. the headgroup atoms of phospholipids, to generate
+        better defined binding poses, but all lipid atoms are weighted equally by default. The use of relative positions
+        of lipid atoms in their binding site makes the analysis independent of the conformational changes in the rest
+        part of the protein.
+
+        If ``n_clusters`` is given an integer larger than 0, this method will cluster the lipid bound poses in the specified
+        binding site using `KMeans <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html>`_
+        provided by scikit. The KMeans cluster separates the samples into `n` clusters of equal variances, via minimizing
+        the `inertia`, which is defined as:
+
+        .. math::
+            \sum_{i=0}^{n} \min _{u_{i} \in C}\left(\left\|x_{i}-u_{i}\right\|^{2}\right)
+
+        where :math:`u_{i}` is the `centroid`  of cluster i. KMeans scales well with large dataset but performs poorly
+        with clusters of varying sizes and density, which are often the case for lipid poses in a binding site.
+
+        If ``n_clusters`` is set to `auto`, this method will cluster the bound poses using a density-based cluster
+        `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_ provided by scikit.
+        DBSCAN finds clusters of core samples of high density. A sample point is a core sample if at least `min_samples`
+        points are within distance :math:`\varepsilon` of it. A cluster is defined as a set of sample points that are
+        mutually density-connected and density-reachable, i.e. there is a path
+        :math:`\left\langle p_{1}, p_{2}, \ldots, p_{n}\right\rangle` where each :math:`p_{i+1}` is within distance
+        :math:`\varepsilon` of :math:`p_{i}` for any two p in the two. The values of `min_samples` and :math:`\varepsilon`
+        determine the performance of this cluster. If None, `min_samples` takes the value of 2 * ndim. If
+        :math:`\varepsilon` is None, it is set as the value at the knee of the k-distance plot.
+
+        For writing out the cluster poses, this method will randomly select one pose from each cluster in the case of
+        using KMeans or one from the core samples of each cluster when DBSCAN is used, and writes the selected lipid
+        pose with the protein conformation to which it binds using MDTraj, in the provided pose format.
+
+        The root mean square deviation (RMSD) of a lipid bound pose in a binding site is calculated from the relative
+        position of the pose in the binding site compared to the average position of the bound poses. Thus, the pose
+        RMSD is defined as:
+
+        .. math::
+            RMSD=\sqrt{\frac{\sum_{i=0}^{N} \sum_{j=0}^{M}\left(D_{i j}-\bar{D}_{j}\right)^{2}}{N}}
+
+        where :math:`D_{i j}` is the distance of atom `i` to the residue `j` in the binding site; :math:`\bar{D}_{j}` is the
+        average distance of atom `i` from all bound poses in the binding site to residue `j`; `N` is the number of atoms in
+        the lipid molecule and `M` is the number of residues in the binding site.
+
         Parameters
         ----------
-        binding_site_id : int or list_like or None, default=None
-        n_top_poses : int, default=5
-        pose_format : str, default="pdb"
-        score_weights : dict or None, default=None
-        kde_bw : scalar, default=0.15
-        pca_component : int, float or ‘mle’, default=0.90
-            Set the `n_components` value in `sklearn.decomposition.PCA`
-        plot_rmsd : bool, default=True
+        binding_site_id : int or list of int, default=None
+            The binding site ID used in PyLipID. This ID is the index in the binding site node list that is
+            calculated by the method ``compute_binding_nodes``. The ID of the N-th binding site is (N-1). If None,
+            the contact duration of all binding sites are calculated.
+
+        n_top_poses : int, default=3
+            Number of representative bound poses written out for the selected binding site.
+
         n_clusters : int or 'auto'
-            If `n_clusters == 'auto'`, the number of clusters will be guessed based on density, whereas n_clusters=N
-            will use KMeans to cluster the poses.
+            Number of clusters to form for bound poses of the selected binding site.  If ``n_clusters`` is set to 'auto'`, the
+            density-based clusterer DBSCAN will be used. If ``n_clusters``  is given a non-zero integer, KMeans is used.
+
+        pose_format : str, default="gro"
+            The coordinate format the representative poses and clsutered poses are saved with. Support the formats
+            that are included in MDtraj.save().
+
+        score_weights : dict or None, default=None
+            The weights given to atoms in the scoring function for finding the representative bound poses. It should in
+            the format of a Python dictionary {atom name: weight}. The atom name should be consisten with the topology.
+            By default, all atoms in the lipid molecule are weighted equally.
+
+        kde_bw : scalar, default=0.15
+            The bandwidth for the Gaussian kernel. Used in the density estimation of the lipid atom coordinates in the binding
+            site. Used by the function
+            `KDEMultivariate <https://www.statsmodels.org/devel/generated/statsmodels.nonparametric.kernel_density.KDEMultivariate.html>`_ .
+
+        pca_component : int, float or ‘mle’, default=0.90
+            The PCA used to decrease the dimensions of lipid atom coordinates. The coordinate of a lipid atom in
+            the binding site is expressed as a distance vector of the minimum distances to the residues in that binding site,
+            i.e. :math:`[D_{i 1}, D_{i 2}, .., D_{i p}]`. This can be in high dimensions. Hence, PCA is used on this distance
+            vector prior to calculation of the density. This PCA is carried out by
+            `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_ in sci-kit.
+
+        plot_rmsd : bool, default=True
+            Plot the binding site RMSDs in a violinplot.
+
         eps : float or None, default=None
-            The minimum neighbour distance used by `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_
+            The minimum neighbour distance used by
+            `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_
             if None, the value will determined from as the elbow point of the sorted minimum neighbour distance 
             of all the data points. 
+
         min_samples : int or None, default=None
             The minimum number of samples to be considered as core samples used by 
             `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_ .
             If None, the value will be automatically determined based on the size of data. 
+
         metric : str, default='euclidean'
             The metric used to calculated neighbour distance used by 
             `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_ .
             Default is the Euclidean distance. 
+
         fig_close : bool, default=False
             This parameter control whether to close the plotted figures using plt.close(). It can save memory if 
             many figures are generated. 
+
         fig_format : str, default="pdf"
-            The figure format. Use the format supported by matplotlib.pyplot.
+            Figure format. Support formats included in matplotlib.pyplot.
+
         num_cpus : int or None default=None
-            The number of CPUs used to rank the poses and cluster poses. Python multiprocessing deployed by 
+            The number of CPUs used for the tasks of ranking the poses and clustering poses. Python multiprocessing deployed by
             `p_tqdm <https://github.com/swansonk14/p_tqdm>`_ is used to speed up these calculations. 
+
         save_dir : str or None, default=None
-        
+            The root directory for saving the pose analysis results. If None, the root directory set at the initiation of
+            ``LipidInteraction`` will be used. The representative poses and clustered poses will be stored in the directory
+            of Bound_Poses_{lipid} under the root directory.
 
         Returns
         -------
         pose_pool : dict
-            Coordinates of all bound poses in stored in a python dictionary {binding_site_id: pose coordinates}
+            Coordinates of the bound poses for the selected binding sites stored in a python dictionary
+            {binding_site_id: pose coordinates}. The poses coordinates include lipid coordinates and those of the receptor
+            at the time the pose was bound. The pose coordinates are stored in a
+            `mdtraj.Trajectory <https://mdtraj.org/1.9.4/api/generated/mdtraj.Trajectory.html>`_ object.
+
         rmsd_data : pandas.DataFrame
             Bound poses RMSDs are stored by columns with column name of binding site id.
 
@@ -901,19 +1354,59 @@ class LipidInteraction:
                              fig_close=False, fig_format="pdf", num_cpus=None):
         """Calculate binding site surface areas.
 
+        The accessible surface area is calculated using the Shrake and Rupley algorithm [1]_. The basic idea of this
+        algorithm is to generate a mesh of points representing the surface of each atom and then count the number of
+        points that are not within the radius of any other atoms. The surface area can be derived from this number of
+        exposed points.
+
+        This method utilizes the shrake_rupley function of MDTraj for calculation of the surface area. In implementation,
+        this method scripts the protein coordinates out of the simulation system and obtains the accessible surface area
+        of a binding site by summing those of its comprising residues
+
+        Atom radius is required for calculation of surface areas. MDtraj defines the radii for common atoms (see
+        `here <https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56>`_). The radius of the BB bead
+        in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3 are defined as 0.23 nm in this method. use the param ``radii``
+        to define or change of definition of atom radius.
+
         Parameters
         -----------
-        binding_site_id : int or array_like or None, default=None
+        binding_site_id : int or list of int, default=None
+            The binding site ID used in PyLipID. This ID is the index in the binding site node list that is
+            calculated by the method ``compute_binding_nodes``. The ID of the N-th binding site is (N-1). If None,
+            the contact duration of all binding sites are calculated.
+
         radii : dict or None, default=None
+            The atom radii in the python dictionary format of {atom name: radius}
+
         plot_data : bool, default=True
+            Plot surface area data for the selected binding sites in a violinplot and in a time series plot.
+
         save_dir : str or None, default=None
+            The directory for saving the surface area plot. If None, it will save in Bound_Poses_{lipid} under the root
+            directory defined at the initiation of ``LipidInteraction``.
+
         fig_close : bool, default=False
+            This parameter control whether to close the plotted figures using plt.close(). It can save memory if
+            many figures are generated.
+
         fig_format : str, default="pdf"
-        num_cpus : int or None, default=None
+            Figure format. Support formats included in matplotlib.pyplot.
+
+        num_cpus : int or None default=None
+            The number of CPUs used for calculating the surface areas. Python multiprocessing deployed by
+            `p_tqdm <https://github.com/swansonk14/p_tqdm>`_ is used to speed up these calculations.
 
         Returns
         -----------
         surface_area : pandas.DataFrame
+            Binding site surface areas as a function of time for the selected binding sites. The surface area values are
+            stored by columns with the column name of binding site id and the time information is stored in the column
+            named "Time".
+
+        References
+        ----------
+        .. [1] Shrake, A.; Rupley, J. A., Environment and exposure to solvent of protein atoms. Lysozyme and insulin.
+        Journal of Molecular Biology 1973, 79 (2), 351-371
 
         """
         MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
@@ -970,68 +1463,6 @@ class LipidInteraction:
                                    fig_close=fig_close)
         return surface_area_data
 
-    def compute_surface_area_serial(self, binding_site_id=None, radii=None, plot_data=True, save_dir=None,
-                             fig_close=False, fig_format="pdf"):
-        """Calculate binding site surface areas.
-
-        Parameters
-        -----------
-        binding_site_id : int or array_like or None, default=None
-        radii : dict or None, default=None
-        plot_data : bool, default=True
-        save_dir : str or None, default=None
-        fig_close : bool, default=False
-        fig_format : str, default="pdf"
-
-        Returns
-        -----------
-        surface_area : pandas.DataFrame
-
-        """
-        MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
-
-        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
-
-        if "Binding Site Surface Area" in self.dataset.columns:
-            # keep existing data
-            surface_area_per_residue = np.array(self.dataset["Binding Site Surface Area"].tolist())
-        else:
-            surface_area_per_residue = np.zeros(self._nresi_per_protein)
-        if radii is None:
-            radii_book = MARTINI_CG_radii
-        else:
-            radii_book = {**MARTINI_CG_radii, **radii}
-
-        # calculate binding site surface area
-        selected_bs_id = np.atleast_1d(np.array(binding_site_id, dtype=int)) if binding_site_id is not None \
-            else np.arange(len(self._node_list), dtype=int)
-        selected_bs_id_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
-        surface_area_data = calculate_surface_area(self._trajfile_list, self._topfile_list, selected_bs_id_map,
-                                                   nprot=self._nprot, timeunit=self._timeunit,stride=1,
-                                                   dt_traj=self._dt_traj, radii_book=radii_book)
-        # update dataset
-        for bs_id in selected_bs_id:
-            nodes = self._node_list[bs_id]
-            surface_area_per_residue[nodes] = surface_area_data["Binding Site {}".format(bs_id)].mean()
-        self.dataset["Binding Site Surface Area"] = surface_area_per_residue
-        # plot surface area
-        if plot_data:
-            if save_dir is not None:
-                surface_area_dir = check_dir(save_dir)
-            else:
-                surface_area_dir = check_dir(self._save_dir, "Bound_Poses_{}".format(self._lipid))
-            plot_surface_area(surface_area_data,
-                              os.path.join(surface_area_dir,
-                                           "Surface_Area_{}_timeseries.{}".format(self._lipid, fig_format)),
-                              timeunit=self._timeunit, fig_close=fig_close)
-            selected_columns = [column for column in surface_area_data.columns if column != "Time"]
-            surface_data_noTimeSeries = surface_area_data[selected_columns]
-            plot_binding_site_data(surface_data_noTimeSeries,
-                                   os.path.join(surface_area_dir,
-                                                "Surface_Area_{}_violinplot.{}".format(self._lipid, fig_format)),
-                                   title="{}".format(self._lipid), ylabel=r"Surface Area (nm$^2$)",
-                                   fig_close=fig_close)
-        return surface_area_data
 
     #################################
     #    save and plot
@@ -1039,11 +1470,44 @@ class LipidInteraction:
     def save_data(self, item, save_dir=None):
         """Assisting function for saving data.
 
+        This function saves a couple of unprocessed interaction data to local disc. These data include:
+
+            - ``Duration``: a python dictionary with residue IDs as its keys, which stores the durations of all contacts
+              for residues.
+
+            - ``Occupancy``: a python dictionary with residue IDs as its keys, which stores the lipid occupancy from each
+              trajectory for residues.
+
+            - ``Lipid Count``: a python dictionary with residue IDs as its keys, which stores the averaged lipid count
+              from each trajectory for residues.
+
+            - ``CorrCoef`` : a numpy ndarray that stores the interaction correlation matrix of residues.
+
+            - ``Duration BS``: a python dictionary with binding site IDs as its keys, which stores the durations of all
+              contacts for binding sites.
+
+            - ``Occupancy BS``: a python dictionary with binding site IDs as its keys, which stores the lipid occupancy
+              from each trajectory for binding sites.
+
+            - ``Dataset``: a pandas.DataFrame object that stores interaction data for residues by row. The interaction
+              data, including interaction with the residue and with the binding site to which the residue belongs, can be
+              accessed easily.
+
+        The python dictionary objects and numpy ndarray objects are saved to local disc in pickle, whereas the
+        pandas.DataFrame is saved in csv format.
+
+        The data will be saved under the directory specified by ``save_dir``. If None is given, a directory of
+        Dataset_{lipid} will be created under the root directory initiated at the begining of the calculation and used to
+        store the dataset.
+
         Parameters
         ----------
-        item : {"Dataset", "Duration", "Occupancy", "Lipid Count", "CorrCoef", "Duration BS",
-                "Occupancy BS"}
+        item : {"Dataset", "Duration", "Occupancy", "Lipid Count", "CorrCoef", "Duration BS", "Occupancy BS"}
+            The interaction data to save.
+
         save_dir : str, optional, default=None
+            The directory for saving the data. By default, the data are saved in Dataset_{lipid} under the root directory
+            defined at the initialization of ``LipidInteraction``.
 
         """
         data_dir = check_dir(save_dir, "Dataset_{}".format(self._lipid)) if save_dir is not None \
@@ -1073,10 +1537,28 @@ class LipidInteraction:
     def save_coordinate(self, item, save_dir=None, fn_coord=None):
         """Save protein coordinates in PDB format with interaction data in the B factor column.
 
-        parameters
+        In this method, the receptor coordinates, which are taken from the first frame of the trajectory, are written
+        out in the PDB format with the specified interaction data stored in the B factor column. Supported interaction
+        data include: ``Residence Time``, ``Duration``, ``Occupancy`` and ``Lipid Count``. These are interaction data
+        for residues.
+
+        By default, the coordinates will be saved in the directory of Coordinate_{lipid} under the root directory defined
+        when the class ``LipidInteraction`` was initiated. It can be changed by providing to path to ``save_dir``.
+
+        By default, the coordinates file is saved as Coordinate_{lipid}_{item}.pdb. This can be changed by providing
+        a file name to ``fn_coord``.
+
+        Parameters
         -----------
         item : {"Residence Time", "Duration", "Occupancy", "Lipid Count"}
+            Interaction data to be stored in the B factor column.
+
         save_dir : str or None, default=None
+            The directory for saving the coordinate file. By default, the coordinate file is saved at the directory of
+            Coordinate_{lipid} under the root directory defined at the initialization of ``LipidInteraction``.
+
+        fn_coord : str or None, default=None
+            The file name of the written coordinate file. By default, the file is named as Coordinate_{lipid}_{item}.pdb
 
         """
         coord_dir = check_dir(save_dir, "Coordinate_{}".format(self._lipid)) if save_dir is not None \
@@ -1088,12 +1570,31 @@ class LipidInteraction:
         return
 
     def save_pymol_script(self, pdb_file, save_dir=None):
-        """save a pymol script that maps interactions onto protein structure in PyMol.
+        """Save a pymol script that maps interactions onto protein structure in PyMol.
+
+        This method will save a python script, named ``show_binding_site_info.py``,  which opens a PyMol session and maps
+        the binding site information to the receptor coordinates in that session. The receptor coordinate is provided
+        through the parameter ``pdb_file``. As PyMol only recognize atomistic structures, it needs a receptor atomistic
+        structure before coarse-graining for those coarse-grained simulations. For the MARTINI simulations, the receptor
+        atomistic coordinate can be the one used by `martinize.py`, which is a python script that converts atomistic
+        structures to MARTINI corase-grained models. Regardless of the simulation models, the provided receptor atomistic
+        coordinates should have the same topology as in the simulations.
+
+        In the PyMol session, residues from the same binding sites are shown in the same color and shown in spheres with
+        scales corresponding to their lipid residence times. This PyMol session can provide a quick overview of the binding
+        sites and provide a better understanding of the structural details.
+
+        By default, this script is saved under the directory Dataset_{lipid}, together with the file Dataset.csv, from
+        which the script reads the interaction data. The directory for storing the script can be changed by providing a
+        path to ``save_dir``.
 
         Parameters
         ----------
         pdb_file : str
+            The file of receptor atomistic coordinates.
         save_dir : str, optional, default=None
+            The directory for saving the python script. By default, the script is saved at the directory of
+            Dataset_{lipid}, together with the file Dataset.csv, from which it reads the interaction data.
 
         """
         script_dir = check_dir(save_dir) if save_dir is not None else \
@@ -1108,15 +1609,41 @@ class LipidInteraction:
     def plot(self, item, save_dir=None, gap=200, fig_close=False, fig_format="pdf"):
         """Assisting function for plotting interaction data.
 
-        Plot interactions per residue or plot interaction correlation matrix.
+        This assiting function can make a couple of plots:
+            - ``Residence Time``: plot residue residence times as a function of residue index.
+            - ``Duration``: plot residue lipid durations as a function of residue index.
+            - ``Occupancy``: plot residue lipid occupancies as a function of residue index.
+            - ``Lipid Count``: plot residue lipid count as a function of residue index.
+            - ``CorrCoef``: plot the Pearson correlation matrix of the lipid interactions for residues.
+
+        By default, the figures are saved in the directory of Figure_{lipid} under the root directory defined
+        when the class ``LipidInteraction`` was initiated. It can be changed by providing to path to ``save_dir``.
+
+        The figures are named as {item}.{fig_format}. The formats supported by matplotlib.savefig() are allowed.
+
+        For proteins with large gaps in their residue index, this method provides the parameter ``gap`` to plot data
+        in multiple figures when the gap of residue index for two adjacent residues is larger than the specified value.
+
+        For multichain proteins, this method will plot data in separate figure for each chain.
 
         Parameters
         ----------
         item : {"Residence Time", "Duration", "Occupancy", "Lipid Count", "CorrCoef"}
+            The interaction data to be plotted.
+
         save_dir : str, default=None
+            The directory for saving the figures. By default, figures are saved in the directory of Figures_{lipid}
+            under the root directory defined at the initialization of ``LipidInteraction``.
+
         gap : int, default=200
+            The gap in residue index to initiate a new figure.
+
         fig_close : bool, default=False
+            This parameter control whether to close the plotted figures using plt.close(). It can save memory if
+            many figures are generated.
+
         fig_format : str, default="pdf"
+            Figure format. Support formats included in matplotlib.pyplot.
 
         """
         figure_dir = check_dir(save_dir, "Figure_{}".format(self._lipid)) if save_dir is not None \
@@ -1146,19 +1673,60 @@ class LipidInteraction:
 
         return
 
-    def plot_logo(self, item, save_dir=None, gap=2000, letter_map=None, color_scheme="chemistry",
+    def plot_logo(self, item, letter_map=None, color_scheme="chemistry", gap=2000, save_dir=None,
                   fig_close=False, fig_format="pdf"):
-        """Plot interactions using logomaker.
+        """Plot interactions using Logomaker.
+
+        `Logomaker <https://logomaker.readthedocs.io/en/latest/>`_ is a Python package for generating publication-quality
+        sequence logos. This method adopts Logomaker to plot the interacting amino acids. The height of the amino acids
+        illustrates the strength of the interaction. This plot can show the amino acids composition of lipid interactions
+        and make the checking of chemical properties of lipid interaction easier.
+
+        ``color_scheme`` specifies the colormaps to illustrate the chemical properties of amino acids. See
+        `here <https://logomaker.readthedocs.io/en/latest/examples.html#color-schemes>`_ for a list of color scheme
+        supported by Logomaker.
+
+        ``letter_map`` requires a python dictionary that maps the residue name to single letters (i.e. {"ALA": "A"}).
+        The 20 common amino acids are defined in this method. Other amino acids/residue names need to be defined using
+        this parameter.
+
+        The figures are saved with the file name of {item}_logo.{fig_format}. The formats supported by matplotlib.savefig()
+        are allowed.
+
+        By default, the figures are saved in the directory of Figure_{lipid} under the root directory defined
+        when the class ``LipidInteraction`` was initiated. It can be changed by providing to path to ``save_dir``.
+
+        The rest of the parameters are the same as :meth:`~LipidInteraction.plot`.
 
         Parameters
         ----------
         item : {"Residence Time", "Duration", "Occupancy", "Lipid Count"}
-        save_dir : str or None, optional, default=None
-        gap : int, optional, default=2000
+            The interaction data to plot.
+
         letter_map : dict or None, optional, default=None
+            A python dictionary that maps the residue names to single letters.
+
         color_scheme : str, optional, default="chemistry"
+            Logomaker color schemes. The default is 'chemistry'.
+
+        save_dir : str, default=None
+            The directory for saving the figures. By default, figures are saved in the directory of Figures_{lipid}
+            under the root directory defined at the initialization of ``LipidInteraction``.
+
+        gap : int, default=200
+            The gap in residue index to initiate a new figure.
+
         fig_close : bool, default=False
+            This parameter control whether to close the plotted figures using plt.close(). It can save memory if
+            many figures are generated.
+
         fig_format : str, default="pdf"
+            Figure format. Support formats included in matplotlib.
+
+        See Also
+        --------
+        pyipid.api.LipidInteraction.plot
+            Assisting function for plotting interaction data.
 
         """
         figure_dir = check_dir(save_dir, "Figure_{}".format(self._lipid)) if save_dir is not None \
@@ -1198,16 +1766,28 @@ class LipidInteraction:
     def write_site_info(self, sort_residue="Residence Time", save_dir=None, fn=None):
         """Write a report on binding site with lipid interaction information.
 
-        The report contains information of the binding site residence time, durations, occupancy,
-        lipid count, surface area and some stats on amino acids composition. A list of lipid interactions with
-        comprising residues will follow after the binding site information, in a sorted order provided by
-        `sort_residue`.
+        This method writes a report of binding site information in a txt file. This report includes, for each binding
+        site, the various interaction data and properties of the binding site, followed by a table of comprising residues
+        and the interaction data of these residues. This table is sorted in an order determined by the item provided by
+        ``sort_residue``. This report provides a quick and formatted view of the binding site information.
+
+        By default, the report is saved in the root directory defined when the class ``LipidInteraction`` was initiated.
+        It can be changed by providing to path to ``save_dir``.
+
+        By default, the report is saved with a filename of BindingSites_Info_{lipid}.txt. It can be changed via the parameter
+        ``fn``.
 
         Parameters
         ----------
         sort_residue : {"Residence Time", "Duration", "Occupancy", "Lipid Count"}, default="Residence Time"
+            The item used for sorting the binding site residues.
+
         save_dir : str, default=None
+            The directory for saving the report. By default the report is saved in the root directory defined when
+            ``LipidInteraction`` was initialized.
+
         fn : str, default=None
+            The filename of the report. By default the report is saved with the name BindingSites_Info_{lipid}.txt
 
         """
         if len(self._node_list) == 0:
@@ -1233,13 +1813,23 @@ class LipidInteraction:
         return
 
     def show_stats_per_traj(self, write_log=True, print_log=True, fn_log=None):
-        """Show stats of interactions per trajectory.
+        """Show stats of lipid interaction per trajectory.
+
+        This assisting function show some quick stats for each trajectory. These stats include the 10 residues
+        that showed longest durations, the highest occupancies and the largest lipid count. This stats provide a quick
+        way to check interactions from each trajectory. The stats info can be printed in sys.stdout or written in a file.
 
         Parameters
         ----------
         write_log : bool, default=True
+            Whether to write the interaction stats in a log file.
+
         print_log : bool, default=True
+            Whether to print the interaction stats in sys.stdout.
+
         fn_log : str, default=None
+            The filename of stats log file. By default, the log file is saved with the name calculation_log_{lipid}.txt.
+            This log file is saved in the root directory defined when the class ``LipidInteraction`` was initiated.
 
         """
         if fn_log is None:

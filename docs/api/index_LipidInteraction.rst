@@ -37,6 +37,7 @@ pylipid.api
    .. autosummary::
       :toctree: generated
 
+      ~LipidInteraction.dataset
       ~LipidInteraction.residue_list
       ~LipidInteraction.node_list
       ~LipidInteraction.lipid
