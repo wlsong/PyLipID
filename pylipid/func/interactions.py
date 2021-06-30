@@ -24,24 +24,29 @@ __all__ = ["cal_contact_residues", "Duration", "cal_occupancy", "cal_lipidcount"
 def cal_contact_residues(dist_matrix, cutoff):
     """Obtain contact residues as a function of time.
 
+    This function takes a distance matrix that records the measured distance for molecules at each trajectory frame,
+    then returns the indices of molecules the distance of which are smaller than the provided cutoff at each frame. It
+    also returns the molecule indices the frame indices in which the molecule is within the cutoff.
+
     Parameters
     ----------
-    dist_matrix : list of lists or ndarray, shape=(n_residues, n_frames)
-        The residue distances to the target. The distances of a residue
-        to the target is listed in a row/a list as a function of time.
+    dist_matrix : list or numpy.ndarray, shape=(n_residues, n_frames)
+        The measured distance for molecules at each trajectory frame.
+
     cutoff : scalar
         The distance cutoff to define a contact. A distance to the target
-        equal or lower to the `cutoff` is considered as in contact.
+        equal or lower to the ``cutoff`` is considered as in contact.
 
     Returns
     -------
-    contact_list : list of lists
-        A list of n_frame lists that contains the residues (represented by the row index of dist_matrix)
-        within the cutoff distance to the target in each frame.
-    frame_id_set : ndarray
-        An array of frame indices where distances are smaller than the `cutoff`.
-    residue_id_set : ndarray
-        An array of residue indices which meet the distance
+    contact_list : list
+        A list that records the indices of molecules that are within the given cutoff in each frame
+
+    frame_id_set : list
+        A list of frame indices for contacting molecules.
+
+    residue_id_set : lsit
+        A list of contacting molecules indices.
 
     Examples
     --------
@@ -69,14 +74,25 @@ class Duration:
     def __init__(self, contact_low, contact_high, dt):
         """Dual cutoff scheme for calculating the interaction durations.
 
+        In the dual cutoff scheme, a continuous contact starts when a molecule moves closer than the lower distance cutoff
+        and ends when the molecule moves out of the upper cutoff. The duration between these two time points is the
+        duration of the contact.
+
+        Here, the ``contact_low`` is the lipid index for the lower cutoff and ``contact_high`` is the lipid index
+        for the upper cutoff. For calculation of contact durations, a lipid molecule that appears in the ``contact_low``
+        is searched in the subsequent frames of the ``contact_high`` and the search then stops if this
+        molecule disappears from the ``contact_high``. This lipid molecule is labeled as 'checked', and the duration of
+        this contact is calculated from the number of frames in which this lipid molecule appears in the lipid indices.
+        This calculation iterates until all lipid molecules in the lower lipid index are labeled as 'checked'.
+
         Parameters
         ----------
-        contact_low : list of lists
-            A list of n_frame lists that contains the residues within the smaller
-            distance as a function of trajectory frames.
-        contact_high : list of lists
-            A list of n_frame lists that contains the residues within the larger
-            distance as a function of trajectory frames.
+        contact_low : list
+            A list that records the indices of lipid molecule within the lower distance cutoff at each trajectory frame.
+
+        contact_high : list
+            A list that records the indices of lipid molecule within the upper distance cutoff at each trajectory frame.
+
         dt : scalar
             The timestep between two adjacent trajectory frames.
 
@@ -91,13 +107,13 @@ class Duration:
     def cal_durations(self):
         """Calculate interaction durations using the dual-cutoff scheme.
 
-        Calculate the durations of the appearances that start from the point when an object appears
-        in `contact_low` to the point when the object disappears from `contact_high`.
+        Calculate the durations of the appearances that start from the point when a molecule appears
+        in ``contact_low`` and ends when it disappears from ``contact_high``.
 
         Returns
         -------
         durations : list
-            A list of durations of all the interactions defined by *contact_low* and *contact_high*
+            A list of durations of the contacts defined by ``contact_low`` and ``contact_high``.
 
         """
 
@@ -131,23 +147,32 @@ class Duration:
 def cal_occupancy(contact_list):
     """Calculate the percentage of frames in which a contact is formed.
 
+    ``contact_list`` records a list of residue indices of contact lipid molecules at each trajectory frames. This function
+    calculates the percentage of frames that a lipid contact is formed.
+
     Parameters
     ___________
-    contact_list : list of lists
-        A list of lists that contains the residues (represented by the row index of dist_matrix)
-        within the cutoff distance to the target in each frame.
+    contact_list : list
+        A list of residue indices of contact lipid molecules at each trajectory frames.
 
     Returns
     -------
     Ocupancy : scalar
         The percentage of frames in which a contact is formed
 
+    Examples
+    --------
+    >>> contact_list = [[], [130], [130, 145], [145], [], [], [145], [145]] # contacts are formed in 5 out of the 8 frames
+    >>> occupancy = cal_occupancy(contact_list)
+    >>> print(occupancy) # percentage
+    62.5
+
     See also
     --------
-    pylipid.func.cal_contact_residues
-        The function that calculates contact residues from distance matrix.
-    pylipid.func.cal_lipidcount
-        The function that calculates the average number of contacts in all frames
+    pylipid.api.LipidInteraction.compute_residue_occupancy
+        Calculate the percentage of frames in which the specified residue formed lipid contacts for residues.
+    pylipid.api.LipidInteraction.compute_site_occupancy
+        Calculate the percentage of frames in which the specified lipid contacts are formed for binding sites.
 
     """
     if len(contact_list) == 0:
@@ -159,25 +184,33 @@ def cal_occupancy(contact_list):
 
 
 def cal_lipidcount(contact_list):
-    """Calculate the average number of surrounding molecules when a contact if formed.
+    """Calculate the average number of contacting molecules.
+
+    This function calculates the average number of contacting molecules when any contact is formed.
 
     Parameters
     ___________
-    contact_list : list of lists
-        A list of lists that contains the residues (represented by the row index of dist_matrix)
-        within the cutoff distance to the target in each frame.
+    contact_list : list
+        A list of residue indices of contact lipid molecules at each trajectory frames.
 
     Returns
     -------
     LipidCount : scalar
-        The average number of contacts in a frame.
+        The average number of contacts in frames in which any contact is formed.
+
+    Examples
+    --------
+    >>> contact_list = [[], [130], [130, 145], [145], [], [], [145], [145]]
+    >>> lipidcount = cal_lipidcount(contact_list)
+    >>> print(lipidcount) # (1+2+1+1+1)/5
+    1.2
 
     See also
     --------
-    pylipid.func.cal_contact_residues
-        The function that calculates contact residues from distance matrix.
-    pylipid.func.cal_occupancy
-        The function that calculates the percentage of frames in which a contact is formed
+    pylipid.api.LipidInteraction.compute_residue_lipidcount
+        Calculate the average number of contacting lipids for residues.
+    pylipid.api.LipidInteraction.compute_site_lipidcount
+        Calculate the average number of contacting lipids for binding sites.
 
     """
     if len(contact_list) == 0:

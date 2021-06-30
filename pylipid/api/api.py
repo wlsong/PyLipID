@@ -32,10 +32,10 @@ from ..func import cal_contact_residues
 from ..func import Duration
 from ..func import cal_lipidcount, cal_occupancy
 from ..func import get_node_list
-from ..func import collect_bound_poses, calculate_surface_area
+from ..func import collect_bound_poses
 from ..func import analyze_pose_wrapper, calculate_koff_wrapper, calculate_surface_area_wrapper
 from ..plot import plot_surface_area, plot_binding_site_data
-from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logos
+from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logo
 from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, get_traj_info
 
 
@@ -435,7 +435,9 @@ class LipidInteraction:
         pylipid.api.LipidInteraction.collect_residue_contacts
             Create the lipid index.
         pylipid.api.LipidInteraction.compute_site_duration
-            Ccalculate durations of contacts with binding sites.
+            Calculate durations of contacts with binding sites.
+        pylipid.func.Duration
+            Calculate contact durations from lipid index.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -488,6 +490,8 @@ class LipidInteraction:
             Create the lipid index.
         pylipid.api.LipidInteraction.compute_site_occupancy
             Calculate binding site occupancy
+        pylipid.func.cal_occupancy
+            Calculate the percentage of frames in which a contact is formed.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -539,6 +543,8 @@ class LipidInteraction:
             Create the lipid index.
         pylipid.api.LipidInteraction.compute_site_lipidcount
             Calculate binding site lipid count.
+        pylipid.func.cal_lipidcount
+            Calculate the average number of contacting molecules.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -646,6 +652,10 @@ class LipidInteraction:
             Create the lipid index.
         pylipid.api.LipidInteraction.compute_site_koff
             Calculate binding site koffs and residence times.
+        pylipid.func.cal_koff
+            Calculate residence time and koff.
+        pylipid.func.cal_survival_func
+            Compute the normalised survival function.
 
         References
         -----------
@@ -764,6 +774,11 @@ class LipidInteraction:
             The modularity of network partition. It measure the quality of network partition. The value is between 1 and
             -1. The bigger the modularity, the better the partition.
 
+        See Also
+        --------
+        pylipid.func.get_node_list
+            Calculates community structures in interaction network.
+
         References
         ----------
         .. [1] Blondel, V. D.; Guillaume, J.-L.; Lambiotte, R.; Lefebvre, E., Fast unfolding of communities in large
@@ -848,6 +863,8 @@ class LipidInteraction:
             Create the lipid index.
         pylipid.api.LipidInteraction.compute_residue_duration
             Calculate residue contact durations.
+        pylipid.func.Duration
+            Calculate contact durations from lipid index.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -909,6 +926,8 @@ class LipidInteraction:
             Create the lipid index.
         pylipid.api.LipidInteraction.compute_residue_occupancy
             Calculate lipid occupancy for residues.
+        pylipid.func.cal_occupancy
+            Calculate the percentage of frames in which a contact is formed.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -967,6 +986,8 @@ class LipidInteraction:
             Create the lipid index.
         pylipid.api.LipidInteraction.compute_residue_lipidcount
             Calculate lipid count for residues.
+        pylipid.func.cal_lipidcount
+            Calculate the average number of contacting molecules.
 
         """
         self._check_calculation("Residue", self.collect_residue_contacts)
@@ -1085,10 +1106,12 @@ class LipidInteraction:
         ---------
         pylipid.api.LipidInteraction.collect_residue_contacts
             Create the lipid index.
-        pylipid.api.LipidInteraction.compute_site_duration
-            Calculate contact durations for binding sites.
         pylipid.api.LipidInteraction.compute_residue_koff
             Calculate koffs and residence times for residues.
+        pylipid.func.cal_koff
+            Calculate residence time and koff.
+        pylipid.func.cal_survival_func
+            Compute the normalised survival function.
 
         References
         -----------
@@ -1295,6 +1318,17 @@ class LipidInteraction:
         rmsd_data : pandas.DataFrame
             Bound poses RMSDs are stored by columns with column name of binding site id.
 
+        See Also
+        --------
+        pylipid.func.collect_bound_poses
+            Collect bound pose coordinates from trajectories.
+        pylipid.func.vectorize_poses
+            Convert bound poses into distance vectors.
+        pylipid.func.calculate_scores
+            Score the bound poses based on the probability density function of the position of lipid atoms
+        pylipid.func.analyze_pose_wrapper
+            A wrapper function that ranks poses, clusters poses and calculates pose RMSD
+
         """
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
 
@@ -1365,7 +1399,7 @@ class LipidInteraction:
 
         Atom radius is required for calculation of surface areas. MDtraj defines the radii for common atoms (see
         `here <https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56>`_). The radius of the BB bead
-        in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3 are defined as 0.23 nm in this method. use the param ``radii``
+        in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3 are defined as 0.23 nm in this method. Use the param ``radii``
         to define or change of definition of atom radius.
 
         Parameters
@@ -1397,16 +1431,25 @@ class LipidInteraction:
             `p_tqdm <https://github.com/swansonk14/p_tqdm>`_ is used to speed up these calculations.
 
         Returns
-        -----------
+        -------
         surface_area : pandas.DataFrame
             Binding site surface areas as a function of time for the selected binding sites. The surface area values are
             stored by columns with the column name of binding site id and the time information is stored in the column
             named "Time".
 
+        See Also
+        ---------
+        pylipid.func.calculate_surface_area_wrapper
+            A wrapper function for calculating binding site surface area from a trajectory.
+        pylipid.plot.plot_surface_area
+            Plot binding site surface area as a function of time.
+        pylipid.plot.plot_binding_site_data
+            Plot binding site data in a matplotlib violin plot.
+
         References
         ----------
         .. [1] Shrake, A.; Rupley, J. A., Environment and exposure to solvent of protein atoms. Lysozyme and insulin.
-        Journal of Molecular Biology 1973, 79 (2), 351-371
+            Journal of Molecular Biology 1973, 79 (2), 351-371
 
         """
         MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
@@ -1429,7 +1472,7 @@ class LipidInteraction:
         selected_bs_id_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
         returned_values = p_map(partial(calculate_surface_area_wrapper, binding_site_map=selected_bs_id_map,
                                         nprot=self._nprot, timeunit=self._timeunit, stride=self._stride,
-                                        dt_traj=self._dt_traj, radii_book=radii_book), self._trajfile_list,
+                                        dt_traj=self._dt_traj, radii=radii_book), self._trajfile_list,
                                 self._topfile_list, np.arange(len(self._trajfile_list), dtype=int),
                                 num_cpus=num_cpus, desc="CALCULATE BINDING SITE SURFACE AREA")
         surface_data = []
@@ -1472,26 +1515,26 @@ class LipidInteraction:
 
         This function saves a couple of unprocessed interaction data to local disc. These data include:
 
-            - ``Duration``: a python dictionary with residue IDs as its keys, which stores the durations of all contacts
-              for residues.
+        - ``Duration``: a python dictionary with residue IDs as its keys, which stores the durations of all contacts
+          for residues.
 
-            - ``Occupancy``: a python dictionary with residue IDs as its keys, which stores the lipid occupancy from each
-              trajectory for residues.
+        - ``Occupancy``: a python dictionary with residue IDs as its keys, which stores the lipid occupancy from each
+          trajectory for residues.
 
-            - ``Lipid Count``: a python dictionary with residue IDs as its keys, which stores the averaged lipid count
-              from each trajectory for residues.
+        - ``Lipid Count``: a python dictionary with residue IDs as its keys, which stores the averaged lipid count
+          from each trajectory for residues.
 
-            - ``CorrCoef`` : a numpy ndarray that stores the interaction correlation matrix of residues.
+        - ``CorrCoef`` : a numpy ndarray that stores the interaction correlation matrix of residues.
 
-            - ``Duration BS``: a python dictionary with binding site IDs as its keys, which stores the durations of all
-              contacts for binding sites.
+        - ``Duration BS``: a python dictionary with binding site IDs as its keys, which stores the durations of all
+          contacts for binding sites.
 
-            - ``Occupancy BS``: a python dictionary with binding site IDs as its keys, which stores the lipid occupancy
-              from each trajectory for binding sites.
+        - ``Occupancy BS``: a python dictionary with binding site IDs as its keys, which stores the lipid occupancy
+          from each trajectory for binding sites.
 
-            - ``Dataset``: a pandas.DataFrame object that stores interaction data for residues by row. The interaction
-              data, including interaction with the residue and with the binding site to which the residue belongs, can be
-              accessed easily.
+        - ``Dataset``: a pandas.DataFrame object that stores interaction data for residues by row. The interaction
+          data, including interaction with the residue and with the binding site to which the residue belongs, can be
+          accessed easily.
 
         The python dictionary objects and numpy ndarray objects are saved to local disc in pickle, whereas the
         pandas.DataFrame is saved in csv format.
@@ -1560,6 +1603,11 @@ class LipidInteraction:
         fn_coord : str or None, default=None
             The file name of the written coordinate file. By default, the file is named as Coordinate_{lipid}_{item}.pdb
 
+        See Also
+        --------
+        pylipid.util.write_PDB
+            Write interaction data in bfactor columns.
+
         """
         coord_dir = check_dir(save_dir, "Coordinate_{}".format(self._lipid)) if save_dir is not None \
             else check_dir(self._save_dir, "Coordinate_{}".format(self._lipid))
@@ -1595,6 +1643,11 @@ class LipidInteraction:
         save_dir : str, optional, default=None
             The directory for saving the python script. By default, the script is saved at the directory of
             Dataset_{lipid}, together with the file Dataset.csv, from which it reads the interaction data.
+
+        See Also
+        --------
+        pylipid.util.write_pymol_script
+            Write Python script that opens a PyMol session with binding site information.
 
         """
         script_dir = check_dir(save_dir) if save_dir is not None else \
@@ -1644,6 +1697,11 @@ class LipidInteraction:
 
         fig_format : str, default="pdf"
             Figure format. Support formats included in matplotlib.pyplot.
+
+        See Also
+        --------
+        pylipid.plot.plot_residue_data
+            Plot interactions as a function of residue index
 
         """
         figure_dir = check_dir(save_dir, "Figure_{}".format(self._lipid)) if save_dir is not None \
@@ -1727,6 +1785,9 @@ class LipidInteraction:
         --------
         pyipid.api.LipidInteraction.plot
             Assisting function for plotting interaction data.
+        pylipid.plot.plot_residue_data_logo
+            Plot interactions using `logomaker.Logo
+            <https://logomaker.readthedocs.io/en/latest/implementation.html#logo-class>`_.
 
         """
         figure_dir = check_dir(save_dir, "Figure_{}".format(self._lipid)) if save_dir is not None \
@@ -1755,7 +1816,7 @@ class LipidInteraction:
             data = self.dataset[item]
             title = "{} {} Logo".format(self._lipid, item)
             fig_fn = os.path.join(figure_dir, "{}_logo.{}".format("_".join(item.split()), fig_format))
-            plot_residue_data_logos(residue_index, resname_set, data, ylabel=ylabel,
+            plot_residue_data_logo(residue_index, resname_set, data, ylabel=ylabel,
                                     fn=fig_fn, title=title, letter_map=letter_map, color_scheme=color_scheme,
                                     fig_close=fig_close)
         else:

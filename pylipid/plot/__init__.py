@@ -27,7 +27,6 @@ The ``plot`` module provides functions for aiding in the scientific analysis:
    plot_koff
    plot_residue_data
    plot_residue_data_logo
-   surface_area
    plot_surface_area
    plot_binding_site_data
    plot_corrcoef
@@ -37,7 +36,7 @@ The ``plot`` module provides functions for aiding in the scientific analysis:
 
 from .koff import plot_koff
 from .plot1d import plot_residue_data
-from .plot1d import plot_residue_data_logos
+from .plot1d import plot_residue_data_logo
 from .plot1d import plot_surface_area
 from .plot1d import plot_binding_site_data
 from .plot2d import plot_corrcoef

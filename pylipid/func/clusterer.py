@@ -27,28 +27,47 @@ __all__ = ["cluster_DBSCAN", "cluster_KMeans"]
 
 
 def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
-    """Cluster data using DBSCAN.
+    r"""Cluster data using DBSCAN.
 
-    The the density-based spatial cluster `sklearn.cluster.DBSCAN
-    <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_
-    to cluster the data. If not provided by users, the distance cutoff `eps` is determined
-    by the 'Knee method' which finds the distance at which a sharp change happens.
+    This function clusters the samples using a density-based cluster
+    `DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_ provided by scikit.
+    DBSCAN finds clusters of core samples of high density. A sample point is a core sample if at least `min_samples`
+    points are within distance :math:`\varepsilon` of it. A cluster is defined as a set of sample points that are
+    mutually density-connected and density-reachable, i.e. there is a path
+    :math:`\left\langle p_{1}, p_{2}, \ldots, p_{n}\right\rangle` where each :math:`p_{i+1}` is within distance
+    :math:`\varepsilon` of :math:`p_{i}` for any two p in the two. The values of `min_samples` and :math:`\varepsilon`
+    determine the performance of this cluster.
+
+    If None, `min_samples` takes the value of 2 * n_dims. If :math:`\varepsilon` is None, it is set as the value at the
+    knee of the k-distance plot.
 
     Parameters
     ----------
-    data : ndarray, shape=(n_samples, n_dims)
+    data : numpy.ndarray, shape=(n_samples, n_dims)
+        Sample data to find clusters.
+
     eps : None or scalar, default=None
+        The maximum distance between two samples for one to be considered as in the neighborhood of the other. This is
+        not a maximum bound on the distances of points within a cluster. This is the most important DBSCAN parameter to
+        choose appropriately for your data set and distance function. If None, it is set as the value at the
+        knee of the k-distance plot.
+
     min_samples : None or scalar, default=None
+        The number of samples (or total weight) in a neighborhood for a point to be considered as a core point. This
+        includes the point itself. If None, it takes the value of 2 * n_dims
+
     metric : string or callable, default=’euclidean’
         The metric to use when calculating distance between instances in a feature array. If metric
         is a string or callable, it must be one of the options allowed by `sklearn.metrics.pairwise_distances`
         for its metric parameter.
-    plot_dist_curve : bool, default=True
 
     Returns
     -------
     labels : array_like, shape=(n_samples,)
+        Cluster labels for each data point.
+
     core_sample_indices : array_like, shape=(n_clusters,)
+        Indices of core samples.
 
     """
     if len(data) <= len(data[0]):
@@ -78,16 +97,31 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
 
 
 def cluster_KMeans(data, n_clusters):
-    """Cluster data using KMeans.
+    r"""Cluster data using KMeans.
+
+    This function clusters the samples
+    using `KMeans <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html>`_
+    provided by scikit. The KMeans cluster separates the samples into `n` clusters of equal variances, via minimizing
+    the `inertia`, which is defined as:
+
+    .. math::
+        \sum_{i=0}^{n} \min _{u_{i} \in C}\left(\left\|x_{i}-u_{i}\right\|^{2}\right)
+
+    where :math:`u_{i}` is the `centroid`  of cluster i. KMeans scales well with large dataset but performs poorly
+    with clusters of varying sizes and density.
 
     Parameters
     ----------
-    data : ndarray, shape=(n_samples, n_dims)
-    n_clusters : scalar
+    data : numpy.ndarray, shape=(n_samples, n_dims)
+        Sample data to find clusters.
+
+    n_clusters : int
+        The number of clusters to form as well as the number of centroids to generate.
 
     Returns
     -----------
     labels : array_like, shape=(n_samples)
+        Cluster labels for each data point.
 
     """
     if len(data) < n_clusters:

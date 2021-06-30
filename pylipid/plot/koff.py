@@ -27,36 +27,45 @@ __all__ = ["plot_koff"]
 def plot_koff(durations, delta_t_list, survival_rates, n_fitted,
               survival_rates_bootstraps=None, fig_fn=None, title=None,
               timeunit=None, text=None, t_total=None, fig_close=True):
-    """Plot the koff figure.
+    r"""Plot the koff figure.
 
     The koff figure contains two axes. The left axis plot the sorted
-    interaction durations, and the right one plot normalised survival rates.
+    interaction durations, and the right one plot normalised survival rates, the fitted
+    bi-exponenial curve and the bootstrapped survival rates.
 
     Parameters
     ----------
     durations : array_like
-            Collected interaction durations.
+            A list of contact durations
+
     delta_t_list : array_like
-            List of :math:`\Delta t` at which the survival rates are calculated.
+            A list of :math:`\Delta t` at which the survival rates are calculated.
+
     survival_rates : array_like
             Survival rates calculated at delta_t_list.
+
     n_fitted: array_like
             The values of fitted bi-exponential at delta_t_list.
+
     survival_rates_bootstraps : list of array, optional, default=None
-            List of bootstrapped survival rates.
+            A list of bootstrapped survival rates.
+
     fig_fn : str, optional, default=None
             Name of the koff figure. by default the figure will be saved as "koff.png"
             in the current working directory.
+
     title : str, optional, default=None
             Figure title. Default is None.
+
     t_total : scalar, optional, default=None
             Duration of simulation trajectories. The xlim of both axes will set to t_total if
             a value is given, otherwise xlim will be determined by matplotlib.
+
     timeunit : {"ns", "us", None}, optional, default=None
             Time unit of the given durations. Default is None.
+
     text : str, optional, default=None
             Text printed next to the koff figure. The default is None.
-
 
     """
     # plot settings

@@ -22,10 +22,10 @@ __all__ = ["check_dir"]
 
 
 def check_dir(directory=None, suffix=None, print_info=True):
-    """Creating directory
+    """Check directory
 
     This function will combine the suffix with the given directory (or the current
-    working directory if none is given) to generate a directory name, and create a
+    working directory if None is given) to generate a new directory name, and create a
     directory with this name if it does not exit.
 
     """

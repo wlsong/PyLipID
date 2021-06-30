@@ -23,15 +23,33 @@ __all__ = ["write_pymol_script"]
 
 
 def write_pymol_script(fname, pdb_fname, data_fname, lipid, n_binding_site):
-    """Write PyMol script.
+    """Write Python script that opens a PyMol session with binding site information.
+
+    This function will generate a Python script which opens a PyMol session in which the binding site information
+    stored in the interaction data file (a csv file provided by ``data_fname``) is mapped onto the receptor structure
+    (loaded from a PDB coordinate file provided by ``pdb_fname``). In this PyMol session, residues from the same binding
+    site are colored in the same color and shown in spheres with scales corresponding to their residence times.
+
+    The PDB coordinate of the receptor need to have the same topology as in the simulations (i.e. the same as shown in
+    the ``data_fname``). A warning will show up and break the PyMol seesion, if residue names are different or residue
+    indices are different.
+
+    As PyMol only recognizes atomistic structures, the PDB coordinates of the receptor (provided by ``pdb_fname``) needs
+    to be an atomistic structure. For coarse-grained simulation results, this ``pdb_fname`` needs to be a PDB coordinates
+    before the coarse-graining step.
 
     Parameters
     ----------
     fname : str
+        The filename of the PyMol script to be written.
     pdb_fname : str
+        The PDB coordinate file of the receptor.
     data_fname : str
+        The csv file of the interaction data.
     lipid : str
+        Lipid residue name
     n_binding_site : int
+        Number of binding site detected (shown in the csv file).
 
     """
     script_fname = os.path.abspath(fname)

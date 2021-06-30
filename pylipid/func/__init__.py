@@ -26,17 +26,20 @@ The ``func`` module provides functions for functions that do the heavy-lifting:
 
    cal_koff
    cal_survival_func
+   calculate_koff_wrapper
    Duration
    cal_contact_residues
-   cal_interaction_frequency
+   cal_occupancy
+   cal_lipidcount
    get_node_list
    collect_bound_poses
    vectorize_poses
    calculate_scores
    write_bound_poses
+   calculate_surface_area_wrapper
+   analyze_pose_wrapper
    cluster_DBSCAN
    cluster_KMeans
-   calculate_site_surface_area
 
 """
 
@@ -45,7 +48,7 @@ from .kinetics import cal_survival_func
 from .interactions import Duration
 from .interactions import cal_contact_residues, cal_occupancy, cal_lipidcount
 from .binding_site import get_node_list
-from .binding_site import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses, calculate_surface_area
+from .binding_site import collect_bound_poses, vectorize_poses, calculate_scores, write_bound_poses
 from .clusterer import cluster_DBSCAN, cluster_KMeans
 from .binding_site import analyze_pose_wrapper
 from .binding_site import calculate_surface_area_wrapper

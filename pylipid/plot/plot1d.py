@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 import logomaker
 
-__all__ = ["plot_residue_data", "plot_residue_data_logos",
+__all__ = ["plot_residue_data", "plot_residue_data_logo",
            "plot_binding_site_data", "plot_surface_area", "AxisIndex"]
 
 
@@ -37,13 +37,14 @@ def plot_residue_data(residue_index, interactions, gap=200, ylabel=None,
     ----------
     residue_index : list
             Residue indices in an ascending order. If a residue index is smaller than its preceding one,
-            the plotting function will consider it as the start of a new chain and will plot the following
-            in a new figure. A gap of less than 50 missing residues will be marked as gray areas in the figure.
+            the plotting function will consider it as the start of a new chain and will plot the following data
+            in a new figure. A gap in residue index that is less than ``gap`` will be marked as gray areas in
+            the figure, but a gap that is larger than ``gap`` will start a new figure.
     interactions : list
-            Plotting values correspond to residue_index.
+            Values to plot. In the same order as ``residue_index``.
     gap : int, optional, default=200
-            The number of missing residues in residue_index that initiate a new figure. The gap between two adjacent
-            index in residue_index that is smaller than the provided value will be considered as missing residues
+            The number of missing residues in ``residue_index`` that initiate a new figure. The gap between two adjacent
+            index in ``residue_index`` that is smaller than the provided value will be considered as missing residues
             and will be marked as gray areas in the figure, whereas a gap that is larger than the provided value
             will start a new figure and plot the following data in that new figure. This can help to make figures
             more compressed. The default gap is 200.
@@ -54,6 +55,9 @@ def plot_residue_data(residue_index, interactions, gap=200, ylabel=None,
             working directory.
     title : str, optional, default=None
             Figure title.
+    fig_close : bool, optional, default=False
+        Use plt.close() to close the figure. Can be used to save memory if many figures are opened.
+
 
     """
     bar_color = "#176BA0"
@@ -129,7 +133,7 @@ def plot_residue_data(residue_index, interactions, gap=200, ylabel=None,
     return
 
 
-def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter_map=None,
+def plot_residue_data_logo(residue_index, logos, interactions, gap=1000, letter_map=None,
                             color_scheme="chemistry", ylabel=None, title=None, fn=None, fig_close=False):
     """Plot interactions using `logomaker.Logo
     <https://logomaker.readthedocs.io/en/latest/implementation.html#logo-class>`_.
@@ -138,18 +142,19 @@ def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter
     -----------
     residue_index : list
             Residue indices in an ascending order. If a residue index is smaller than its preceding one,
-            the plotting function will consider it as the start of a new chain and will plot the following
-            in a new figure.
+            the plotting function will consider it as the start of a new chain and will plot the following data
+            in a new figure. A gap in residue index that is less than ``gap`` will be marked as gray areas in
+            the figure, but a gap that is larger than ``gap`` will start a new figure.
     logos : list of str
-            Single letter logos in the corresponding order as residue_index. The height of logos in the figure
-            will be determined by values given in interactions. Three-letter name of the 20 common amino acids
+            Single letter logos in the corresponding order as ``residue_index``. The height of logos in the figure
+            will be determined by values given to ``interactions``. Three-letter name of the 20 common amino acids
             are accepted and will be converted to their corresponding single-letter names in this function by
-            the default. Other mappings can be defined via letter_map.
+            the default. Other mappings can be defined via ``letter_map``.
     interactions : list
-            Plotting values in the corresponding order as residue_index.
+            Plotting values in the corresponding order as ``residue_index``.
     gap : int, optional, default=1000
-            The number of missing residues in residue_index that starts a new figure. A gap between two adjacent
-            index in residue_index that is smaller than the provided value will be considered as missing residues
+            The number of missing residues in ``residue_index`` that starts a new figure. A gap between two adjacent
+            index in ``residue_index`` that is smaller than the provided value will be considered as missing residues
             and will be marked as gray areas in the figure, whereas a gap that is larger than the provided value
             will start a new figure and plot the following data in that new figure. This can help to make figures
             more compressed. The gap needs to be greater than 1000. The default is 1000.
@@ -166,6 +171,7 @@ def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter
             Figure name. By default the figure is saved as "Figure_interactions_logo.pdf" as the current
             working directory.
     fig_close : bool, optional, default=False
+        Use plt.close() to close the figure. Can be used to save memory if many figures are opened.
 
     """
     # single-letter dictionary
@@ -234,15 +240,24 @@ def plot_residue_data_logos(residue_index, logos, interactions, gap=1000, letter
 
 
 def plot_binding_site_data(data, fig_fn, ylabel=None, title=None, fig_close=False):
-    """Plot surface area in a matplotlib violin plot.
+    """Plot binding site data in a matplotlib violin plot.
+
+    The provided ``data`` needs to be a pandas.DataFrame object which has "Binding Site {idx}" as its column names and
+    records binding site information by column.
 
     Parameters
     ----------
     data : padnas.DataFrame
+        Data to plot. It needs to have "Binding Site {idx}" as its column names and records binding site information by
+        column.
     fig_fn : str
+        Figure name.
     ylabel : str, optional, default=None
+        Y label.
     title : str, optional, default=None
-    fig_close : bool
+        Figure title.
+    fig_close : bool, optional, default=False
+        Use plt.close() to close the figure. Can be used to save memory if many figures are opened.
 
     """
     from itertools import cycle as _cycle
@@ -305,20 +320,28 @@ def plot_binding_site_data(data, fig_fn, ylabel=None, title=None, fig_close=Fals
 
 
 def plot_surface_area(surface_area, fig_fn, timeunit=None, fig_close=False):
-    """Plot surface area as a function of time.
+    """Plot binding site surface area as a function of time.
+
+    The provided ``surface_area`` needs to be a pandas.DataFrame object, which has columns named as "Binding Site {idx}"
+    to record binding site surface areas and a column named "Time" to record the timesteps at which the surface area data
+    are taken.
 
     Parameters
     ----------
     surface_area : pandas.DataFrame
-    save_dir : str
-    timeunit : str or None, optional, default=None
+        A pandas.DataFrame object which has columns named as "Binding Site {idx}"
+        to record binding site surface areas and a column named "Time" to record the timesteps at which the surface area data
+    fig_fn : str
+        Figure filename.
+    timeunit : {"ns", "us"} or None, optional, default=None
+        Time unit shown in x label.
+    fig_close : bool, optional, default=False
+        Use plt.close() to close the figure. Can be used to save memory if many figures are opened.
 
     See also
     ---------
     pylipid.func.calculate_surface_area
         The function that generates surface_area data.
-    pylipid.plot.plot_surface_area_stats
-        The function that plot surface_area in a matplotlib violin plot.
 
     """
     from itertools import cycle as _cycle

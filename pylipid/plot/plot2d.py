@@ -42,6 +42,9 @@ def plot_corrcoef(corrcoef, residue_index, cmap="Reds", vmin=None, vmax=None,
         Figure name. By default the figure is saved as "Figure_corrcoef.pdf" as the current
         working directory.
     title : str, optional, default=None
+        Figure title.
+    fig_close : bool, optional, default=False
+        Use plt.close() to close the figure. Can be used to save memory if many figures are opened.
 
     """
     plt.rcParams["font.size"] = 10

@@ -25,10 +25,14 @@ def write_PDB(prot_obj, bfactor, pdb_fn, resi_offset=0):
 
     Parameters
     ----------
-    prot_obj : mdtraj.TrajectoryObject
+    prot_obj : mdtraj.Trajectory Object
+        A mdtraj.Trajectory object of protein coordinates and topology information.
     bfactor : array_like
+        A list of b factor values for each protein residues.
     pdb_fn : str
+        Filename of the PDB coordinate file.
     resi_offset : int, optional, default=0
+        Shift the residue index.
 
     """
     coords = prot_obj.xyz[0]

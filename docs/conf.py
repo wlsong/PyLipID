@@ -34,6 +34,15 @@ autodoc_default_flags = [
         "private-members",
         "show-inheritance",
  ]
+autoclass_content = "init"
+
+autodoc_default_options = {
+    'member-order': 'bysource',
+    'special-members': '__init__',
+    'undoc-members': True,
+    'exclude-members': '__init__'
+}
+
 
 # autosummary
 autosummary_generate = True

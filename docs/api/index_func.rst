@@ -13,11 +13,13 @@ and calculate binding sites in PyLipID
 .. autosummary::
    :toctree: generated/
 
-   ~get_node_list
-   ~collect_bound_poses
-   ~vectorize_poses
-   ~calculate_scores
-   ~write_bound_poses
+    ~get_node_list
+    ~collect_bound_poses
+    ~vectorize_poses
+    ~calculate_scores
+    ~write_bound_poses
+    ~analyze_pose_wrapper
+    ~calculate_surface_area_wrapper
 
 
 .. rubric:: clusterer
@@ -35,9 +37,10 @@ and calculate binding sites in PyLipID
    :toctree: generated/
 
     ~cal_contact_residues
-    ~Duration
     ~cal_occupancy
     ~cal_lipidcount
+    ~Duration
+    .. autoclass:: ~Duration
 
 
 .. rubric:: kinetics
@@ -47,3 +50,4 @@ and calculate binding sites in PyLipID
 
     ~cal_koff
     ~cal_survival_func
+    ~calculate_koff_wrapper
