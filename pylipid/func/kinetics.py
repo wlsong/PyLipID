@@ -65,33 +65,35 @@ def cal_koff(durations, t_total, timestep, nbootstrap=10, initial_guess=[1., 1.,
             A list of interaction durations
 
     t_total : scalar
-            The duration or length, or the longest if using multiple simulations of different durations/lengths, of the
+            The duration, or the longest if using multiple simulations of different durations, of the
             simulation trajectories. Should be in the same time unit as durations.
 
     timestep : scalar
-            :math:`\Delta t` of the survival function :math:`\sigma`. Often take the time step of the simulation
+            :math:`\Delta t` of the survival function :math:`\sigma`. Often takes the time step of the simulation
             trajectories or multiples of the trajectory time step. Should be in the same time unit as durations.
 
     nbootstrap : int, optional, default=10
-            Number of bootstrapping for calculation. The default is 10.
+            Number of bootstrapping. The default is 10.
 
     initial_quess : list, optional, default=(1., 1., 1., 1.)
-            The initial guess for bi-exponential fitting to the survival function that is used by
-            scipy.optimize.curve_fit.
+            The initial guess for fitting of a bi-exponential curve to the survival function. Used by
+            `scipy.optimize.curve_fit <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html>`_.
 
     cap : bool, optional, default=True
-            Cap the returned residence time to t_total.
+            Cap the returned residence time to ``t_total``. This is useful for cases of poor samplings where the curve fitting
+            may be bad and the calculated residence times may be unrealistically large.
 
     Returns
     ----------
     koff : scalar
-            The calculated koff. In the unit of "tu"^-1 in which "tu" is the time unit used by the provided durations.
+            The calculated koff. In the unit of :math:`{timeunit^{-1}}` in which :math:`{timeunit}` is the same as
+            what is used in ``durations``.
 
     res_time : scalar
-            The calculated residence time. In the same time unit as the provided durations.
+            The calculated residence time. In the same time unit as used by ``durations``.
 
     properties : dict
-            A dictionary of all the computed values, including the original and bootstrapped koffs, residence times, ks 
+            A dictionary of all the computed values, including the original and bootstrapped koffs, residence times, ks
             of the bi-expo curve :math:`y=A*e^{(-k_1*x)}+B*e^{(-k_2*x)}` and :math:`R^2`.
 
     See also

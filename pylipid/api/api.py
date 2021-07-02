@@ -68,8 +68,6 @@ class LipidInteraction:
         to speed up the calculation. Users can specify the number of CPUs these functions can use, otherwise all the
         CPUs in the system will be used by default.
 
-
-
         Parameters
         ----------
         trajfile_list : str or a list of str
@@ -595,7 +593,7 @@ class LipidInteraction:
             \sigma(t) \sim A e^{-k_{1} t}+B e^{-k_{2} t}\left(k_{1} \leq k_{2}\right)
 
         PyLipID takes :math:`k_{1}` as the the dissociation :math:`k_{off}`, and calculates the residence time as
-        :math:`\tau=1 / k_{o f f}`. PyLipID raises a warning for the impact on the accuracy of :math:`k_{off}`
+        :math:`\tau=1 / k_{off}`. PyLipID raises a warning for the impact on the accuracy of :math:`k_{off}`
         calculation if trajectories are of different lengths when multiple trajectories are provided. PyLipID measures
         the :math:`r^{2}` of the biexponential fitting to the survival function to show the quality of the
         :math:`k_{off}` estimation. In addition, PyLipID bootstraps the contact durations and measures the
