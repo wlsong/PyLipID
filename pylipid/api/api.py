@@ -492,7 +492,7 @@ class LipidInteraction:
             Calculate the percentage of frames in which a contact is formed.
 
         """
-        self._check_calculation("Duration", self.compute_residue_duration)
+        self._check_calculation("Residue", self.collect_residue_contacts)
         if residue_id is None:
             selected_residue_id = self._protein_residue_id
         else:
@@ -661,7 +661,7 @@ class LipidInteraction:
                of biomolecules. 1993. Journal of Computational Chemistry.
 
         """
-        self._check_calculation("Residue", self.compute_residue_koff)
+        self._check_calculation("Duration", self.compute_residue_duration)
 
         if plot_data:
             koff_dir = check_dir(save_dir, "Reisidue_koffs_{}".format(self._lipid)) if save_dir is not None \
