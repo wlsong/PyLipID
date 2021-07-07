@@ -145,7 +145,7 @@ class LipidInteraction:
     #############################################
     #     attributes
     #############################################
-    @property
+
     def dataset(self):
         """Summary of lipid interaction stored in a pandas.DataFrame() object."""
         return self.dataset
@@ -492,7 +492,7 @@ class LipidInteraction:
             Calculate the percentage of frames in which a contact is formed.
 
         """
-        self._check_calculation("Residue", self.collect_residue_contacts)
+        self._check_calculation("Duration", self.compute_residue_duration)
         if residue_id is None:
             selected_residue_id = self._protein_residue_id
         else:
@@ -662,10 +662,10 @@ class LipidInteraction:
 
         """
         self._check_calculation("Residue", self.compute_residue_koff)
+
         if plot_data:
             koff_dir = check_dir(save_dir, "Reisidue_koffs_{}".format(self._lipid)) if save_dir is not None \
                 else check_dir(self._save_dir, "Residue_koffs_{}".format(self._lipid))
-        self._check_calculation("Residue", self.collect_residue_contacts)
         if len(set(self._residue_list)) != len(self._residue_list):
             residue_name_set = ["{}_ResidueID{}".format(residue, residue_id) for residue, residue_id in
                                 zip(self._residue_list, self._protein_residue_id)]
@@ -865,7 +865,6 @@ class LipidInteraction:
             Calculate contact durations from lipid index.
 
         """
-        self._check_calculation("Residue", self.collect_residue_contacts)
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
@@ -928,7 +927,6 @@ class LipidInteraction:
             Calculate the percentage of frames in which a contact is formed.
 
         """
-        self._check_calculation("Residue", self.collect_residue_contacts)
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
@@ -988,7 +986,6 @@ class LipidInteraction:
             Calculate the average number of contacting molecules.
 
         """
-        self._check_calculation("Residue", self.collect_residue_contacts)
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         selected_bs_id = np.atleast_1d(binding_site_id) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
@@ -1117,8 +1114,6 @@ class LipidInteraction:
                of biomolecules. 1993. Journal of Computational Chemistry.
 
         """
-        self._check_calculation("Residue", self.collect_residue_contacts)
-        self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
         self._check_calculation("Binding Site Duration", self.compute_site_duration)
         if plot_data:
             BS_dir = check_dir(save_dir, "Binding_Sites_koffs_{}".format(self._lipid)) if save_dir is not None \
