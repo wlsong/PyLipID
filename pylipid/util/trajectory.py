@@ -23,14 +23,14 @@ import numpy as np
 __all__ = ["get_traj_info"]
 
 
-def get_traj_info(traj, lipid, lipid_atoms=None, resi_offset=0, nprot=1, protein_ref=None, lipid_ref=None):
+def get_traj_info(traj, lipid=None, lipid_atoms=None, resi_offset=0, nprot=1, protein_ref=None, lipid_ref=None):
     """Get trajectory information regarding atom/residue index and topologies.
 
     Parameters
     ----------
     traj : mdtraj.Trajectory
         A mdtraj.Trajectory object.
-    lipid : str
+    lipid : str or None
         The residue name of the lipid to check.
     lipid_atoms : a list of str; opt
         The names of lipid atoms that are used to define lipid interaction and lipid binding sites.
@@ -56,16 +56,30 @@ def get_traj_info(traj, lipid, lipid_atoms=None, resi_offset=0, nprot=1, protein
         A mdtraj.Trajectory object that stores the topology and coordinates of a lipid molecule structure.
 
     """
-    lipid_index_dict = defaultdict(list)
-    lipid_atom_indices = traj.top.select("resn {}".format(lipid))
-    if lipid_atoms is not None:
-        for atom_index in lipid_atom_indices:
-            if traj.top.atom(atom_index).name in lipid_atoms:
-                lipid_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
+    # get lipid atom indices
+    if lipid is None:
+        lipid_residue_atomid_list = []
     else:
-        for atom_index in lipid_atom_indices:
-            lipid_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
-    lipid_residue_atomid_list = [lipid_index_dict[resi] for resi in np.sort(list(lipid_index_dict.keys()))]
+        lipid_index_dict = defaultdict(list)
+        lipid_atom_indices = traj.top.select("resn {}".format(lipid))
+        if lipid_atoms is not None:
+            for atom_index in lipid_atom_indices:
+                if traj.top.atom(atom_index).name in lipid_atoms:
+                    lipid_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
+        else:
+            for atom_index in lipid_atom_indices:
+                lipid_index_dict[traj.top.atom(atom_index).residue.index].append(atom_index)
+        lipid_residue_atomid_list = [lipid_index_dict[resi] for resi in np.sort(list(lipid_index_dict.keys()))]
+        if lipid_ref is None:
+            one_lipid_indices = []
+            for lipid_id in np.sort(traj.top.select("resn {}".format(lipid))):
+                if len(one_lipid_indices) == 0:
+                    one_lipid_indices.append(lipid_id)
+                elif traj.top.atom(lipid_id).residue.index != traj.top.atom(one_lipid_indices[-1]).residue.index:
+                    break
+                else:
+                    one_lipid_indices.append(lipid_id)
+            lipid_ref = traj[0].atom_slice(np.unique(one_lipid_indices), inplace=False)
     # get protein atom indices
     all_protein_atom_indices = traj.top.select("protein")
     natoms_per_protein = int(len(all_protein_atom_indices)/nprot)
@@ -79,18 +93,8 @@ def get_traj_info(traj, lipid, lipid_atoms=None, resi_offset=0, nprot=1, protein
     residue_list = np.array(["{}{}".format(traj.top.atom(residue_atoms[0]).residue.resSeq+resi_offset,
                                            traj.top.atom(residue_atoms[0]).residue.name)
                              for residue_atoms in protein_residue_atomid_list[0]], dtype=str)
-    if lipid_ref is None:
-        one_lipid_indices = []
-        for lipid_id in np.sort(traj.top.select("resn {}".format(lipid))):
-            if len(one_lipid_indices) == 0:
-                one_lipid_indices.append(lipid_id)
-            elif traj.top.atom(lipid_id).residue.index != traj.top.atom(one_lipid_indices[-1]).residue.index:
-                break
-            else:
-                one_lipid_indices.append(lipid_id)
-        lipid_ref = traj[0].atom_slice(np.unique(one_lipid_indices))
     if protein_ref is None:
-        protein_ref = traj[0].atom_slice(all_protein_atom_indices[:natoms_per_protein])
+        protein_ref = traj[0].atom_slice(all_protein_atom_indices[:natoms_per_protein], inplace=False)
 
     traj_info = {"protein_residue_atomid_list": protein_residue_atomid_list,
                  "lipid_residue_atomid_list": lipid_residue_atomid_list,

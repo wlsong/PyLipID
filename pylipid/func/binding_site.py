@@ -26,7 +26,7 @@ import pandas as pd
 import mdtraj as md
 from statsmodels.nonparametric.kernel_density import KDEMultivariate as kde
 from sklearn.decomposition import PCA
-from ..util import check_dir, rmsd
+from ..util import check_dir, rmsd, get_traj_info
 from .clusterer import cluster_DBSCAN, cluster_KMeans
 
 
@@ -611,22 +611,26 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
     else:
         radii_book = {**MARTINI_CG_radii, **radii}
     traj = md.load(trajfile, top=topfile, stride=stride)
+    traj_info, _, _ = get_traj_info(traj, nprot=nprot, protein_ref="A") # Assign random value to protein_ref to
+    # prevent generation of protein Topology file to save time.
     if dt_traj is None:
         traj_times = traj.time / 1000000.0 if timeunit == "us" else traj.time / 1000.0
     else:
         traj_times = float(dt_traj * stride) * np.arange(traj.n_frames)
-    protein_indices_all = traj.top.select("protein")
-    natoms_per_protein = int(len(protein_indices_all) / nprot)
     surface_data = []
     data_keys = []
     for protein_idx in np.arange(nprot):
-        protein_indices = protein_indices_all[
-                          protein_idx * natoms_per_protein:(protein_idx + 1) * natoms_per_protein]
+        protein_indices = np.hstack(traj_info["protein_residue_atomid_list"][protein_idx])
         new_traj = traj.atom_slice(protein_indices, inplace=False)
-        area_all = md.shrake_rupley(new_traj, mode='residue', change_radii=radii_book)
-        selected_data = [area_all[:, nodes].sum(axis=1) for bs_id, nodes in binding_site_map.items()]
+        traj_info_new, _, _ = get_traj_info(new_traj, nprot=1, protein_ref="A") # only one copy of protein in this
+        # new_traj. Assign random value to protein_ref to prevent generation of protein Topology file to save time.
+        binding_site_map_atoms = {
+            bs_id: np.hstack([traj_info_new["protein_residue_atomid_list"][0][node] for node in nodes])
+            for bs_id, nodes in binding_site_map.items()}
+        area_all = md.shrake_rupley(new_traj, mode='atom', change_radii=radii_book)
+        selected_data = [area_all[:, atomids].sum(axis=1) for bs_id, atomids in binding_site_map_atoms.items()]
         selected_data.append(traj_times)
-        column_names = ["Binding Site {}".format(bs_id) for bs_id, nodes in binding_site_map.items()]
+        column_names = ["Binding Site {}".format(bs_id) for bs_id, atomids in binding_site_map_atoms.items()]
         column_names.append("Time")
         surface_data.append(pd.DataFrame(np.array(selected_data).T, columns=column_names))
         data_keys.append((traj_idx, protein_idx))

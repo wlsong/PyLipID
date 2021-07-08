@@ -331,7 +331,7 @@ class LipidInteraction:
         for traj_idx in trange(len(self._trajfile_list), desc="COLLECT INTERACTIONS FROM TRAJECTORIES",
                                total=len(self._trajfile_list)):
             traj = md.load(self._trajfile_list[traj_idx], top=self._topfile_list[traj_idx], stride=self._stride)
-            traj_info, self._protein_ref, self._lipid_ref = get_traj_info(traj, self._lipid,
+            traj_info, self._protein_ref, self._lipid_ref = get_traj_info(traj, lipid=self._lipid,
                                                                           lipid_atoms=self._lipid_atoms,
                                                                           resi_offset=self._resi_offset,
                                                                           nprot=self._nprot,
