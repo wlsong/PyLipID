@@ -5,6 +5,7 @@ dependencies:
   - pandoc
   - ipykernel
   - pip
+  - sphinx=4.0.2
   - pip:
     - nbsphinx
     - pylipid
