@@ -16,12 +16,27 @@ the tutorials for examples and the documentations for the API functionalities:
     * Generation of manuscript-ready figures for analysis.
 
 
-Citation
-=========
+Citation |DOI for Citing PyEMMA|
+================================
 
-If you use PyLipID in scientific software, please cite the following paper:
+If you use PyLipID in scientific software, please cite the following paper: ::
 
-PLACEHOLDER
+	@article{song_pylipid_2021,
+		author = {Song, Wanling. and Corey, Robin A. and Ansell, T. Bertie. and
+		            Cassidy, C. Keith. and Horrell, Michael R. and Duncan, Anna L.
+		            and Stansfeld, Phillip J. and Sansom, Mark S.P.},
+		title = {PyLipID: A Python package for analysis of protein-lipid interactions from MD simulations},
+		journal = {BioRxiv},
+		year = {2021},
+		url = {https://doi.org/10.1101/2021.07.14.452312},
+		doi = {10.1101/2021.07.14.452312},
+		urldate = {2021-07-14},
+		month = jul,
+	}
+
+.. |DOI for Citing PyEMMA| image:: https://img.shields.io/badge/DOI-10.1101/2021.07.14.452312-blue
+   :target: https://doi.org/10.1101/2021.07.14.452312
+
 
 
 Installation
