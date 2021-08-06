@@ -47,7 +47,7 @@ Once the source code is downloaded, enter the source code directory and install 
 Citation |DOI for Citing PyEMMA|
 ================================
 
-If you use PyLipID in scientific software, please cite the following paper: ::
+If you use PyLipID in scientific research, please cite the following paper: ::
 
 	@article{song_pylipid_2021,
 		author = {Song, Wanling. and Corey, Robin A. and Ansell, T. Bertie. and
