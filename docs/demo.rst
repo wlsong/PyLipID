@@ -25,7 +25,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
 
     lipid = "CHOL"   # residue name in the topology.
     lipid_atoms = None  # all lipid atoms will be considered for interaction calculation.
-    cutoffs = [0.5, 0.7]  # dual-cutoff scheme for coarse-grained simulations. Single-cutoff scheme can be
+    cutoffs = [0.5, 0.8]  # dual-cutoff scheme for coarse-grained simulations. Single-cutoff scheme can be
                           # achieved by using the same value for two cutoffs.
 
     nprot = 1   # if the simulation system has N copies of receptors, "nprot=N" will report interactions

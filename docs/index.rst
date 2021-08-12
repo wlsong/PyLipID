@@ -16,7 +16,7 @@ the tutorials for examples and the documentations for the API functionalities:
     * Generation of manuscript-ready figures for analysis.
 
 
-Citation |DOI for Citing PyEMMA|
+Citation |DOI for Citing PyLipID|
 ================================
 
 If you use PyLipID in scientific research, please cite the following paper: ::
@@ -34,7 +34,7 @@ If you use PyLipID in scientific research, please cite the following paper: ::
 		month = jul,
 	}
 
-.. |DOI for Citing PyEMMA| image:: https://img.shields.io/badge/DOI-10.1101/2021.07.14.452312-blue
+.. |DOI for Citing PyLipID| image:: https://img.shields.io/badge/DOI-10.1101/2021.07.14.452312-blue
    :target: https://doi.org/10.1101/2021.07.14.452312
 
 
