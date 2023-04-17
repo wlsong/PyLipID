@@ -32,4 +32,4 @@ download on Github via:
 
 .. code-block:: bash
 
-  $ git clone git://github.com/wlsong/PyLipID.git
+  $ git clone https://github.com/wlsong/PyLipID.git
