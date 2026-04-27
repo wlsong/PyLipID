@@ -100,7 +100,6 @@ class Duration:
         self.contact_low = contact_low
         self.contact_high = contact_high
         self.dt = dt
-        ### EDIT - CHANGED NP.INT TO JUST INT, ALLOWS MODERN NUMPY VERSIONS ###
         self.pointer = [np.zeros_like(self.contact_high[idx], dtype=int)
                         for idx in range(len(self.contact_high))]
         return

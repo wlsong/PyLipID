@@ -40,7 +40,7 @@ from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, ge
 
 from multiprocessing import Pool, cpu_count
 
-# to allow use of global traj variables for multiprocessing (so traj isn't loaded nt times)
+# function run once per thread when initialised, loads traj data
 def init_worker(traj, lipid_residue_atomid_list):
     global _traj, _lipid_residue_atomid_list
     _traj = traj
@@ -48,27 +48,23 @@ def init_worker(traj, lipid_residue_atomid_list):
 
 #  computationally heavy iterated work in collect_residue_contacts, parallised with multiprocessing
 def process_res(args):
-    residue_atom_indices, cutoffs, ncol_start, ncol_per_protein, protein_idx, residue_id = args # multiprocessing sends args as tuple, have to be loaded here
-
-    # loads global variables    
+    # args sent as tuple, initialised here
+    residue_atom_indices, cutoffs, ncol_start, ncol_per_protein, protein_idx, residue_id = args 
+    # loads global variables initialised in init_worker func 
     traj = _traj
     lipid_residue_atomid_list = _lipid_residue_atomid_list
-    # calculate interaction per residue  --  untouched
+    # calculate interaction per residue  --  untouched from original api
     dist_matrix = np.array([np.min(
         md.compute_distances(traj, np.array(list(product(residue_atom_indices, lipid_atom_indices))),
                                 periodic=True, opt=True),
         axis=1) for lipid_atom_indices in lipid_residue_atomid_list])
     contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix, cutoffs[0])
     contact_high, _, _ = cal_contact_residues(dist_matrix, cutoffs[1])
-    # contact high and low returned directly
-    #self._contact_residues_high[residue_id].append(contact_high)
-    #self._contact_residues_low[residue_id].append(contact_low)    
-    # update coordinates for coo_matrix
+    # data appended after parallelisation
     _col = [ncol_start + ncol_per_protein * protein_idx + lipid_id * traj.n_frames +
                 frame_id for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low)]
     _row = [residue_id] * len(frame_id_set_low)
     _data = dist_matrix[lipid_id_set_low, frame_id_set_low]
-
     return residue_id, contact_low, contact_high, _col, _row, _data
 
 class LipidInteraction:
@@ -2046,4 +2042,3 @@ class LipidInteraction:
             calculation(*args, **kwargs)
             print("Finished the calculation of {}.".format(item))
             print("#" * 60)
-
