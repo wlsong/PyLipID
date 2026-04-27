@@ -38,10 +38,42 @@ from ..plot import plot_surface_area, plot_binding_site_data
 from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logo
 from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, get_traj_info
 
+from multiprocessing import Pool, cpu_count
+
+# to allow use of global traj variables for multiprocessing (so traj isn't loaded nt times)
+def init_worker(traj, lipid_residue_atomid_list):
+    global _traj, _lipid_residue_atomid_list
+    _traj = traj
+    _lipid_residue_atomid_list = lipid_residue_atomid_list
+
+#  computationally heavy iterated work in collect_residue_contacts, parallised with multiprocessing
+def process_res(args):
+    residue_atom_indices, cutoffs, ncol_start, ncol_per_protein, protein_idx, residue_id = args # multiprocessing sends args as tuple, have to be loaded here
+
+    # loads global variables    
+    traj = _traj
+    lipid_residue_atomid_list = _lipid_residue_atomid_list
+    # calculate interaction per residue  --  untouched
+    dist_matrix = np.array([np.min(
+        md.compute_distances(traj, np.array(list(product(residue_atom_indices, lipid_atom_indices))),
+                                periodic=True, opt=True),
+        axis=1) for lipid_atom_indices in lipid_residue_atomid_list])
+    contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix, cutoffs[0])
+    contact_high, _, _ = cal_contact_residues(dist_matrix, cutoffs[1])
+    # contact high and low returned directly
+    #self._contact_residues_high[residue_id].append(contact_high)
+    #self._contact_residues_low[residue_id].append(contact_low)    
+    # update coordinates for coo_matrix
+    _col = [ncol_start + ncol_per_protein * protein_idx + lipid_id * traj.n_frames +
+                frame_id for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low)]
+    _row = [residue_id] * len(frame_id_set_low)
+    _data = dist_matrix[lipid_id_set_low, frame_id_set_low]
+
+    return residue_id, contact_low, contact_high, _col, _row, _data
 
 class LipidInteraction:
     def __init__(self, trajfile_list, cutoffs=[0.475, 0.7], lipid="CHOL", topfile_list=None, lipid_atoms=None,
-                 nprot=1, resi_offset=0, save_dir=None, timeunit="us", stride=1, dt_traj=None):
+                 nprot=1, resi_offset=0, save_dir=None, timeunit="us", stride=1, dt_traj=None, num_cpus=None):
 
         """The main class that handles calculation and controls workflow.
 
@@ -113,6 +145,10 @@ class LipidInteraction:
             Timestep of trajectories. It is required when trajectories do not have timestep information. Not needed for
             trajectory formats of e.g. xtc, trr etc. If None, timestep information will take from trajectories.
 
+        num_cpus : int, default=multiprocessing.cpu_count()
+            Number of CPUs available to use for parallelising collect_residue_contacts. By default uses all available CPUs 
+            possible, unless specified in the run script (None=max cpu count).
+
         """
         self._trajfile_list = np.atleast_1d(trajfile_list)
         if len(np.atleast_1d(topfile_list)) == len(self._trajfile_list):
@@ -140,6 +176,7 @@ class LipidInteraction:
         self.dataset = pd.DataFrame()
         self._save_dir = check_dir(os.getcwd(), "Interaction_{}".format(self._lipid)) if save_dir is None \
             else check_dir(save_dir, "Interaction_{}".format(self._lipid))
+        self._num_cpus = num_cpus
         return
 
     #############################################
@@ -294,6 +331,7 @@ class LipidInteraction:
     ########################################
     #     interaction calculation
     ########################################
+            # NEW FUNCTION TO REPLACE THE COMPUITE HEAVY FOR LOOP PARALISED WITH MULTPROCESSING 
     def collect_residue_contacts(self):
         r"""Create contacting lipid index for residues.
 
@@ -327,6 +365,7 @@ class LipidInteraction:
         row = []
         data = []
         ncol_start = 0
+
         # calculate interactions from trajectories
         for traj_idx in trange(len(self._trajfile_list), desc="COLLECT INTERACTIONS FROM TRAJECTORIES",
                                total=len(self._trajfile_list)):
@@ -365,24 +404,23 @@ class LipidInteraction:
                         traj_idx, len(traj_info["protein_residue_id"]), traj_idx - 1, len(self._protein_residue_id))
             ncol_per_protein = len(traj_info["lipid_residue_atomid_list"]) * traj.n_frames
             for protein_idx in np.arange(self._nprot, dtype=int):
-
-                for residue_id, residue_atom_indices in enumerate(
-                        traj_info["protein_residue_atomid_list"][protein_idx]):
-                    # calculate interaction per residue
-                    dist_matrix = np.array([np.min(
-                        md.compute_distances(traj, np.array(list(product(residue_atom_indices, lipid_atom_indices))),
-                                             periodic=True, opt=True),
-                        axis=1) for lipid_atom_indices in traj_info["lipid_residue_atomid_list"]])
-                    contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix, self._cutoffs[0])
-                    contact_high, _, _ = cal_contact_residues(dist_matrix, self._cutoffs[1])
+                # creates list of (residue,residue atoms, ...) to analyse, with args for global func process_res  
+                toprocess = [
+                    (residue_atom_indices, self._cutoffs, ncol_start, ncol_per_protein, protein_idx, residue_id)
+                    for residue_id, residue_atom_indices in enumerate(traj_info["protein_residue_atomid_list"][protein_idx])
+                ]
+                # initialises #num_cpus parallel threads, init_worker function called once per thread initially so traj isn't passed every iter
+                with Pool(processes=self._num_cpus, initializer=init_worker, initargs=(traj, traj_info["lipid_residue_atomid_list"])) as pool:
+                    # equivalent of openMP for, calling global func process_res as iteratable, chunksize 1 is ~~close to schedule dynamic 
+                    results = pool.map(process_res, toprocess, chunksize=1) 
+                # serialise results from parallel computation
+                # results are colated in resid ascending order from pool.map, no need to sort
+                for residue_id, contact_low, contact_high, _col, _row, _data in results:
                     self._contact_residues_high[residue_id].append(contact_high)
                     self._contact_residues_low[residue_id].append(contact_low)
-                    # update coordinates for coo_matrix
-                    col.append([ncol_start + ncol_per_protein * protein_idx + lipid_id * traj.n_frames +
-                                frame_id for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low)])
-                    row.append([residue_id for dummy in np.arange(len(frame_id_set_low), dtype=int)])
-                    data.append(dist_matrix[lipid_id_set_low, frame_id_set_low])
-
+                    col.append(_col)
+                    row.append(_row)
+                    data.append(_data)
             ncol_start += ncol_per_protein * self._nprot
         # calculate correlation coefficient matrix
         row = np.concatenate(row)
