@@ -29,8 +29,8 @@ The documentaion and tutorials can be found at `pylipid.readthedocs.io <https://
 
 Installation
 ============
-python -m venv venv_pylipid_multiproc
-source activate venv_pylipid_multiproc/bin/activate
+``python -m venv venv_pylipid_multiproc``
+``source activate venv_pylipid_multiproc/bin/activate``
 
 ``git clone https://github.com/alexmoger/PyLipID_multiproc.git``
 
