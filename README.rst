@@ -29,18 +29,20 @@ The documentaion and tutorials can be found at `pylipid.readthedocs.io <https://
 
 Installation
 ============
-``python -m venv venv_pylipid_multiproc``
-``source activate venv_pylipid_multiproc/bin/activate``
 
-``git clone https://github.com/alexmoger/PyLipID_multiproc.git``
+We recommend installing PyLipID using the package installer `pip`:
 
-``cd PyLipID_multiproc``
-``pip install -U setuptools pip``
+``pip install pylipid``
+
+Alternatively, PyLipID can be installed from the source code. The package is available for
+download on Github via:
+
+``git clone https://github.com/wlsong/PyLipID``
+
+Once the source code is downloaded, enter the source code directory and install the package as follow:
+
 ``python setup.py install``
-``pip install numpy``
-``pip install kneebow logomaker mdtraj networkx p_tqdm pandas python-louvain scikit-learn scipy statsmodels tqdm``
 
-Adjust num_cpus  and write as final arg to LipidInteraction class in run script
 
 Citation |DOI for Citing PyEMMA|
 ================================
