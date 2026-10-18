@@ -17,6 +17,7 @@
 """This module contains functions for calculating binding sites"""
 
 import os
+import warnings
 from collections import defaultdict
 from itertools import product
 import networkx as nx
@@ -352,7 +353,11 @@ def calculate_scores(dist_matrix, kde_bw=0.15, pca_component=0.90, score_weights
             for dummy in range(len(transformed_data[0])):
                 var_type += "c"
                 bw.append(kde_bw)
-            kde_funcs[atom_idx] = kde(data=transformed_data, var_type=var_type, bw=bw)
+            with warnings.catch_warnings():
+                # statsmodels warns that its default RNG will change; the RNG is only used for
+                # data-driven bandwidth selection, and bw is given explicitly here
+                warnings.filterwarnings("ignore", message="After 0.17", category=FutureWarning)
+                kde_funcs[atom_idx] = kde(data=transformed_data, var_type=var_type, bw=bw)
         # evaluate binding poses
         scores = np.sum([weights[atom_idx] * kde_funcs[atom_idx].pdf()
                          for atom_idx in np.arange(np.shape(dist_matrix)[0])], axis=0)
