@@ -15,6 +15,7 @@ import os
 import numpy as np
 import pytest
 import mdtraj as md
+from pylipid.api import LipidInteraction
 
 
 # ---------------------------------------------------------------------------
@@ -155,3 +156,52 @@ def synthetic_traj_dir(tmp_path_factory):
         "lipid":         "CHOL",
         "cutoffs":       [0.55, 0.8],
     }
+
+
+# ---------------------------------------------------------------------------
+# Real data (tests/data)
+# ---------------------------------------------------------------------------
+
+_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+@pytest.fixture(scope="session")
+def real_traj_dir():
+    """
+    The committed coarse-grained trajectories in tests/data: two 251-frame runs
+    of a 302-residue protein in a membrane with CHOL and six other lipids.
+
+    Interactions_CHOL.csv holds PyLipID results for the full-length (2501-frame)
+    versions of these runs, so values differ, but its binding sites should be
+    recovered.
+    """
+    runs = [os.path.join(_DATA_DIR, "run{}".format(i)) for i in (1, 2)]
+    return {
+        "trajfile_list": [os.path.join(r, "protein_lipids.xtc") for r in runs],
+        "topfile_list":  [os.path.join(r, "protein_lipids.gro") for r in runs],
+        "pdb_file":      os.path.join(_DATA_DIR, "receptor.pdb"),
+        "reference_csv": os.path.join(_DATA_DIR, "Interactions_CHOL.csv"),
+        "lipid":         "CHOL",
+        "cutoffs":       [0.55, 0.8],
+    }
+
+
+@pytest.fixture(scope="session")
+def real_li(real_traj_dir, tmp_path_factory):
+    """
+    LipidInteraction on the real trajectories with residue contacts, residue
+    kinetics and binding sites computed once per test session.
+    """
+    np.random.seed(0)
+    li = LipidInteraction(
+        real_traj_dir["trajfile_list"],
+        cutoffs=real_traj_dir["cutoffs"],
+        topfile_list=real_traj_dir["topfile_list"],
+        lipid=real_traj_dir["lipid"],
+        nprot=1,
+        save_dir=str(tmp_path_factory.mktemp("real_output")),
+    )
+    li.collect_residue_contacts()
+    li.compute_residue_koff(plot_data=False)
+    li.compute_binding_nodes(threshold=4, print_data=False)
+    return li

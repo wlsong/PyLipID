@@ -1,157 +1,95 @@
 """
-Pytest fixtures for PyLipID tests.
+End-to-end test of the LipidInteraction API on the committed trajectories (tests/data).
 
-Generates small synthetic MDTraj trajectories in a temporary directory so that
-CI can run without any committed trajectory data files.
-
-Topology:
-  - 30 protein residues (ALA/GLY alternating, one chain)
-  - 20 CHOL lipid molecules (3 atoms each: C1, C2, O1)
-  - Cubic box, 8 nm side
-  - 2 trajectory files, 100 frames each
+Restores the original upstream test_pylipid workflow, which was accidentally replaced by a
+copy of conftest.py, and checks the main outputs.
 """
 
 import os
 import numpy as np
+import pandas as pd
 import pytest
-import mdtraj as md
+from pylipid.api import LipidInteraction
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-_AA_NAMES = ["ALA", "GLY", "VAL", "LEU", "ILE", "PRO", "PHE", "TRP",
-             "MET", "SER"]
-_N_PROTEIN_RESIDUES = 30
-_N_LIPID_MOLECULES  = 20
-_N_FRAMES           = 100
-_BOX_NM             = 8.0          # cubic box side length in nm
-_N_RUNS             = 2            # number of trajectory files
-
-
-def _build_topology():
-    """Build a minimal MDTraj topology: protein + CHOL lipids."""
-    top = md.Topology()
-
-    # --- protein chain ---
-    pchain = top.add_chain()
-    for i in range(_N_PROTEIN_RESIDUES):
-        resname = _AA_NAMES[i % len(_AA_NAMES)]
-        res = top.add_residue(resname, pchain)
-        top.add_atom("CA",  md.element.carbon,   res)
-        top.add_atom("CB",  md.element.carbon,   res)
-        top.add_atom("N",   md.element.nitrogen, res)
-        top.add_atom("C",   md.element.carbon,   res)
-        top.add_atom("O",   md.element.oxygen,   res)
-
-    # --- lipid chain ---
-    lchain = top.add_chain()
-    for _ in range(_N_LIPID_MOLECULES):
-        res = top.add_residue("CHOL", lchain)
-        top.add_atom("C1",  md.element.carbon, res)
-        top.add_atom("C2",  md.element.carbon, res)
-        top.add_atom("O1",  md.element.oxygen, res)
-
-    return top
+@pytest.fixture(scope="module")
+def li(real_traj_dir, tmp_path_factory):
+    np.random.seed(0)
+    instance = LipidInteraction(
+        real_traj_dir["trajfile_list"],
+        cutoffs=real_traj_dir["cutoffs"],
+        topfile_list=real_traj_dir["topfile_list"],
+        lipid=real_traj_dir["lipid"],
+        nprot=1,
+        save_dir=str(tmp_path_factory.mktemp("api_output")),
+    )
+    instance.collect_residue_contacts()
+    return instance
 
 
-def _build_trajectory(top, rng, n_frames=_N_FRAMES):
-    """
-    Build a synthetic trajectory.
+def test_pylipid_workflow(li, real_traj_dir):
+    n_residues = len(li.residue_list)
 
-    Protein residues are placed in a cluster near the box centre.
-    Lipid molecules are placed nearby so that some will fall within
-    the contact cutoffs and generate non-trivial interaction data.
-    """
-    n_atoms = top.n_atoms
-    xyz = np.zeros((n_frames, n_atoms, 3), dtype=np.float32)
+    occupancies = li.compute_residue_occupancy()
+    assert len(occupancies) == n_residues
+    li.compute_residue_occupancy(10)
 
-    atoms_per_prot_res = 5   # CA CB N C O
-    atoms_per_lipid    = 3   # C1 C2 O1
-    n_prot_atoms = _N_PROTEIN_RESIDUES * atoms_per_prot_res
+    durations = li.compute_residue_duration()
+    assert len(durations) == n_residues
+    li.compute_residue_duration(10)
+    li.compute_residue_duration([2, 3, 4])
 
-    centre = _BOX_NM / 2.0
+    koffs, restimes = li.compute_residue_koff(plot_data=False)
+    assert len(koffs) == n_residues and len(restimes) == n_residues
+    li.compute_residue_koff(10)
+    li.compute_residue_koff([2, 4, 5, 10])
 
-    for frame in range(n_frames):
-        # protein — small fluctuations around centre
-        prot_base = rng.uniform(centre - 1.0, centre + 1.0,
-                                size=(n_prot_atoms, 3)).astype(np.float32)
-        prot_noise = rng.normal(0, 0.05, size=prot_base.shape).astype(np.float32)
-        xyz[frame, :n_prot_atoms] = prot_base + prot_noise
+    node_list = li.compute_binding_nodes(threshold=4)
+    assert len(node_list) > 0, "no binding sites found in the real data"
+    li.compute_binding_nodes(threshold=2, print_data=False)
+    li.compute_binding_nodes(threshold=4, print_data=False)
 
-        # lipids — placed close enough to protein to generate contacts
-        for lip_idx in range(_N_LIPID_MOLECULES):
-            start = n_prot_atoms + lip_idx * atoms_per_lipid
-            # Alternate between near (within cutoff) and far positions
-            if lip_idx < _N_LIPID_MOLECULES // 2:
-                offset = rng.uniform(0.3, 0.6, size=(atoms_per_lipid, 3))
-            else:
-                offset = rng.uniform(1.5, 3.0, size=(atoms_per_lipid, 3))
-            sign = rng.choice([-1, 1], size=(atoms_per_lipid, 3))
-            xyz[frame, start:start + atoms_per_lipid] = (
-                centre + sign * offset.astype(np.float32)
-            )
+    site_koffs, site_restimes = li.compute_site_koff(plot_data=False)
+    assert len(site_koffs) == len(li._node_list)
+    li.compute_site_koff(binding_site_id=[1, 2, 3])
+    li.compute_site_koff(binding_site_id=1)
 
-    unitcell_lengths = np.full((n_frames, 3), _BOX_NM, dtype=np.float32)
-    unitcell_angles  = np.full((n_frames, 3), 90.0,    dtype=np.float32)
+    li.compute_site_duration()
+    li.compute_site_duration(1)
+    li.compute_site_duration([0, 1])
 
-    return md.Trajectory(xyz, top,
-                         unitcell_lengths=unitcell_lengths,
-                         unitcell_angles=unitcell_angles)
+    li.analyze_bound_poses()
+    li.analyze_bound_poses(binding_site_id=[1, 2, 3])
+    li.analyze_bound_poses(binding_site_id=[1, 2, 3], n_clusters=2)
 
+    li.compute_surface_area()
+    li.compute_surface_area(binding_site_id=[1, 2, 3])
+    li.compute_surface_area(binding_site_id=[1, 2, 3], radii={"BB": 0.30, "SC1": 0.2})
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+    li.write_site_info()
+    li.write_site_info(sort_residue="Duration")
 
-@pytest.fixture(scope="session")
-def synthetic_traj_dir(tmp_path_factory):
-    """
-    Session-scoped fixture: builds synthetic trajectory files once per test
-    session and returns a dict with file paths and metadata.
+    li.show_stats_per_traj()
 
-    Returns
-    -------
-    dict with keys:
-        trajfile_list  : list of .xtc paths
-        topfile_list   : list of .gro paths
-        pdb_file       : path to receptor .pdb
-        lipid          : lipid residue name (str)
-        cutoffs        : [lower, upper] cutoffs in nm
-    """
-    rng = np.random.default_rng(42)
-    top = _build_topology()
-    base = tmp_path_factory.mktemp("traj_data")
+    li.save_data(item="Dataset")
+    li.save_data(item="Duration")
 
-    trajfile_list = []
-    topfile_list  = []
+    li.save_coordinate(item="Residence Time")
+    li.save_coordinate(item="Duration")
 
-    for run_idx in range(_N_RUNS):
-        run_dir = base / "run{}".format(run_idx + 1)
-        run_dir.mkdir()
+    li.save_pymol_script(pdb_file=real_traj_dir["pdb_file"])
 
-        traj = _build_trajectory(top, rng)
+    li.plot(item="Duration")
+    li.plot(item="Residence Time")
 
-        xtc_path = str(run_dir / "protein_lipids.xtc")
-        gro_path = str(run_dir / "protein_lipids.gro")
+    li.plot_logo(item="Residence Time")
+    li.plot_logo(item="Lipid Count")
 
-        traj.save_xtc(xtc_path)
-        traj[0].save_gro(gro_path)
-
-        trajfile_list.append(xtc_path)
-        topfile_list.append(gro_path)
-
-    # receptor PDB (protein atoms only)
-    prot_atom_indices = top.select("protein")
-    prot_traj = traj[0].atom_slice(prot_atom_indices)
-    pdb_path = str(base / "receptor.pdb")
-    prot_traj.save_pdb(pdb_path)
-
-    return {
-        "trajfile_list": trajfile_list,
-        "topfile_list":  topfile_list,
-        "pdb_file":      pdb_path,
-        "lipid":         "CHOL",
-        "cutoffs":       [0.55, 0.8],
-    }
+    dataset = li.dataset
+    assert len(dataset) == n_residues
+    for column in ["Residue", "Occupancy", "Duration", "Residence Time", "Binding Site ID"]:
+        assert column in dataset.columns
+    assert dataset["Occupancy"].between(0, 100).all()
+    saved_files = [f for _, _, files in os.walk(li.save_dir) for f in files]
+    assert any(f.endswith(".csv") for f in saved_files)
+    assert any(f.endswith(".pml") or f.endswith(".py") for f in saved_files)
