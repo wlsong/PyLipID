@@ -76,6 +76,10 @@ Quick Start
     li.save_data("Dataset")
     li.save_pymol_script(pdb_file="receptor.pdb")
 
+PyLipID runs its calculations in parallel worker processes. When running it as a script, put the
+code under ``if __name__ == "__main__":`` (required on macOS and Windows, where the script would otherwise
+fail or hang); Jupyter notebooks need no change.
+
 What's New in v1.6.0
 ====================
 
@@ -98,7 +102,9 @@ Bug Fixes
 
 Performance
 -----------
-- collect_residue_contacts now calls md.compute_distances once per residue.
+- collect_residue_contacts computes distances in large batches instead of once per lipid
+  (about 1.8x faster than per-residue calls on the test data).
+- Survival-function calculation for koff is vectorised (identical results, ~20% faster koff).
 - Nested progress bars implemented.
 
 Dependencies
