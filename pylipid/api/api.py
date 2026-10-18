@@ -26,14 +26,14 @@ np.seterr(all='ignore')
 from scipy.sparse import coo_matrix
 import pandas as pd
 from tqdm import trange, tqdm
-#from p_tqdm import p_map
 from multiprocessing import get_context, shared_memory
 from ..func import cal_contact_residues
 from ..func import Duration
 from ..func import cal_lipidcount, cal_occupancy
 from ..func import get_node_list
 from ..func import collect_bound_poses
-from ..func import analyze_pose_wrapper, calculate_koff_wrapper, calculate_surface_area_wrapper
+from ..func import analyze_pose_wrapper, calculate_koff_wrapper
+from ..func.binding_site import surface_area_chunk, MARTINI_CG_RADII
 from ..plot import plot_surface_area, plot_binding_site_data
 from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logo
 from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, get_traj_info
@@ -1482,8 +1482,13 @@ class LipidInteraction:
 
         Atom radius is required for calculation of surface areas. MDtraj defines the radii for common atoms (see
         `here <https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56>`_). The radius of the BB bead
-        in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3 are defined as 0.23 nm in this method. Use the param ``radii``
-        to define or change of definition of atom radius.
+        in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3/SC4 are defined as 0.23 nm in this method. Use the param
+        ``radii`` to define or change of definition of atom radius, keyed by atom name. (Before PyLipID 1.6.0 these
+        radii were not applied, as mdtraj matched them against element symbols; each frame is also now calculated
+        separately, see :func:`pylipid.func.binding_site.surface_area_chunk`.)
+
+        Frames are shared between worker processes (``num_cpus``); the results do not depend on the number of
+        workers.
 
         Parameters
         -----------
@@ -1534,8 +1539,6 @@ class LipidInteraction:
             Journal of Molecular Biology 1973, 79 (2), 351-371
 
         """
-        MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
-
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
 
         if "Binding Site Surface Area" in self.dataset.columns:
@@ -1543,26 +1546,45 @@ class LipidInteraction:
             surface_area_per_residue = np.array(self.dataset["Binding Site Surface Area"].tolist())
         else:
             surface_area_per_residue = np.zeros(self._nresi_per_protein)
-        if radii is None:
-            radii_book = MARTINI_CG_radii
-        else:
-            radii_book = {**MARTINI_CG_radii, **radii}
+        radii_book = MARTINI_CG_RADII if radii is None else {**MARTINI_CG_RADII, **radii}
 
         # calculate binding site surface area
         selected_bs_id = np.atleast_1d(np.array(binding_site_id, dtype=int)) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
-        selected_bs_id_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
-        returned_values = _spawn_pmap(partial(calculate_surface_area_wrapper, binding_site_map=selected_bs_id_map,
-                                        nprot=self._nprot, timeunit=self._timeunit, stride=self._stride,
-                                        dt_traj=self._dt_traj, radii=radii_book), self._trajfile_list,
-                                self._topfile_list, np.arange(len(self._trajfile_list), dtype=int),
-                                num_cpus=num_cpus, desc="CALCULATE BINDING SITE SURFACE AREA")
+        n_workers = num_cpus if num_cpus is not None else (os.cpu_count() or 1)
+        # Each trajectory is loaded once here; its frames are split into chunks that the workers calculate
+        # independently (~4 chunks per worker over all trajectories, for load balancing)
+        trajs = []
+        for traj_idx in range(len(self._trajfile_list)):
+            traj = md.load(self._trajfile_list[traj_idx], top=self._topfile_list[traj_idx], stride=self._stride)
+            traj_info, _, _ = get_traj_info(traj, nprot=self._nprot, protein_ref="A")  # protein_ref="A" skips
+            # building a protein topology file
+            if self._dt_traj is None:
+                traj_times = traj.time / 1000000.0 if self._timeunit == "us" else traj.time / 1000.0
+            else:
+                traj_times = float(self._dt_traj * self._stride) * np.arange(traj.n_frames)
+            for protein_idx in np.arange(self._nprot):
+                protein_atomid_list = traj_info["protein_residue_atomid_list"][protein_idx]
+                protein_traj = traj.atom_slice(np.hstack(protein_atomid_list), inplace=False)
+                # atom indices of each binding site in protein_traj
+                offsets = np.concatenate([[0], np.cumsum([len(atoms) for atoms in protein_atomid_list])])
+                site_atoms = [np.concatenate([np.arange(offsets[node], offsets[node + 1]) for node in self._node_list[bs_id]])
+                              for bs_id in selected_bs_id]
+                trajs.append(((traj_idx, protein_idx), protein_traj, site_atoms, traj_times))
+        n_frames_total = sum(item[1].n_frames for item in trajs)
+        chunk_size = max(1, int(np.ceil(n_frames_total / (4 * n_workers))))
+        tasks = [(item_idx, start) for item_idx, item in enumerate(trajs) for start in range(0, item[1].n_frames, chunk_size)]
+        returned_values = _spawn_pmap(partial(surface_area_chunk, radii=radii_book),
+                                      [trajs[item_idx][1][start:start + chunk_size] for item_idx, start in tasks],
+                                      [trajs[item_idx][2] for item_idx, _ in tasks],
+                                      num_cpus=num_cpus, desc="CALCULATE BINDING SITE SURFACE AREA")
         surface_data = []
         data_keys = []
-        for returned_tuple in returned_values:
-             for idx in np.arange(len(returned_tuple[0])):
-                surface_data.append(returned_tuple[0][idx])
-                data_keys.append(returned_tuple[1][idx])
+        column_names = ["Binding Site {}".format(bs_id) for bs_id in selected_bs_id] + ["Time"]
+        for item_idx, (key, protein_traj, site_atoms, traj_times) in enumerate(trajs):
+            areas = np.concatenate([value for (task_item, _), value in zip(tasks, returned_values) if task_item == item_idx])
+            surface_data.append(pd.DataFrame(np.column_stack([areas, traj_times]), columns=column_names))
+            data_keys.append(key)
         surface_area_data = pd.concat(surface_data, keys=data_keys)
         # update dataset
         for bs_id in selected_bs_id:

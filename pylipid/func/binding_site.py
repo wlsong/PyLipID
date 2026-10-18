@@ -572,13 +572,61 @@ def analyze_pose_wrapper(bs_id, bound_poses, binding_nodes, pose_info, pose_dir=
     return pose_rmsds
 
 
+# Radii (nm) of MARTINI protein beads used for surface areas
+MARTINI_CG_RADII = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23, "SC4": 0.23}
+
+
+def _with_bead_radii(traj, radii):
+    """Prepare traj for mdtraj.shrake_rupley with radii given per atom name.
+
+    mdtraj.shrake_rupley looks radii up by element symbol, and the element mdtraj guesses for a coarse-grained bead
+    (e.g. boron for BB, sulfur for SC1) does not identify the bead, so radii keyed by bead name would be ignored.
+    Atoms whose names are in ``radii`` are given a placeholder element (created without registering it in mdtraj's
+    element tables) on a copy of the topology. Returns the trajectory copy and the change_radii to pass to
+    shrake_rupley.
+    """
+    names = {atom.name for atom in traj.topology.atoms if atom.name in radii}
+    if not names:
+        return traj, None
+    traj = md.Trajectory(traj.xyz, traj.topology.copy(), traj.time, traj.unitcell_lengths, traj.unitcell_angles)
+    elements = {name: tuple.__new__(md.element.Element, (0, "pylipid_" + name, "PYLIPID_" + name, 0.0, radii[name]))
+                for name in names}
+    for atom in traj.topology.atoms:
+        if atom.name in elements:
+            atom.element = elements[atom.name]
+    return traj, {element.symbol: element.radius for element in elements.values()}
+
+
+def _shrake_rupley_per_frame(traj, radii):
+    """Per-atom solvent accessible surface areas, shape (n_frames, n_atoms), with radii given per atom name.
+
+    Each frame is calculated in its own mdtraj.shrake_rupley call: mdtraj (up to at least 1.11) does not reset its
+    per-atom accumulator between the frames of one call, so in a multi-frame call each frame's areas include a
+    fraction of the previous frame's.
+    """
+    traj, change_radii = _with_bead_radii(traj, radii)
+    return np.concatenate([md.shrake_rupley(traj[frame_idx], mode="atom", change_radii=change_radii)
+                           for frame_idx in range(traj.n_frames)])
+
+
+def surface_area_chunk(protein_traj, binding_site_atoms, radii):
+    """Surface areas of binding sites, shape (n_frames, n_sites), for a trajectory of one protein copy.
+
+    ``binding_site_atoms`` lists the atom indices (in ``protein_traj``) of each binding site. Frames are calculated
+    independently, so a trajectory can be split into chunks of frames with identical results.
+    """
+    if len(binding_site_atoms) == 0:
+        return np.empty((protein_traj.n_frames, 0))
+    area_all = _shrake_rupley_per_frame(protein_traj, radii)
+    return np.array([area_all[:, atom_ids].sum(axis=1) for atom_ids in binding_site_atoms]).T
+
+
 def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map={}, nprot=1, timeunit="us",
                                    stride=1, dt_traj=None, radii=None):
     """A wrapper function for calculating surface area.
 
-    A wrapper function is to assist the calculation using `p_tqdm <https://github.com/swansonk14/p_tqdm>`_, which is
-    a multiprocessing library incorporated with progress bars. So some of the setting or parameters are used to
-    assist the use of multiprocessing.
+    A wrapper function to assist the calculation using Python multiprocessing, so some of the settings or
+    parameters are used to assist the use of multiprocessing.
 
     In this function, the provided trajectory is read by mdtraj.read() and the solvent accessible surface of each residue
     is calculated by `mdtraj.shrake_rupley <https://mdtraj.org/1.9.4/api/generated/mdtraj.shrake_rupley.html>`_. The
@@ -588,8 +636,8 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
 
     The calculation of surface area requires a definition of the protein atom radius. MDtraj defines the radii for common
     atoms (see `here <https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56>`_). The radius of the BB
-    bead in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3 are defined as 0.23 nm in this function. Use the param
-    ``radii`` to define or change of definition of atom radius.
+    bead in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3/SC4 are defined as 0.23 nm in this function. Use the param
+    ``radii`` to define or change of definition of atom radius, keyed by atom name.
 
     The returned data ``surface_area`` is a list of pandas.DataFrame objects, and each of these pandas.DataFrame object
     contains surface area data for one copy of the proteins in the simulation system. That is, if the system has N copies
@@ -599,7 +647,7 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
     surface areas are measured. The other returned data ``data_keys`` contains a list of tuples of (traj_idx, protein_idx),
     which corresponds to the list of pandas.DataFrame objects of ``surface_area``. The reason for having this arrangement
     is to assist the generation of a big pandas.DataFrame that includes surface area data from all trajectories in
-    :meth:`pylipid.api.LipidInteraction.compute_surface_area` when used in combination with ``p_tqdm``.
+    :meth:`pylipid.api.LipidInteraction.compute_surface_area` when used with Python multiprocessing.
 
     Parameters
     ----------
@@ -647,11 +695,7 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
         Calculate binding site surface area from a list of trajectories.
 
     """
-    MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
-    if radii is None:
-        radii_book = MARTINI_CG_radii
-    else:
-        radii_book = {**MARTINI_CG_radii, **radii}
+    radii_book = MARTINI_CG_RADII if radii is None else {**MARTINI_CG_RADII, **radii}
     traj = md.load(trajfile, top=topfile, stride=stride)
     traj_info, _, _ = get_traj_info(traj, nprot=nprot, protein_ref="A") # Assign random value to protein_ref to
     # prevent generation of protein Topology file to save time.
@@ -669,8 +713,7 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
         binding_site_map_atoms = {
             bs_id: np.hstack([traj_info_new["protein_residue_atomid_list"][0][node] for node in nodes])
             for bs_id, nodes in binding_site_map.items()}
-        area_all = md.shrake_rupley(new_traj, mode='atom', change_radii=radii_book)
-        selected_data = [area_all[:, atomids].sum(axis=1) for bs_id, atomids in binding_site_map_atoms.items()]
+        selected_data = list(surface_area_chunk(new_traj, list(binding_site_map_atoms.values()), radii_book).T)
         selected_data.append(traj_times)
         column_names = ["Binding Site {}".format(bs_id) for bs_id, atomids in binding_site_map_atoms.items()]
         column_names.append("Time")
