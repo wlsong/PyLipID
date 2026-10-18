@@ -1,5 +1,5 @@
 PyLipID - Analysis of Protein–Lipid Interactions from Molecular Dynamics
-============================================================
+========================================================================
 
 .. image:: https://github.com/pstansfeld/PyLipID/actions/workflows/ci.yml/badge.svg
    :target: https://github.com/pstansfeld/PyLipID/actions/workflows/ci.yml
