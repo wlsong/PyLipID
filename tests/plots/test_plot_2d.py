@@ -2,6 +2,7 @@ import os
 import unittest
 import numpy as np
 import shutil
+import tempfile
 from pylipid.util import check_dir
 from pylipid.plot import plot_corrcoef
 
@@ -9,8 +10,8 @@ from pylipid.plot import plot_corrcoef
 class TestPlot2d(unittest.TestCase):
 
     def setUp(self):
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        self.save_dir = os.path.join(file_dir, "test_plot1d")
+        # a fresh temporary directory, so concurrent test runs from one checkout do not collide
+        self.save_dir = tempfile.mkdtemp(prefix="pylipid_test_")
         check_dir(self.save_dir)
 
     def test_plot_corrcoef(self):

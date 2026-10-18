@@ -1,5 +1,5 @@
 PyLipID - Analysis of Protein–Lipid Interactions from Molecular Dynamics
-============================================================
+========================================================================
 
 .. image:: https://github.com/pstansfeld/PyLipID/actions/workflows/ci.yml/badge.svg
    :target: https://github.com/pstansfeld/PyLipID/actions/workflows/ci.yml
@@ -83,8 +83,24 @@ fail or hang); Jupyter notebooks need no change.
 What's New in v1.6.0
 ====================
 
+Changes to Results
+------------------
+- Binding site surface areas (compute_surface_area) now use the MARTINI bead radii PyLipID has always
+  documented (BB 0.26 nm, SC1-SC4 0.23 nm) and any ``radii`` given. Before, mdtraj matched these against
+  element symbols, so they were ignored and the radii of boron and sulfur (0.19/0.18 nm) were used. Each
+  frame is also calculated separately, working around an mdtraj issue that adds part of the previous
+  frame's area to each frame in a multi-frame call. Site surface areas are typically 5-20% smaller than
+  in earlier versions.
+- With ``np.random.seed()`` set in the calling script, bootstrapped koffs and the poses chosen to
+  represent pose clusters are now reproducible (worker processes previously ignored the seed). Note that
+  with scipy 1.17 (the last release for Python 3.11) curve_fit does not always return the same fit for
+  the same data, so koff values can still vary slightly between runs there; scipy >= 1.18 (Python >= 3.12)
+  is repeatable.
+
 Bug Fixes
 ---------
+- analyze_bound_poses no longer fails when many bound poses are identical (DBSCAN eps of 0), and a
+  ``min_samples`` passed to it is now used instead of being overwritten.
 - Corrected binding-site detection off-by-one error.
 - Fixed calculate_scores returning None.
 - Fixed sparse_corrcoef matrix type issues.
@@ -102,14 +118,21 @@ Bug Fixes
 
 Performance
 -----------
-- collect_residue_contacts computes distances in large batches instead of once per lipid
-  (about 1.8x faster than per-residue calls on the test data).
+- collect_residue_contacts computes distances in large batches instead of once per lipid, and shares
+  the batches between worker processes that read the coordinates from shared memory (``num_cpus``;
+  parallel contacts suggested by Alex Moger). Results are identical to the serial calculation; on a
+  2 x 2,000-frame system contacts take 8 s instead of 40 s.
+- Bound-pose scoring evaluates the kernel density estimate in numpy (~20x faster; same scores to
+  within floating-point rounding).
+- Surface areas are shared between worker processes by chunks of frames rather than by trajectory.
+- Progress bars for parallel steps now follow the calculation.
 - Survival-function calculation for koff is vectorised (identical results, ~20% faster koff).
 - Nested progress bars implemented.
 
 Dependencies
 ------------
 - Removed python-louvain; using NetworkX built-in Louvain.
+- Removed statsmodels and p_tqdm (no longer used).
 - Minimum versions added.
 - Dropped Python < 3.11; supports Python 3.11–3.14, numpy 2, pandas 3 and current mdtraj.
 

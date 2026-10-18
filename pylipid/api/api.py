@@ -26,14 +26,14 @@ np.seterr(all='ignore')
 from scipy.sparse import coo_matrix
 import pandas as pd
 from tqdm import trange, tqdm
-#from p_tqdm import p_map
-from multiprocessing import get_context
+from multiprocessing import get_context, shared_memory
 from ..func import cal_contact_residues
 from ..func import Duration
 from ..func import cal_lipidcount, cal_occupancy
 from ..func import get_node_list
 from ..func import collect_bound_poses
-from ..func import analyze_pose_wrapper, calculate_koff_wrapper, calculate_surface_area_wrapper
+from ..func import analyze_pose_wrapper, calculate_koff_wrapper
+from ..func.binding_site import surface_area_chunk, MARTINI_CG_RADII
 from ..plot import plot_surface_area, plot_binding_site_data
 from ..plot import plot_residue_data, plot_corrcoef, plot_residue_data_logo
 from ..util import check_dir, write_PDB, write_pymol_script, sparse_corrcoef, get_traj_info
@@ -48,10 +48,113 @@ def _spawn_pmap(func, *iterables, num_cpus=None, desc=None):
         raise ValueError("All iterables must have the same length")
     if n == 0:
         return []
-    args_iterable = list(zip(*iterables))
+    # Each task seeds numpy's global random state (used by e.g. koff bootstrapping and cluster pose selection) from
+    # the parent's, so np.random.seed() in the calling script makes results reproducible for any number of workers.
+    seeds = np.random.randint(0, 2**32 - 1, size=n, dtype=np.uint32)
+    args_iterable = list(zip(seeds, zip(*iterables)))
     ctx = get_context("spawn")
     with ctx.Pool(processes=num_cpus) as pool:
-        return list(tqdm(pool.starmap(func, args_iterable), total=n, desc=desc))
+        # imap (rather than starmap) so the progress bar follows the calculation; chunks as starmap would
+        chunksize = max(1, n // (4 * pool._processes))
+        return list(tqdm(pool.imap(partial(_seeded_call, func), args_iterable, chunksize=chunksize),
+                         total=n, desc=desc))
+
+
+def _seeded_call(func, seed_args):
+    seed, args = seed_args
+    np.random.seed(seed)
+    return func(*args)
+
+
+# Residue contacts are calculated in batches of residues, with one md.compute_distances call per batch: each call
+# converts the unit cell to box vectors (with per-frame validity checks), which costs more than the distances
+# themselves when done once per residue. A batch holds at most this many distances (n_frames x atom pairs).
+_MAX_BATCH_DISTANCES = 25_000_000
+# Below this many distances in a trajectory (~2 s serial), contacts are calculated in the main process: starting
+# the workers (each imports PyLipID) costs about as much as they would save
+_MIN_PARALLEL_DISTANCES = 500_000_000
+
+
+def _contact_batches(residue_atomid_list, n_flat, n_frames, max_distances):
+    """Split residue ids into consecutive batches of at most max_distances (n_frames x atom pairs), >= 1 residue each."""
+    batches, current, size = [], [], 0
+    for residue_id, atoms in enumerate(residue_atomid_list):
+        n_distances = len(atoms) * n_flat * n_frames
+        if current and size + n_distances > max_distances:
+            batches.append(current)
+            current, size = [], 0
+        current.append(residue_id)
+        size += n_distances
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _batch_contacts(traj, batch_atomid_list, flat_lipid_atoms, lipid_boundaries, cutoffs):
+    """Contacts between each residue in a batch and the lipids.
+
+    Returns, for each residue, (contact_low, contact_high, frame_id_set_low, lipid_id_set_low, distances), where
+    distances are the residue-lipid minimum distances of the lower-cutoff contacts.
+    """
+    n_flat = len(flat_lipid_atoms)
+    # (residue atom, lipid atom) pairs in the order of product(residue atoms, lipid atoms) for each residue
+    pairs = np.concatenate([np.column_stack((np.repeat(atoms, n_flat), np.tile(flat_lipid_atoms, len(atoms))))
+                            for atoms in batch_atomid_list])
+    batch_dists = md.compute_distances(traj, pairs, periodic=True, opt=True)
+    results = []
+    start = 0
+    for atoms in batch_atomid_list:
+        end = start + len(atoms) * n_flat
+        # (n_frames, n_res_atoms * n_flat) -> min over residue atoms -> (n_frames, n_flat)
+        per_atom_dists = batch_dists[:, start:end].reshape(traj.n_frames, len(atoms), n_flat).min(axis=1)
+        # min over the atoms of each lipid -> dist_matrix shape: (n_lipids, n_frames)
+        dist_matrix = np.minimum.reduceat(per_atom_dists, lipid_boundaries[:-1], axis=1).T
+        contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix, cutoffs[0])
+        contact_high, _, _ = cal_contact_residues(dist_matrix, cutoffs[1])
+        results.append((contact_low, contact_high, frame_id_set_low, lipid_id_set_low,
+                        dist_matrix[lipid_id_set_low, frame_id_set_low]))
+        start = end
+    return results
+
+
+# Worker-side cache of the trajectory in shared memory: (shared memory name, SharedMemory, md.Trajectory)
+_worker_traj = (None, None, None)
+
+
+def _batch_contacts_worker(task):
+    """Run _batch_contacts in a worker process on the coordinates (and box) held in shared memory."""
+    global _worker_traj
+    shm_name, n_frames, n_atoms, has_box, batch_atomid_list, flat_lipid_atoms, lipid_boundaries, cutoffs = task
+    if _worker_traj[0] != shm_name:
+        if _worker_traj[1] is not None:
+            _worker_traj[1].close()
+        shm = _attach_shared_memory(shm_name)
+        xyz = np.ndarray((n_frames, n_atoms, 3), dtype=np.float32, buffer=shm.buf)
+        box = np.ndarray((n_frames, 3, 3), dtype=np.float32, buffer=shm.buf, offset=xyz.nbytes) if has_box else None
+        # coordinates only: md.compute_distances needs no topology
+        traj = md.Trajectory(xyz, None)
+        traj.unitcell_vectors = box
+        _worker_traj = (shm_name, shm, traj)
+    return _batch_contacts(_worker_traj[2], batch_atomid_list, flat_lipid_atoms, lipid_boundaries, cutoffs)
+
+
+def _attach_shared_memory(name):
+    try:
+        # the parent owns (and unlinks) the block; Python >= 3.13 can skip registering it in the worker
+        return shared_memory.SharedMemory(name=name, track=False)
+    except TypeError:
+        return shared_memory.SharedMemory(name=name)
+
+
+def _traj_to_shared_memory(traj):
+    """Copy coordinates (and box vectors, if any) into a new shared memory block."""
+    xyz = np.ascontiguousarray(traj.xyz, dtype=np.float32)
+    box = None if traj.unitcell_vectors is None else np.ascontiguousarray(traj.unitcell_vectors, dtype=np.float32)
+    shm = shared_memory.SharedMemory(create=True, size=xyz.nbytes + (0 if box is None else box.nbytes))
+    np.ndarray(xyz.shape, dtype=np.float32, buffer=shm.buf)[:] = xyz
+    if box is not None:
+        np.ndarray(box.shape, dtype=np.float32, buffer=shm.buf, offset=xyz.nbytes)[:] = box
+    return shm, box is not None
 
 class LipidInteraction:
     def __init__(self, trajfile_list, cutoffs=[0.475, 0.7], lipid="CHOL", topfile_list=None, lipid_atoms=None,
@@ -308,7 +411,7 @@ class LipidInteraction:
     ########################################
     #     interaction calculation
     ########################################
-    def collect_residue_contacts(self):
+    def collect_residue_contacts(self, num_cpus=None):
         r"""Create contacting lipid index for residues.
 
         This function creates contacting lipid index for residues that are used for the rest of calculation in PyLipID.
@@ -330,6 +433,16 @@ class LipidInteraction:
         The class attribute :meth:`~LipidInteraction.dataset` which stores the summary of lipid interaction as a
         pandas.DataFrame object, is initialized in this method.
 
+        Residues are processed in batches. For larger systems the batches are shared between worker processes that
+        read the trajectory coordinates from shared memory; small systems are calculated in the main process. The
+        results are the same either way.
+
+        Parameters
+        ----------
+        num_cpus : int or None, optional, default=None
+            Number of worker processes for the contact calculation. If None, all the available CPUs are used (for
+            systems large enough to benefit). 1 calculates the contacts in the main process.
+
         """
         self._protein_ref = None
         self._lipid_ref = None
@@ -341,95 +454,105 @@ class LipidInteraction:
         row = []
         data = []
         ncol_start = 0
-        # calculate interactions from trajectories
-        for traj_idx in trange(len(self._trajfile_list), desc="COLLECT INTERACTIONS FROM TRAJECTORIES",
-                               total=len(self._trajfile_list)):
-            traj = md.load(self._trajfile_list[traj_idx], top=self._topfile_list[traj_idx], stride=self._stride)
-            traj_info, self._protein_ref, self._lipid_ref = get_traj_info(traj, lipid=self._lipid,
-                                                                          lipid_atoms=self._lipid_atoms,
-                                                                          resi_offset=self._resi_offset,
-                                                                          nprot=self._nprot,
-                                                                          protein_ref=self._protein_ref,
-                                                                          lipid_ref=self._lipid_ref)
-            if self._dt_traj is None:
-                timestep = traj.timestep / 1000000.0 if self._timeunit == "us" else traj.timestep / 1000.0
-            else:
-                timestep = float(self._dt_traj * self._stride)
-            self._T_total.append((traj.n_frames - 1) * timestep)
-            self._timesteps.append(timestep)
-            if len(self._protein_residue_id) == 0:
-                self._protein_residue_id = traj_info["protein_residue_id"]
-                self._residue_list = traj_info["residue_list"]
-                self._nresi_per_protein = len(self._residue_list)
-                self._duration = dict()
-                self._occupancy = dict()
-                self._lipid_count = dict()
-                self._contact_residues_high = {residue_id: [] for residue_id in self._protein_residue_id}
-                self._contact_residues_low = {residue_id: [] for residue_id in self._protein_residue_id}
-                self._koff = np.zeros(self._nresi_per_protein)
-                self._koff_boot = np.zeros(self._nresi_per_protein)
-                self._r_squared = np.zeros(self._nresi_per_protein)
-                self._r_squared_boot = np.zeros(self._nresi_per_protein)
-                self._res_time = np.zeros(self._nresi_per_protein)
-                self._residue_map = {residue_name: residue_id
-                                     for residue_id, residue_name in zip(self._protein_residue_id, self._residue_list)}
-            else:
-                assert len(self._protein_residue_id) == len(traj_info["protein_residue_id"]), \
-                    "Trajectory {} contains {} residues whereas trajectory {} contains {} residues".format(
-                        traj_idx, len(traj_info["protein_residue_id"]), traj_idx - 1, len(self._protein_residue_id))
-            ncol_per_protein = len(traj_info["lipid_residue_atomid_list"]) * traj.n_frames
-            # Pre-flatten all lipid atom indices and build a boundary index so we can
-            # slice out each residue's distances to all lipid atoms from one array.
-            flat_lipid_atoms = np.concatenate(traj_info["lipid_residue_atomid_list"])
-            lipid_sizes = np.array([len(a) for a in traj_info["lipid_residue_atomid_list"]])
-            lipid_boundaries = np.concatenate([[0], np.cumsum(lipid_sizes)])
-            n_lipids = len(traj_info["lipid_residue_atomid_list"])
-            n_flat = len(flat_lipid_atoms)
-            for protein_idx in np.arange(self._nprot, dtype=int):
-                residue_atomid_list = traj_info["protein_residue_atomid_list"][protein_idx]
-                # Residues are processed in batches with ONE md.compute_distances call per batch: each call
-                # converts the unit cell to box vectors (with per-frame validity checks), which cost more than
-                # the distances themselves when done once per residue. Batches hold ~25 million distances.
-                batch_dists, batch_columns = None, {}
-                for residue_id, residue_atom_indices in enumerate(
-                        tqdm(residue_atomid_list,
-                             desc="  Traj {:d} prot {:d} residues".format(traj_idx, protein_idx),
-                             leave=False)):
-                    if residue_id not in batch_columns:
-                        # start a new batch here: (residue atom, lipid atom) pairs in the order of product()
-                        batch_columns, batch_pairs, n_pairs = {}, [], 0
-                        for batch_residue_id in range(residue_id, len(residue_atomid_list)):
-                            atoms = residue_atomid_list[batch_residue_id]
-                            size = len(atoms) * n_flat
-                            if batch_columns and (n_pairs + size) * traj.n_frames > 25_000_000:
-                                break
-                            batch_columns[batch_residue_id] = (n_pairs, n_pairs + size)
-                            batch_pairs.append(np.column_stack((np.repeat(atoms, n_flat),
-                                                                np.tile(flat_lipid_atoms, len(atoms)))))
-                            n_pairs += size
-                        batch_dists = md.compute_distances(traj, np.concatenate(batch_pairs), periodic=True, opt=True)
-                    start, end = batch_columns[residue_id]
-                    all_dists = batch_dists[:, start:end]
-                    # all_dists shape: (n_frames, n_res_atoms * n_flat_lipid_atoms)
-                    # Reduce to (n_frames, n_flat_lipid_atoms) by taking min over residue atoms
-                    n_res_atoms = len(residue_atom_indices)
-                    # reshape: (n_frames, n_res_atoms, n_flat_lipid_atoms) → min over axis 1
-                    per_atom_dists = all_dists.reshape(traj.n_frames, n_res_atoms, n_flat).min(axis=1)
-                    # (n_frames, n_flat_lipid_atoms) → per lipid min using boundaries
-                    # np.minimum.reduceat operates along axis=1 (columns = lipid atoms)
-                    dist_matrix = np.minimum.reduceat(per_atom_dists, lipid_boundaries[:-1], axis=1).T
-                    # dist_matrix shape: (n_lipids, n_frames) — same as before
-                    contact_low, frame_id_set_low, lipid_id_set_low = cal_contact_residues(dist_matrix, self._cutoffs[0])
-                    contact_high, _, _ = cal_contact_residues(dist_matrix, self._cutoffs[1])
-                    self._contact_residues_high[residue_id].append(contact_high)
-                    self._contact_residues_low[residue_id].append(contact_low)
-                    # update coordinates for coo_matrix
-                    col.append([ncol_start + ncol_per_protein * protein_idx + lipid_id * traj.n_frames +
-                                frame_id for frame_id, lipid_id in zip(frame_id_set_low, lipid_id_set_low)])
-                    row.append([residue_id for dummy in np.arange(len(frame_id_set_low), dtype=int)])
-                    data.append(dist_matrix[lipid_id_set_low, frame_id_set_low])
-
-            ncol_start += ncol_per_protein * self._nprot
+        if num_cpus is None:
+            num_cpus = os.cpu_count() or 1
+        pool, shm = None, None
+        try:
+            # calculate interactions from trajectories
+            for traj_idx in trange(len(self._trajfile_list), desc="COLLECT INTERACTIONS FROM TRAJECTORIES",
+                                   total=len(self._trajfile_list)):
+                traj = md.load(self._trajfile_list[traj_idx], top=self._topfile_list[traj_idx], stride=self._stride)
+                traj_info, self._protein_ref, self._lipid_ref = get_traj_info(traj, lipid=self._lipid,
+                                                                              lipid_atoms=self._lipid_atoms,
+                                                                              resi_offset=self._resi_offset,
+                                                                              nprot=self._nprot,
+                                                                              protein_ref=self._protein_ref,
+                                                                              lipid_ref=self._lipid_ref)
+                if self._dt_traj is None:
+                    timestep = traj.timestep / 1000000.0 if self._timeunit == "us" else traj.timestep / 1000.0
+                else:
+                    timestep = float(self._dt_traj * self._stride)
+                self._T_total.append((traj.n_frames - 1) * timestep)
+                self._timesteps.append(timestep)
+                if len(self._protein_residue_id) == 0:
+                    self._protein_residue_id = traj_info["protein_residue_id"]
+                    self._residue_list = traj_info["residue_list"]
+                    self._nresi_per_protein = len(self._residue_list)
+                    self._duration = dict()
+                    self._occupancy = dict()
+                    self._lipid_count = dict()
+                    self._contact_residues_high = {residue_id: [] for residue_id in self._protein_residue_id}
+                    self._contact_residues_low = {residue_id: [] for residue_id in self._protein_residue_id}
+                    self._koff = np.zeros(self._nresi_per_protein)
+                    self._koff_boot = np.zeros(self._nresi_per_protein)
+                    self._r_squared = np.zeros(self._nresi_per_protein)
+                    self._r_squared_boot = np.zeros(self._nresi_per_protein)
+                    self._res_time = np.zeros(self._nresi_per_protein)
+                    self._residue_map = {residue_name: residue_id
+                                         for residue_id, residue_name in zip(self._protein_residue_id, self._residue_list)}
+                else:
+                    assert len(self._protein_residue_id) == len(traj_info["protein_residue_id"]), \
+                        "Trajectory {} contains {} residues whereas trajectory {} contains {} residues".format(
+                            traj_idx, len(traj_info["protein_residue_id"]), traj_idx - 1, len(self._protein_residue_id))
+                ncol_per_protein = len(traj_info["lipid_residue_atomid_list"]) * traj.n_frames
+                # Pre-flatten all lipid atom indices and build a boundary index so we can
+                # slice out each residue's distances to all lipid atoms from one array.
+                flat_lipid_atoms = np.concatenate(traj_info["lipid_residue_atomid_list"])
+                lipid_sizes = np.array([len(a) for a in traj_info["lipid_residue_atomid_list"]])
+                lipid_boundaries = np.concatenate([[0], np.cumsum(lipid_sizes)])
+                n_flat = len(flat_lipid_atoms)
+                n_distances = sum(len(atoms) for atoms_list in traj_info["protein_residue_atomid_list"]
+                                  for atoms in atoms_list) * n_flat * traj.n_frames
+                shm, has_box, max_batch = None, False, _MAX_BATCH_DISTANCES
+                if num_cpus > 1 and n_distances >= _MIN_PARALLEL_DISTANCES:
+                    try:
+                        shm, has_box = _traj_to_shared_memory(traj)
+                    except OSError as error:
+                        # e.g. a small /dev/shm in a container: fall back to the main process
+                        warnings.warn("Shared memory unavailable ({}); calculating contacts in the main "
+                                      "process.".format(error))
+                    if shm is not None:
+                        if pool is None:
+                            pool = get_context("spawn").Pool(processes=num_cpus)
+                        # at least ~4 batches per worker, for load balancing
+                        max_batch = min(_MAX_BATCH_DISTANCES, max(n_distances // (4 * num_cpus), 1))
+                for protein_idx in np.arange(self._nprot, dtype=int):
+                    residue_atomid_list = traj_info["protein_residue_atomid_list"][protein_idx]
+                    batches = _contact_batches(residue_atomid_list, n_flat, traj.n_frames, max_batch)
+                    batch_atomid_lists = [[residue_atomid_list[residue_id] for residue_id in batch] for batch in batches]
+                    desc = "  Traj {:d} prot {:d} residue batches".format(traj_idx, protein_idx)
+                    if pool is not None and shm is not None:
+                        tasks = [(shm.name, traj.n_frames, traj.n_atoms, has_box, atomid_lists, flat_lipid_atoms,
+                                  lipid_boundaries, self._cutoffs) for atomid_lists in batch_atomid_lists]
+                        batch_results = tqdm(pool.imap(_batch_contacts_worker, tasks), total=len(tasks), desc=desc,
+                                             leave=False)
+                    else:
+                        batch_results = (_batch_contacts(traj, atomid_lists, flat_lipid_atoms, lipid_boundaries,
+                                                         self._cutoffs)
+                                         for atomid_lists in tqdm(batch_atomid_lists, desc=desc, leave=False))
+                    for batch, results in zip(batches, batch_results):
+                        for residue_id, (contact_low, contact_high, frame_id_set_low, lipid_id_set_low, distances) \
+                                in zip(batch, results):
+                            self._contact_residues_high[residue_id].append(contact_high)
+                            self._contact_residues_low[residue_id].append(contact_low)
+                            # update coordinates for coo_matrix
+                            col.append(ncol_start + ncol_per_protein * protein_idx + lipid_id_set_low * traj.n_frames +
+                                       frame_id_set_low)
+                            row.append(np.full(len(frame_id_set_low), residue_id, dtype=int))
+                            data.append(distances)
+                if shm is not None:
+                    shm.close()
+                    shm.unlink()
+                    shm = None
+                ncol_start += ncol_per_protein * self._nprot
+        finally:
+            if pool is not None:
+                # all results have been collected unless an error interrupted the calculation
+                pool.terminate()
+                pool.join()
+            if shm is not None:
+                shm.close()
+                shm.unlink()
         # calculate correlation coefficient matrix
         row = np.concatenate(row)
         col = np.concatenate(col)
@@ -1359,8 +1482,13 @@ class LipidInteraction:
 
         Atom radius is required for calculation of surface areas. MDtraj defines the radii for common atoms (see
         `here <https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56>`_). The radius of the BB bead
-        in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3 are defined as 0.23 nm in this method. Use the param ``radii``
-        to define or change of definition of atom radius.
+        in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3/SC4 are defined as 0.23 nm in this method. Use the param
+        ``radii`` to define or change of definition of atom radius, keyed by atom name. (Before PyLipID 1.6.0 these
+        radii were not applied, as mdtraj matched them against element symbols; each frame is also now calculated
+        separately, see :func:`pylipid.func.binding_site.surface_area_chunk`.)
+
+        Frames are shared between worker processes (``num_cpus``); the results do not depend on the number of
+        workers.
 
         Parameters
         -----------
@@ -1387,8 +1515,7 @@ class LipidInteraction:
             Figure format. Support formats included in matplotlib.pyplot.
 
         num_cpus : int or None default=None
-            The number of CPUs used for calculating the surface areas. Python multiprocessing deployed by
-            `p_tqdm <https://github.com/swansonk14/p_tqdm>`_ is used to speed up these calculations.
+            The number of CPUs used for calculating the surface areas, with Python multiprocessing.
 
         Returns
         -------
@@ -1412,8 +1539,6 @@ class LipidInteraction:
             Journal of Molecular Biology 1973, 79 (2), 351-371
 
         """
-        MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
-
         self._check_calculation("Binding Site ID", self.compute_binding_nodes, print_data=False)
 
         if "Binding Site Surface Area" in self.dataset.columns:
@@ -1421,26 +1546,45 @@ class LipidInteraction:
             surface_area_per_residue = np.array(self.dataset["Binding Site Surface Area"].tolist())
         else:
             surface_area_per_residue = np.zeros(self._nresi_per_protein)
-        if radii is None:
-            radii_book = MARTINI_CG_radii
-        else:
-            radii_book = {**MARTINI_CG_radii, **radii}
+        radii_book = MARTINI_CG_RADII if radii is None else {**MARTINI_CG_RADII, **radii}
 
         # calculate binding site surface area
         selected_bs_id = np.atleast_1d(np.array(binding_site_id, dtype=int)) if binding_site_id is not None \
             else np.arange(len(self._node_list), dtype=int)
-        selected_bs_id_map = {bs_id: self._node_list[bs_id] for bs_id in selected_bs_id}
-        returned_values = _spawn_pmap(partial(calculate_surface_area_wrapper, binding_site_map=selected_bs_id_map,
-                                        nprot=self._nprot, timeunit=self._timeunit, stride=self._stride,
-                                        dt_traj=self._dt_traj, radii=radii_book), self._trajfile_list,
-                                self._topfile_list, np.arange(len(self._trajfile_list), dtype=int),
-                                num_cpus=num_cpus, desc="CALCULATE BINDING SITE SURFACE AREA")
+        n_workers = num_cpus if num_cpus is not None else (os.cpu_count() or 1)
+        # Each trajectory is loaded once here; its frames are split into chunks that the workers calculate
+        # independently (~4 chunks per worker over all trajectories, for load balancing)
+        trajs = []
+        for traj_idx in range(len(self._trajfile_list)):
+            traj = md.load(self._trajfile_list[traj_idx], top=self._topfile_list[traj_idx], stride=self._stride)
+            traj_info, _, _ = get_traj_info(traj, nprot=self._nprot, protein_ref="A")  # protein_ref="A" skips
+            # building a protein topology file
+            if self._dt_traj is None:
+                traj_times = traj.time / 1000000.0 if self._timeunit == "us" else traj.time / 1000.0
+            else:
+                traj_times = float(self._dt_traj * self._stride) * np.arange(traj.n_frames)
+            for protein_idx in np.arange(self._nprot):
+                protein_atomid_list = traj_info["protein_residue_atomid_list"][protein_idx]
+                protein_traj = traj.atom_slice(np.hstack(protein_atomid_list), inplace=False)
+                # atom indices of each binding site in protein_traj
+                offsets = np.concatenate([[0], np.cumsum([len(atoms) for atoms in protein_atomid_list])])
+                site_atoms = [np.concatenate([np.arange(offsets[node], offsets[node + 1]) for node in self._node_list[bs_id]])
+                              for bs_id in selected_bs_id]
+                trajs.append(((traj_idx, protein_idx), protein_traj, site_atoms, traj_times))
+        n_frames_total = sum(item[1].n_frames for item in trajs)
+        chunk_size = max(1, int(np.ceil(n_frames_total / (4 * n_workers))))
+        tasks = [(item_idx, start) for item_idx, item in enumerate(trajs) for start in range(0, item[1].n_frames, chunk_size)]
+        returned_values = _spawn_pmap(partial(surface_area_chunk, radii=radii_book),
+                                      [trajs[item_idx][1][start:start + chunk_size] for item_idx, start in tasks],
+                                      [trajs[item_idx][2] for item_idx, _ in tasks],
+                                      num_cpus=num_cpus, desc="CALCULATE BINDING SITE SURFACE AREA")
         surface_data = []
         data_keys = []
-        for returned_tuple in returned_values:
-             for idx in np.arange(len(returned_tuple[0])):
-                surface_data.append(returned_tuple[0][idx])
-                data_keys.append(returned_tuple[1][idx])
+        column_names = ["Binding Site {}".format(bs_id) for bs_id in selected_bs_id] + ["Time"]
+        for item_idx, (key, protein_traj, site_atoms, traj_times) in enumerate(trajs):
+            areas = np.concatenate([value for (task_item, _), value in zip(tasks, returned_values) if task_item == item_idx])
+            surface_data.append(pd.DataFrame(np.column_stack([areas, traj_times]), columns=column_names))
+            data_keys.append(key)
         surface_area_data = pd.concat(surface_data, keys=data_keys)
         # update dataset
         for bs_id in selected_bs_id:

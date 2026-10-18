@@ -10,6 +10,7 @@ import pytest
 import mdtraj as md
 from pylipid.func import (get_node_list, collect_bound_poses, vectorize_poses,
                            calculate_scores, write_bound_poses)
+from pylipid.func.binding_site import surface_area_chunk, MARTINI_CG_RADII
 
 
 @pytest.fixture(scope="module")
@@ -42,6 +43,12 @@ def pose_traj(li):
         nprot=li.nprot,
     )
     return pose_traj
+
+
+def _protein_frames(li, n_frames):
+    """The first frames of the first trajectory, protein atoms only."""
+    traj = md.load(li.trajfile_list[0], top=li.topfile_list[0])[:n_frames]
+    return traj.atom_slice([atom.index for atom in traj.top.atoms if atom.residue.is_protein])
 
 
 class TestBindingSites:
@@ -112,5 +119,26 @@ class TestBindingPoses:
         assert len(list(tmp_path.glob("BSid{}_top*.gro".format(bs_id)))) == len(pose_indices)
 
     def test_compute_surface_area(self, li):
-        # Use the high-level API method — calculate_surface_area_wrapper is internal
-        li.compute_surface_area(plot_data=False)
+        serial = li.compute_surface_area(plot_data=False, num_cpus=1)
+        assert serial.shape[0] == sum(md.load(f, top=t).n_frames for f, t in zip(li.trajfile_list, li.topfile_list))
+        # frames are calculated independently, so splitting them between workers gives identical results
+        assert serial.equals(li.compute_surface_area(plot_data=False, num_cpus=3))
+
+    def test_surface_area_radii_applied(self, li):
+        # radii are keyed by bead name (mdtraj would match them against element symbols and ignore them)
+        protein_traj = _protein_frames(li, 3)
+        site_atoms = [[atom.index for residue_id in li._node_list[0]
+                       for atom in protein_traj.top.residue(residue_id).atoms]]
+        default = surface_area_chunk(protein_traj, site_atoms, MARTINI_CG_RADII)
+        larger = surface_area_chunk(protein_traj, site_atoms, {**MARTINI_CG_RADII, "BB": 0.35})
+        assert default.shape == (3, 1)
+        assert not np.array_equal(default, larger)
+
+    def test_surface_area_frames_independent(self, li):
+        protein_traj = _protein_frames(li, 6)
+        site_atoms = [[atom.index for residue_id in nodes for atom in protein_traj.top.residue(residue_id).atoms]
+                      for nodes in li._node_list[:2]]
+        whole = surface_area_chunk(protein_traj, site_atoms, MARTINI_CG_RADII)
+        chunks = np.concatenate([surface_area_chunk(protein_traj[i:i + 2], site_atoms, MARTINI_CG_RADII)
+                                 for i in (0, 2, 4)])
+        np.testing.assert_array_equal(whole, chunks)

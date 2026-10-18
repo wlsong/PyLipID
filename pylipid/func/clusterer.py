@@ -72,12 +72,13 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
     """
     if len(data) <= len(data[0]):
         return np.array([0 for dummy in data]), np.arange(len(data))[np.newaxis, :]
-    if 2*len(data[0]) > len(data):
-        min_samples = np.min([len(data[0]), 4])
-    elif len(data) < 1000:
-        min_samples = np.min([2 * len(data[0]), len(data)])
-    elif len(data) >= 1000:
-        min_samples = np.min([5 * len(data[0]), len(data)])
+    if min_samples is None:
+        if 2*len(data[0]) > len(data):
+            min_samples = np.min([len(data[0]), 4])
+        elif len(data) < 1000:
+            min_samples = np.min([2 * len(data[0]), len(data)])
+        else:
+            min_samples = np.min([5 * len(data[0]), len(data)])
     if eps is None:
         nearest_neighbors = NearestNeighbors(n_neighbors=min_samples)
         nearest_neighbors.fit(data)
@@ -88,6 +89,10 @@ def cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean"):
         rotor.fit_rotate(data_vstacked)
         elbow_index = rotor.get_elbow_index()
         eps = distances[elbow_index]
+        if eps <= 0:
+            # identical poses put the elbow at distance 0, which DBSCAN rejects: use the smallest positive distance
+            positive = distances[distances > 0]
+            eps = positive.min() if len(positive) > 0 else 1e-6
     dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
     dbscan.fit(data)
     core_sample_indices = [[] for label in np.unique(dbscan.labels_) if label != -1]
