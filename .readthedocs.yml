@@ -1,4 +1,20 @@
 version: 2
-formats: all
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "miniconda-latest"
+
 conda:
   environment: docs/environment.yml
+
+# Document the code in this repository, not the release on PyPI
+python:
+  install:
+    - method: pip
+      path: .
+
+sphinx:
+  configuration: docs/conf.py
+
+formats: all

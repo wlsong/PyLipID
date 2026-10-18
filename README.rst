@@ -46,7 +46,7 @@ Editable/development install::
 
     pip install -e .
 
-Requires Python >= 3.9.
+Requires Python >= 3.11 (tested on 3.11–3.14).
 
 Quick Start
 ===========
@@ -86,6 +86,9 @@ Bug Fixes
 - Fixed sparse_corrcoef matrix type issues.
 - Fixed DataFrame column/index mismatches in analyze_bound_poses.
 - Fixed missing return in compute_residue_lipidcount.
+- Fixed a crash when analyze_bound_poses was run more than once with pandas 3.
+- cluster_KMeans now always returns labels (it returned a tuple when there were fewer poses than clusters).
+- plot, plot_logo, save_coordinate and write_site_info calculate missing residue data on demand instead of raising KeyError.
 - Fixed write_PDB errors for .gro files lacking chain IDs.
 - Fixed figure overwriting in plot_koff.
 - Updated deprecated Matplotlib calls.
@@ -102,7 +105,7 @@ Dependencies
 ------------
 - Removed python-louvain; using NetworkX built-in Louvain.
 - Minimum versions added.
-- Dropped Python < 3.9.
+- Dropped Python < 3.11; supports Python 3.11–3.14, numpy 2, pandas 3 and current mdtraj.
 
 Packaging & CI
 --------------
