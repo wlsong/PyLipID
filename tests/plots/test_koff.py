@@ -2,6 +2,7 @@ import os
 import unittest
 import numpy as np
 import shutil
+import tempfile
 from pylipid.plot import plot_koff
 from pylipid.func import cal_koff
 from pylipid.util import check_dir
@@ -9,8 +10,8 @@ from pylipid.util import check_dir
 class TestPlot(unittest.TestCase):
 
     def setUp(self):
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        self.save_dir = os.path.join(file_dir, "test_plot")
+        # a fresh temporary directory, so concurrent test runs from one checkout do not collide
+        self.save_dir = tempfile.mkdtemp(prefix="pylipid_test_")
         check_dir(self.save_dir)
 
     def test_koff(self):
