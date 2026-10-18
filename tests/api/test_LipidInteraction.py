@@ -93,3 +93,23 @@ def test_pylipid_workflow(li, real_traj_dir):
     saved_files = [f for _, _, files in os.walk(li.save_dir) for f in files]
     assert any(f.endswith(".csv") for f in saved_files)
     assert any(f.endswith(".pml") or f.endswith(".py") for f in saved_files)
+
+
+def test_parallel_contacts_match_serial(real_traj_dir, tmp_path, monkeypatch):
+    """Worker processes reading coordinates from shared memory give exactly the serial results."""
+    from pylipid.api import api
+
+    def contacts(num_cpus):
+        li = LipidInteraction(real_traj_dir["trajfile_list"][:1], cutoffs=real_traj_dir["cutoffs"],
+                              topfile_list=real_traj_dir["topfile_list"][:1], lipid=real_traj_dir["lipid"],
+                              nprot=1, save_dir=str(tmp_path / "n{}".format(num_cpus)))
+        li.collect_residue_contacts(num_cpus=num_cpus)
+        return li
+
+    serial = contacts(1)
+    # the test system is below the size at which workers are used: force them
+    monkeypatch.setattr(api, "_MIN_PARALLEL_DISTANCES", 0)
+    parallel = contacts(2)
+    assert serial._contact_residues_low == parallel._contact_residues_low
+    assert serial._contact_residues_high == parallel._contact_residues_high
+    np.testing.assert_array_equal(serial.interaction_corrcoef, parallel.interaction_corrcoef)

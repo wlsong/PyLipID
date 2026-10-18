@@ -15,17 +15,8 @@
 ##############################################################################
 
 # --- BEGIN: macOS-safe bootstrap -------------------------------------------
-# Ensures PyLipID runs safely on macOS by:
-#   1) forcing multiprocessing to use 'spawn'
-#   2) preventing GUI backends from loading in worker processes
-import multiprocessing as _mp
-
-try:
-    # Safe on macOS — harmless on Linux/Windows
-    _mp.set_start_method("spawn", force=True)
-except RuntimeError:
-    # Already set or protected — ignore
-    pass
+# PyLipID's worker pools use the 'spawn' start method explicitly (multiprocessing.get_context("spawn")), so the
+# global start method is left unchanged for the user's own code.
 
 # Use a non-interactive backend so importing PyLipID never loads macOS AppKit
 try:

@@ -102,8 +102,11 @@ Bug Fixes
 
 Performance
 -----------
-- collect_residue_contacts computes distances in large batches instead of once per lipid
-  (about 1.8x faster than per-residue calls on the test data).
+- collect_residue_contacts computes distances in large batches instead of once per lipid, and shares
+  the batches between worker processes that read the coordinates from shared memory (``num_cpus``;
+  parallel contacts suggested by Alex Moger). Results are identical to the serial calculation; on a
+  2 x 2,000-frame system contacts take 8 s instead of 40 s.
+- Progress bars for parallel steps now follow the calculation.
 - Survival-function calculation for koff is vectorised (identical results, ~20% faster koff).
 - Nested progress bars implemented.
 
