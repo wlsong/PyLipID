@@ -17,7 +17,7 @@ the tutorials for examples and the documentations for the API functionalities:
 
 
 Citation |DOI for Citing PyLipID|
-================================
+=================================
 
 If you use PyLipID in scientific research, please cite the following paper: ::
 

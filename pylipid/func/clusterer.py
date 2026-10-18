@@ -125,7 +125,9 @@ def cluster_KMeans(data, n_clusters):
 
     """
     if len(data) < n_clusters:
-        return cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean")
+        # cluster_DBSCAN also returns core sample indices; return only the labels, as documented
+        labels, _ = cluster_DBSCAN(data, eps=None, min_samples=None, metric="euclidean")
+        return labels
     model = KMeans(n_clusters=n_clusters).fit(data)
     labels = model.predict(data)
     return labels

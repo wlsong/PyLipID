@@ -15,7 +15,6 @@
 ##############################################################################
 
 from collections import defaultdict
-from itertools import product
 from functools import partial
 import pickle
 import os
@@ -380,24 +379,40 @@ class LipidInteraction:
                         traj_idx, len(traj_info["protein_residue_id"]), traj_idx - 1, len(self._protein_residue_id))
             ncol_per_protein = len(traj_info["lipid_residue_atomid_list"]) * traj.n_frames
             # Pre-flatten all lipid atom indices and build a boundary index so we can
-            # issue ONE md.compute_distances call per residue (instead of n_lipids calls).
+            # slice out each residue's distances to all lipid atoms from one array.
             flat_lipid_atoms = np.concatenate(traj_info["lipid_residue_atomid_list"])
             lipid_sizes = np.array([len(a) for a in traj_info["lipid_residue_atomid_list"]])
             lipid_boundaries = np.concatenate([[0], np.cumsum(lipid_sizes)])
             n_lipids = len(traj_info["lipid_residue_atomid_list"])
+            n_flat = len(flat_lipid_atoms)
             for protein_idx in np.arange(self._nprot, dtype=int):
+                residue_atomid_list = traj_info["protein_residue_atomid_list"][protein_idx]
+                # Residues are processed in batches with ONE md.compute_distances call per batch: each call
+                # converts the unit cell to box vectors (with per-frame validity checks), which cost more than
+                # the distances themselves when done once per residue. Batches hold ~25 million distances.
+                batch_dists, batch_columns = None, {}
                 for residue_id, residue_atom_indices in enumerate(
-                        tqdm(traj_info["protein_residue_atomid_list"][protein_idx],
+                        tqdm(residue_atomid_list,
                              desc="  Traj {:d} prot {:d} residues".format(traj_idx, protein_idx),
                              leave=False)):
-                    # Single compute_distances call for all lipid atoms at once.
-                    # Shape: (n_frames, n_residue_atoms * n_flat_lipid_atoms)
-                    all_pairs = np.array(list(product(residue_atom_indices, flat_lipid_atoms)))
-                    all_dists = md.compute_distances(traj, all_pairs, periodic=True, opt=True)
+                    if residue_id not in batch_columns:
+                        # start a new batch here: (residue atom, lipid atom) pairs in the order of product()
+                        batch_columns, batch_pairs, n_pairs = {}, [], 0
+                        for batch_residue_id in range(residue_id, len(residue_atomid_list)):
+                            atoms = residue_atomid_list[batch_residue_id]
+                            size = len(atoms) * n_flat
+                            if batch_columns and (n_pairs + size) * traj.n_frames > 25_000_000:
+                                break
+                            batch_columns[batch_residue_id] = (n_pairs, n_pairs + size)
+                            batch_pairs.append(np.column_stack((np.repeat(atoms, n_flat),
+                                                                np.tile(flat_lipid_atoms, len(atoms)))))
+                            n_pairs += size
+                        batch_dists = md.compute_distances(traj, np.concatenate(batch_pairs), periodic=True, opt=True)
+                    start, end = batch_columns[residue_id]
+                    all_dists = batch_dists[:, start:end]
                     # all_dists shape: (n_frames, n_res_atoms * n_flat_lipid_atoms)
                     # Reduce to (n_frames, n_flat_lipid_atoms) by taking min over residue atoms
                     n_res_atoms = len(residue_atom_indices)
-                    n_flat = len(flat_lipid_atoms)
                     # reshape: (n_frames, n_res_atoms, n_flat_lipid_atoms) → min over axis 1
                     per_atom_dists = all_dists.reshape(traj.n_frames, n_res_atoms, n_flat).min(axis=1)
                     # (n_frames, n_flat_lipid_atoms) → per lipid min using boundaries
@@ -1214,7 +1229,8 @@ class LipidInteraction:
         
         # Initialize/extend per-residue RMSD column
         if "Binding Site Pose RMSD" in self.dataset.columns:
-            pose_rmsd_per_residue = self.dataset["Binding Site Pose RMSD"].values
+            # A writable copy: under pandas copy-on-write (default from pandas 3) .values is read-only
+            pose_rmsd_per_residue = self.dataset["Binding Site Pose RMSD"].to_numpy(copy=True)
         else:
             pose_rmsd_per_residue = np.zeros(self._nresi_per_protein)
         
@@ -1558,6 +1574,7 @@ class LipidInteraction:
             else check_dir(self._save_dir, "Coordinate_{}".format(self._lipid))
         if fn_coord is None:
             fn_coord = "Coordinate_{}_{}.pdb".format(self._lipid, "_".join(item.split()))
+        self._ensure_residue_item(item)
         data = self.dataset[item].tolist()
         write_PDB(self._protein_ref, data, os.path.join(coord_dir, fn_coord), resi_offset=self._resi_offset)
         return
@@ -1661,6 +1678,7 @@ class LipidInteraction:
         elif item == "Lipid Count":
             ylabel = "Lipid Count (num.)"
         if "ylabel" in locals():
+            self._ensure_residue_item(item)
             data = self.dataset[item]
             title = "{} {}".format(self._lipid, item)
             fig_fn = os.path.join(figure_dir, "{}.{}".format("_".join(item.split()), fig_format))
@@ -1758,6 +1776,7 @@ class LipidInteraction:
             ylabel = "Lipid Count (num.)"
 
         if "ylabel" in locals():
+            self._ensure_residue_item(item)
             data = self.dataset[item]
             title = "{} {} Logo".format(self._lipid, item)
             fig_fn = os.path.join(figure_dir, "{}_logo.{}".format("_".join(item.split()), fig_format))
@@ -1810,6 +1829,9 @@ class LipidInteraction:
                              "Occupancy": self.compute_residue_occupancy,
                              "Lipid Count": self.compute_residue_lipidcount}
             self._check_calculation(sort_residue, mapping_funcs[sort_residue])
+            # the per-residue table prints all four of these
+            for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
+                self._ensure_residue_item(item)
             with open(os.path.join(BS_dir, fn), "a") as f:
                 f.write(f"## Network modularity {self._network_modularity:5.3f}")
                 f.write("\n")
@@ -1951,6 +1973,16 @@ class LipidInteraction:
         text += "\n"
         text += "\n"
         return text
+
+    def _ensure_residue_item(self, item):
+        """Calculate a per-residue item (e.g. "Lipid Count") if it has not been calculated yet."""
+        calculations = {"Residence Time": (self.compute_residue_koff, {"plot_data": False}),
+                        "Duration": (self.compute_residue_duration, {}),
+                        "Occupancy": (self.compute_residue_occupancy, {}),
+                        "Lipid Count": (self.compute_residue_lipidcount, {})}
+        if item in calculations:
+            calculation, kwargs = calculations[item]
+            self._check_calculation(item, calculation, **kwargs)
 
     def _check_calculation(self, item, calculation, *args, **kwargs):
         """Check BS calculation. """

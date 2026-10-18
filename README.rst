@@ -46,7 +46,7 @@ Editable/development install::
 
     pip install -e .
 
-Requires Python >= 3.9.
+Requires Python >= 3.11 (tested on 3.11–3.14).
 
 Quick Start
 ===========
@@ -76,6 +76,10 @@ Quick Start
     li.save_data("Dataset")
     li.save_pymol_script(pdb_file="receptor.pdb")
 
+PyLipID runs its calculations in parallel worker processes. When running it as a script, put the
+code under ``if __name__ == "__main__":`` (required on macOS and Windows, where the script would otherwise
+fail or hang); Jupyter notebooks need no change.
+
 What's New in v1.6.0
 ====================
 
@@ -86,6 +90,9 @@ Bug Fixes
 - Fixed sparse_corrcoef matrix type issues.
 - Fixed DataFrame column/index mismatches in analyze_bound_poses.
 - Fixed missing return in compute_residue_lipidcount.
+- Fixed a crash when analyze_bound_poses was run more than once with pandas 3.
+- cluster_KMeans now always returns labels (it returned a tuple when there were fewer poses than clusters).
+- plot, plot_logo, save_coordinate and write_site_info calculate missing residue data on demand instead of raising KeyError.
 - Fixed write_PDB errors for .gro files lacking chain IDs.
 - Fixed figure overwriting in plot_koff.
 - Updated deprecated Matplotlib calls.
@@ -95,14 +102,16 @@ Bug Fixes
 
 Performance
 -----------
-- collect_residue_contacts now calls md.compute_distances once per residue.
+- collect_residue_contacts computes distances in large batches instead of once per lipid
+  (about 1.8x faster than per-residue calls on the test data).
+- Survival-function calculation for koff is vectorised (identical results, ~20% faster koff).
 - Nested progress bars implemented.
 
 Dependencies
 ------------
 - Removed python-louvain; using NetworkX built-in Louvain.
 - Minimum versions added.
-- Dropped Python < 3.9.
+- Dropped Python < 3.11; supports Python 3.11–3.14, numpy 2, pandas 3 and current mdtraj.
 
 Packaging & CI
 --------------
