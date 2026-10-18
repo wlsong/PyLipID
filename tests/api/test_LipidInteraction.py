@@ -113,3 +113,17 @@ def test_parallel_contacts_match_serial(real_traj_dir, tmp_path, monkeypatch):
     assert serial._contact_residues_low == parallel._contact_residues_low
     assert serial._contact_residues_high == parallel._contact_residues_high
     np.testing.assert_array_equal(serial.interaction_corrcoef, parallel.interaction_corrcoef)
+
+
+def test_seeded_bootstrap_is_reproducible(real_li):
+    """np.random.seed in the calling process fixes the bootstrapped koffs, whatever the number of workers."""
+    residues = list(range(40))
+
+    def bootstrap(num_cpus):
+        np.random.seed(1)
+        real_li.compute_residue_koff(residue_id=residues, num_cpus=num_cpus, plot_data=False)
+        return real_li.dataset["Koff Bootstrap avg"].to_numpy(copy=True)[residues]
+
+    first = bootstrap(2)
+    np.testing.assert_array_equal(first, bootstrap(2))
+    np.testing.assert_array_equal(first, bootstrap(3))

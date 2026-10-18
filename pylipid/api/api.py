@@ -48,16 +48,21 @@ def _spawn_pmap(func, *iterables, num_cpus=None, desc=None):
         raise ValueError("All iterables must have the same length")
     if n == 0:
         return []
-    args_iterable = list(zip(*iterables))
+    # Each task seeds numpy's global random state (used by e.g. koff bootstrapping and cluster pose selection) from
+    # the parent's, so np.random.seed() in the calling script makes results reproducible for any number of workers.
+    seeds = np.random.randint(0, 2**32 - 1, size=n, dtype=np.uint32)
+    args_iterable = list(zip(seeds, zip(*iterables)))
     ctx = get_context("spawn")
     with ctx.Pool(processes=num_cpus) as pool:
         # imap (rather than starmap) so the progress bar follows the calculation; chunks as starmap would
         chunksize = max(1, n // (4 * pool._processes))
-        return list(tqdm(pool.imap(partial(_star_call, func), args_iterable, chunksize=chunksize),
+        return list(tqdm(pool.imap(partial(_seeded_call, func), args_iterable, chunksize=chunksize),
                          total=n, desc=desc))
 
 
-def _star_call(func, args):
+def _seeded_call(func, seed_args):
+    seed, args = seed_args
+    np.random.seed(seed)
     return func(*args)
 
 
