@@ -92,7 +92,10 @@ Changes to Results
   frame's area to each frame in a multi-frame call. Site surface areas are typically 5-20% smaller than
   in earlier versions.
 - With ``np.random.seed()`` set in the calling script, bootstrapped koffs and the poses chosen to
-  represent pose clusters are now reproducible (worker processes previously ignored the seed).
+  represent pose clusters are now reproducible (worker processes previously ignored the seed). Note that
+  with scipy 1.17 (the last release for Python 3.11) curve_fit does not always return the same fit for
+  the same data, so koff values can still vary slightly between runs there; scipy >= 1.18 (Python >= 3.12)
+  is repeatable.
 
 Bug Fixes
 ---------
