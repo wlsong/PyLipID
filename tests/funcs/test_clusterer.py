@@ -71,3 +71,20 @@ class TestCluster:
                                 for cid in np.unique(cluster_labels)]
             write_bound_poses(traj, selected_pose_id, str(tmp_path),
                               pose_prefix="BSid{}_cluster_KMeans".format(bs_id), pose_format="gro")
+
+
+class TestDBSCANEdgeCases:
+
+    def test_identical_poses(self):
+        # duplicated poses put the automatic eps at 0, which DBSCAN rejects
+        rng = np.random.default_rng(0)
+        data = np.repeat(rng.normal(size=(40, 2)), 8, axis=0)
+        labels, _ = cluster_DBSCAN(data, eps=None, min_samples=None)
+        assert len(labels) == len(data)
+
+    def test_min_samples_is_used(self):
+        rng = np.random.default_rng(0)
+        data = np.concatenate([rng.normal(0, 0.05, size=(30, 2)), rng.normal(5, 0.05, size=(30, 2))])
+        labels, _ = cluster_DBSCAN(data, eps=0.5, min_samples=31)
+        # no point has 31 neighbours within eps, so everything is noise
+        assert np.all(labels == -1)
