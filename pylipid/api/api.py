@@ -1214,7 +1214,8 @@ class LipidInteraction:
         
         # Initialize/extend per-residue RMSD column
         if "Binding Site Pose RMSD" in self.dataset.columns:
-            pose_rmsd_per_residue = self.dataset["Binding Site Pose RMSD"].values
+            # A writable copy: under pandas copy-on-write (default from pandas 3) .values is read-only
+            pose_rmsd_per_residue = self.dataset["Binding Site Pose RMSD"].to_numpy(copy=True)
         else:
             pose_rmsd_per_residue = np.zeros(self._nresi_per_protein)
         
@@ -1558,6 +1559,7 @@ class LipidInteraction:
             else check_dir(self._save_dir, "Coordinate_{}".format(self._lipid))
         if fn_coord is None:
             fn_coord = "Coordinate_{}_{}.pdb".format(self._lipid, "_".join(item.split()))
+        self._ensure_residue_item(item)
         data = self.dataset[item].tolist()
         write_PDB(self._protein_ref, data, os.path.join(coord_dir, fn_coord), resi_offset=self._resi_offset)
         return
@@ -1661,6 +1663,7 @@ class LipidInteraction:
         elif item == "Lipid Count":
             ylabel = "Lipid Count (num.)"
         if "ylabel" in locals():
+            self._ensure_residue_item(item)
             data = self.dataset[item]
             title = "{} {}".format(self._lipid, item)
             fig_fn = os.path.join(figure_dir, "{}.{}".format("_".join(item.split()), fig_format))
@@ -1758,6 +1761,7 @@ class LipidInteraction:
             ylabel = "Lipid Count (num.)"
 
         if "ylabel" in locals():
+            self._ensure_residue_item(item)
             data = self.dataset[item]
             title = "{} {} Logo".format(self._lipid, item)
             fig_fn = os.path.join(figure_dir, "{}_logo.{}".format("_".join(item.split()), fig_format))
@@ -1810,6 +1814,9 @@ class LipidInteraction:
                              "Occupancy": self.compute_residue_occupancy,
                              "Lipid Count": self.compute_residue_lipidcount}
             self._check_calculation(sort_residue, mapping_funcs[sort_residue])
+            # the per-residue table prints all four of these
+            for item in ["Residence Time", "Duration", "Occupancy", "Lipid Count"]:
+                self._ensure_residue_item(item)
             with open(os.path.join(BS_dir, fn), "a") as f:
                 f.write(f"## Network modularity {self._network_modularity:5.3f}")
                 f.write("\n")
@@ -1951,6 +1958,16 @@ class LipidInteraction:
         text += "\n"
         text += "\n"
         return text
+
+    def _ensure_residue_item(self, item):
+        """Calculate a per-residue item (e.g. "Lipid Count") if it has not been calculated yet."""
+        calculations = {"Residence Time": (self.compute_residue_koff, {"plot_data": False}),
+                        "Duration": (self.compute_residue_duration, {}),
+                        "Occupancy": (self.compute_residue_occupancy, {}),
+                        "Lipid Count": (self.compute_residue_lipidcount, {})}
+        if item in calculations:
+            calculation, kwargs = calculations[item]
+            self._check_calculation(item, calculation, **kwargs)
 
     def _check_calculation(self, item, calculation, *args, **kwargs):
         """Check BS calculation. """
