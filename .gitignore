@@ -6,3 +6,7 @@ build
 .idea
 docs/_build
 docs/tutorials/.ipynb_checkpoints
+__pycache__/
+*.pyc
+.pytest_cache
+.coverage
