@@ -1505,8 +1505,7 @@ class LipidInteraction:
             Figure format. Support formats included in matplotlib.pyplot.
 
         num_cpus : int or None default=None
-            The number of CPUs used for calculating the surface areas. Python multiprocessing deployed by
-            `p_tqdm <https://github.com/swansonk14/p_tqdm>`_ is used to speed up these calculations.
+            The number of CPUs used for calculating the surface areas, with Python multiprocessing.
 
         Returns
         -------
