@@ -200,16 +200,24 @@ def cal_survival_func(durations, t_total, delta_t_list):
 
     """
     num_of_contacts = len(durations)
+    durations = np.asarray(durations, dtype=float)
+    delta_t_array = np.asarray(delta_t_list)
+    # sum of (duration - delta_t) over durations >= delta_t, for every delta_t. Summing along axis 0 adds
+    # one duration at a time, in the same order as sum() over the list, so the results are identical.
+    # delta_t is processed in chunks to bound memory (~4 million elements per chunk).
+    totals = np.empty(len(delta_t_array))
+    chunk = max(1, 4_000_000 // max(1, num_of_contacts))
+    for start in range(0, len(delta_t_array), chunk):
+        remaining = durations[:, None] - delta_t_array[None, start:start + chunk]
+        totals[start:start + chunk] = np.where(remaining >= 0, remaining, 0.0).sum(axis=0)
     survival_func = {}
-    for delta_t in delta_t_list:
+    for delta_t, total in zip(delta_t_list, totals):
         if delta_t == 0:
             survival_func[delta_t] = 1
-            survival_func0 = float(sum([res_time - delta_t for res_time in durations if res_time >= delta_t])) / \
-                     ((t_total - delta_t) * num_of_contacts)
+            survival_func0 = float(total) / ((t_total - delta_t) * num_of_contacts)
         else:
             try:
-                survival_func[delta_t] = float(sum([res_time - delta_t for res_time in durations if res_time >= delta_t])) / \
-                                 ((t_total - delta_t) * num_of_contacts * survival_func0)
+                survival_func[delta_t] = float(total) / ((t_total - delta_t) * num_of_contacts * survival_func0)
             except ZeroDivisionError:
                 survival_func[delta_t] = 0
     return survival_func
