@@ -1,0 +1,58 @@
+[build-system]
+requires = [
+  "setuptools>=61",
+  "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pylipid"
+dynamic = ["version"]
+description = "PyLipID - A Python Library For Lipid Interaction Analysis"
+readme = "README.rst"
+license = { file = "LICENSE.txt" }
+authors = [
+    { name = "Wanling Song", email = "wanling.song@hotmail.com" }
+]
+maintainers = [
+    { name = "Phill Stansfeld" }
+]
+keywords = ["simulation tools", "network community", "binding site"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "mdtraj>=1.9.7",
+    "numpy>=1.21",
+    "pandas>=1.3",
+    "matplotlib>=3.5",
+    "networkx>=2.6",
+    "scipy>=1.7",
+    "logomaker>=0.8",
+    "scikit-learn>=1.0",
+    "tqdm>=4.50",
+    "kneebow>=0.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/pstansfeld/PyLipID"
+Documentation = "https://pylipid.readthedocs.io"
+"Bug Tracker" = "https://github.com/pstansfeld/PyLipID/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "pylipid._version.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pylipid*"]

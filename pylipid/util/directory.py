@@ -21,23 +21,20 @@ import os
 __all__ = ["check_dir"]
 
 
-def check_dir(directory=None, suffix=None, print_info=True):
-    """Check directory
-
-    This function will combine the suffix with the given directory (or the current
-    working directory if None is given) to generate a new directory name, and create a
-    directory with this name if it does not exit.
-
+def check_dir(root, name=None, print_info=True):
     """
-    if directory is None:
-        directory = os.getcwd()
-    else:
-        directory = os.path.abspath(directory)
-    if suffix is not None:
-        directory = os.path.join(directory, suffix)
-    if not os.path.isdir(directory):
-        os.makedirs(directory)
+    Create (if needed) and return a directory under 'root'.
+    If 'name' is provided, the directory will be 'root/name'.
+    Set print_info=False to suppress the creation message.
+    """
+    import os
+
+    path = os.path.join(root, name) if name is not None else root
+
+    if not os.path.isdir(path):
         if print_info:
-            print("Creating new director: {}".format(directory))
-    return directory
+            print(f"Creating new directory: {path}")
+        os.makedirs(path, exist_ok=True)
+
+    return path
 

@@ -2,16 +2,17 @@ import os
 import unittest
 import numpy as np
 import shutil
+import tempfile
 import pandas as pd
 from pylipid.util import check_dir
-from pylipid.plot import plot_residue_data, plot_residue_data_logos
+from pylipid.plot import plot_residue_data, plot_residue_data_logo
 from pylipid.plot import plot_binding_site_data, plot_surface_area
 
 class TestPlot1d(unittest.TestCase):
 
     def setUp(self):
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        self.save_dir = os.path.join(file_dir, "test_plot1d")
+        # a fresh temporary directory, so concurrent test runs from one checkout do not collide
+        self.save_dir = tempfile.mkdtemp(prefix="pylipid_test_")
         check_dir(self.save_dir)
 
     def test_plot_residue_data(self):
@@ -23,18 +24,18 @@ class TestPlot1d(unittest.TestCase):
                           ylabel=None, fn=os.path.join(self.save_dir, "plot_residue_data_1.pdf"),
                           title="This is a test")
         logos = np.random.choice(letters_base, size=120)
-        plot_residue_data_logos(residue_index, logos, interactions, gap=100, letter_map=None,
+        plot_residue_data_logo(residue_index, logos, interactions, gap=100, letter_map=None,
                                 color_scheme="chemistry", ylabel="interactions",
                                 fn=os.path.join(self.save_dir, "plot_residue_data_logo_1.pdf"))
 
         # gap in-between sequence
         residue_index = np.concatenate([np.arange(120), np.arange(138, 183), np.arange(355, 382)])
-        interactions = np.random.random(size=(120+(183-138)+(312-255)))
+        interactions = np.random.random(size=(120+(183-138)+(382-355)))
         plot_residue_data(residue_index, interactions, gap=50,
                           ylabel=None, fn=os.path.join(self.save_dir, "plot_residue_data_2.pdf"),
                           title="This is a test")
         logos = np.random.choice(letters_base, size=len(interactions))
-        plot_residue_data_logos(residue_index, logos, interactions, gap=100,
+        plot_residue_data_logo(residue_index, logos, interactions, gap=100,
                           ylabel=None, fn=os.path.join(self.save_dir, "plot_residue_data_logo_2.pdf"))
 
         # two chains in sequences.
@@ -44,7 +45,7 @@ class TestPlot1d(unittest.TestCase):
                           ylabel=None, fn=os.path.join(self.save_dir, "plot_residue_data_3.pdf"),
                           title="This is a test")
         logos = np.random.choice(letters_base, size=len(interactions))
-        plot_residue_data_logos(residue_index, logos, interactions, gap=100,
+        plot_residue_data_logo(residue_index, logos, interactions, gap=100,
                                 ylabel=None, fn=os.path.join(self.save_dir, "plot_residue_data_logo_3.pdf"))
 
         # check letter mapping
@@ -52,7 +53,7 @@ class TestPlot1d(unittest.TestCase):
         three_letter_seq = np.random.choice(list(letter_map.keys()), size=23)
         residue_index = np.arange(23) + 52
         interactions = np.random.random(size=23)
-        plot_residue_data_logos(residue_index, three_letter_seq, interactions, gap=100,
+        plot_residue_data_logo(residue_index, three_letter_seq, interactions, gap=100,
                                 ylabel=None, fn=os.path.join(self.save_dir, "plot_residue_data_logo_4.pdf"),
                                 letter_map=letter_map)
 
@@ -82,4 +83,3 @@ class TestPlot1d(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

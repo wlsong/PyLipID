@@ -10,12 +10,9 @@ include:
 - numpy
 - pandas
 - matplotlib
-- seaborn
 - networkx
 - scipy
-- python-louvain
 - logomaker
-- statsmodels
 - scikit-learn
 - tqdm
 - kneebow
@@ -32,4 +29,6 @@ download on Github via:
 
 .. code-block:: bash
 
-  $ git clone https://github.com/wlsong/PyLipID.git
+  $ git clone https://github.com/pstansfeld/PyLipID.git
+  $ cd PyLipID
+  $ pip install .

@@ -41,7 +41,14 @@ def write_PDB(prot_obj, bfactor, pdb_fn, resi_offset=0):
     resid_set = table.resSeq + resi_offset
     atom_name_set = table.name
     resn_set = table.resName
-    chainID = [chr(65 + int(idx)) for idx in table.chainID]
+    # table.chainID can be empty string with some topology formats (e.g. GROMACS .gro)
+    # Fall back to chain 'A' (index 0) when the value is missing or non-integer
+    def _chain_letter(idx):
+        try:
+            return chr(65 + int(idx))
+        except (ValueError, TypeError):
+            return 'A'
+    chainID = [_chain_letter(idx) for idx in table.chainID]
     atom_residue_map = {atom_idx: prot_obj.top.atom(atom_idx).residue.index
                         for atom_idx in np.arange(prot_obj.n_atoms)}
     ######## write out coords ###########

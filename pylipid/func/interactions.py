@@ -100,7 +100,7 @@ class Duration:
         self.contact_low = contact_low
         self.contact_high = contact_high
         self.dt = dt
-        self.pointer = [np.zeros_like(self.contact_high[idx], dtype=np.int)
+        self.pointer = [np.zeros_like(self.contact_high[idx], dtype=int)
                         for idx in range(len(self.contact_high))]
         return
 
@@ -157,7 +157,7 @@ def cal_occupancy(contact_list):
 
     Returns
     -------
-    Ocupancy : scalar
+    Occupancy : scalar
         The percentage of frames in which a contact is formed
 
     Examples

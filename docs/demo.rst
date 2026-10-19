@@ -127,7 +127,7 @@ for versions later than 1.4. Please update PyLipID to the latest version ::
             ylabel_timeunit = 'ns' if li.timeunit == "ns" else r"$\mu$s"
             ylabel_dict = {"Residence Time": "Residence Time ({})".format(ylabel_timeunit),
                            "Duration": "Duration ({})".format(ylabel_timeunit),
-                           "Occupancy": "Occuoancy (100%)",
+                           "Occupancy": "Occupancy (100%)",
                            "Lipid Count": "Lipid Count (num.)"}
 
             # plot No. 1

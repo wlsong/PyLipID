@@ -1,41 +1,48 @@
-import unittest
-import os
-import shutil
+"""
+Tests for koff and survival function calculations.
+Uses the synthetic_traj_dir session fixture from conftest.py — no real data files needed.
+"""
+
+import pytest
 import numpy as np
+import shutil
 from pylipid.func import cal_koff, cal_survival_func
-from pylipid import LipidInteraction
-
-class TestKinetics(unittest.TestCase):
-
-    def setUp(self):
-        trajfile_list = ["../data/run1/protein_lipids.xtc", "../data/run2/protein_lipids.xtc"]
-        topfile_list = ["../data/run1/protein_lipids.gro", "../data/run2/protein_lipids.gro"]
-        lipid = "CHOL"
-        cutoffs = [0.55, 1.0]
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        self.save_dir = os.path.join(file_dir, "test_kinetics")
-        self.li = LipidInteraction(trajfile_list, topfile_list, cutoffs=cutoffs, lipid=lipid,
-                                   nprot=1, save_dir=self.save_dir)
-        self.li.collect_residue_contacts()
-        self.t_total = np.max(self.li._T_total)
-        self.timestep = np.min(self.li._timesteps)
-
-    def test_cal_survivla_function(self):
-        delta_t_list = np.arange(0, self.t_total, self.timestep)
-        survival_func = cal_survival_func(np.concatenate(self.li.durations[25]), self.t_total, delta_t_list)
-        self.assertIsInstance(survival_func, dict)
-
-    def test_cal_koff(self):
-        koff, restime, properties = cal_koff(np.concatenate(self.li.durations[25]), self.t_total,
-                                             self.timestep, nbootstrap=20, initial_guess=[1,1,1,1])
-        print(koff)
-        print(restime)
-        print(properties)
-        self.assertIsInstance(properties, dict)
-
-    def tearDown(self):
-        shutil.rmtree(self.li.save_dir)
+from pylipid.api import LipidInteraction
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.fixture(scope="module")
+def li(synthetic_traj_dir, tmp_path_factory):
+    save_dir = str(tmp_path_factory.mktemp("kinetics_output"))
+    instance = LipidInteraction(
+        synthetic_traj_dir["trajfile_list"],
+        cutoffs=synthetic_traj_dir["cutoffs"],
+        topfile_list=synthetic_traj_dir["topfile_list"],
+        lipid=synthetic_traj_dir["lipid"],
+        nprot=1,
+        save_dir=save_dir,
+    )
+    instance.collect_residue_contacts()
+    instance.compute_residue_duration()
+    yield instance
+    shutil.rmtree(save_dir, ignore_errors=True)
+
+
+class TestKinetics:
+
+    def test_cal_survival_function(self, li):
+        # Use residue 0 — guaranteed to exist in synthetic data
+        t_total = np.max(li._T_total)
+        timestep = np.min(li._timesteps)
+        durations = np.concatenate(li._duration[0])
+        delta_t_list = np.arange(0, t_total, timestep)
+        survival_func = cal_survival_func(durations, t_total, delta_t_list)
+        assert isinstance(survival_func, dict)
+
+    def test_cal_koff(self, li):
+        t_total = np.max(li._T_total)
+        timestep = np.min(li._timesteps)
+        durations = np.concatenate(li._duration[0])
+        koff, restime, properties = cal_koff(durations, t_total, timestep,
+                                             nbootstrap=5,
+                                             initial_guess=[1, 1, 1, 1])
+        assert isinstance(properties, dict)

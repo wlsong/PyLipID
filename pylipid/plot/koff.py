@@ -77,7 +77,7 @@ def plot_koff(durations, delta_t_list, survival_rates, n_fitted,
         xlabel = r"Duration ($\mu s$)"
 
     if text is None:
-        fig = plt.figure(1, figsize=(5.5, 3.5))
+        fig = plt.figure(figsize=(5.5, 3.5))
         left, width = 0.13, 0.33
         bottom, height = 0.17, 0.68
         left_h = left + width + 0.05
@@ -86,7 +86,7 @@ def plot_koff(durations, delta_t_list, survival_rates, n_fitted,
         axScatter = fig.add_axes(rect_scatter)
         axHisty = fig.add_axes(rect_histy)
     else:
-        fig = plt.figure(1, figsize=(8.2, 3.5))
+        fig = plt.figure(figsize=(8.2, 3.5))
         left, width = 0.0975, 0.23
         bottom, height = 0.17, 0.68
         left_h = left + width + 0.0375
@@ -147,4 +147,3 @@ def plot_koff(durations, delta_t_list, survival_rates, n_fitted,
         plt.close()
 
     return
-

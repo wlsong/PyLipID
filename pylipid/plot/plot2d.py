@@ -101,6 +101,8 @@ def plot_corrcoef(corrcoef, residue_index, cmap="Reds", vmin=None, vmax=None,
         vmax = np.percentile(np.unique(np.ravel(corrcoef)), 99)
     if vmin is None:
         vmin = np.percentile(np.unique(np.ravel(corrcoef)), 1)
+    vmin = max(vmin, np.finfo(float).tiny)  # LogNorm requires strictly positive vmin
+    vmax = max(vmax, vmin * 10)             # ensure vmax > vmin
     pcm = ax.pcolormesh(x, y, corrcoef, cmap=cmap, 
                         norm=colors.LogNorm(vmax=vmax, vmin=vmin))
     fig.colorbar(pcm, ax=ax)
@@ -130,4 +132,3 @@ def plot_corrcoef(corrcoef, residue_index, cmap="Reds", vmin=None, vmax=None,
         plt.close()
 
     return
-

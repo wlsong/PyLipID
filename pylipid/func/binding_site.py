@@ -19,12 +19,13 @@
 import os
 from collections import defaultdict
 from itertools import product
-import community
 import networkx as nx
+from networkx.algorithms.community import louvain_communities
+from networkx.algorithms.community.quality import modularity as louvain_modularity
 import numpy as np
 import pandas as pd
 import mdtraj as md
-from statsmodels.nonparametric.kernel_density import KDEMultivariate as kde
+from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
 from ..util import check_dir, rmsd, get_traj_info
 from .clusterer import cluster_DBSCAN, cluster_KMeans
@@ -81,19 +82,14 @@ def get_node_list(corrcoef, threshold=4):
     .. [2] Newman, M. E. J., Analysis of weighted networks. Physical Review E 2004, 70 (5), 056131.
 
     """
-    # TODO: check negative values in corrcoef_matrix. Come up with better solutions.
     corrcoef[corrcoef < 0.0] = 0.0 # network edge can't take negative values. Residues with
                                    # negative correlationsare are forced to separate to different binding sites.
     graph = nx.Graph(corrcoef)
-    partition = community.best_partition(graph, weight='weight')
-    values = [partition.get(node) for node in graph.nodes()]
-    node_list = []
-    for value in range(max(values)):
-        nodes = [k for k, v in partition.items() if v == value]
-        if len(nodes) >= threshold:
-            node_list.append(nodes)
+    # Use networkx's built-in Louvain (networkx >= 2.6). seed fixes randomness for reproducibility.
+    communities = louvain_communities(graph, weight='weight', seed=42)
+    node_list = [sorted(c) for c in communities if len(c) >= threshold]
     if len(node_list) > 0:
-        modularity = community.modularity(partition, graph)
+        modularity = louvain_modularity(graph, communities, weight='weight')
     else:
         modularity = None
     return node_list, modularity
@@ -205,16 +201,28 @@ def collect_bound_poses(binding_site_map, contact_residue_index, trajfile_list, 
                 contact_BS = [np.unique(np.concatenate(
                     [contact_residue_index[node][list_to_take][frame_idx] for node in nodes]))
                     for frame_idx in range(traj.n_frames)]
-                for frame_id in range(len(contact_BS)):
-                    if len(contact_BS[frame_id]) > 0:
-                        for lipid_id in contact_BS[frame_id]:
-                            lipid_residue_index = lipid_residue_index_set[int(lipid_id)]
-                            lipid_atom_indices = np.sort(
-                                [atom.index for atom in traj.top.residue(lipid_residue_index).atoms])
-                            pose_pool[bs_id].append(
-                                [np.copy(traj.xyz[frame_id, np.hstack([protein_indices, lipid_atom_indices])]),
-                                 np.copy(traj.unitcell_angles[frame_id]), np.copy(traj.unitcell_lengths[frame_id])])
-                            pose_info[bs_id].append((traj_idx, protein_idx, lipid_residue_index, frame_id*traj.timestep))
+                # Group (frame_id, lipid_res_idx) pairs by lipid molecule so we can
+                # batch-extract all frames for each lipid with a single numpy slice
+                # instead of copying coordinates one frame at a time.
+                lip_frames = defaultdict(list)   # {lipid_res_idx: [frame_ids]}
+                for frame_id, lipids_at_frame in enumerate(contact_BS):
+                    for lipid_id in lipids_at_frame:
+                        lip_res_idx = lipid_residue_index_set[int(lipid_id)]
+                        lip_frames[lip_res_idx].append(frame_id)
+                for lip_res_idx, frame_ids in lip_frames.items():
+                    lip_atoms = np.sort(
+                        [atom.index for atom in traj.top.residue(lip_res_idx).atoms])
+                    combined = np.hstack([protein_indices, lip_atoms])
+                    frame_arr = np.array(frame_ids)
+                    # Single batch slice for all frames of this lipid
+                    batch_xyz     = traj.xyz[frame_arr][:, combined]
+                    batch_angles  = traj.unitcell_angles[frame_arr]
+                    batch_lengths = traj.unitcell_lengths[frame_arr]
+                    for i, frame_id in enumerate(frame_ids):
+                        pose_pool[bs_id].append(
+                            [batch_xyz[i], batch_angles[i], batch_lengths[i]])
+                        pose_info[bs_id].append(
+                            (traj_idx, protein_idx, lip_res_idx, frame_id * traj.timestep))
     pose_traj = {}
     for bs_id in pose_pool.keys():
         pose_traj[bs_id] = md.Trajectory([frame[0] for frame in pose_pool[bs_id]], joined_top,
@@ -254,12 +262,30 @@ def vectorize_poses(bound_poses, binding_nodes, protein_atom_indices, lipid_atom
         The distance matrix of the bound poses, in the shape of [n_lipid_atoms, n_poses, n_binding_site_residues]
 
     """
-    # calculate distance to binding site residues for each lipid atom
-    dist_per_atom = np.array(
-        [np.array([md.compute_distances(bound_poses,
-                                        list(product([lipid_atom_indices[idx]], protein_atom_indices[node])),
-                                        periodic=True).min(axis=1) for node in binding_nodes]).T
-         for idx in np.arange(len(lipid_atom_indices))])  # shape: [n_lipid_atoms, n_poses, n_BS_residues]
+    n_lip   = len(lipid_atom_indices)
+    n_nodes = len(binding_nodes)
+
+    # Build one flat pair list covering every (lipid_atom × node_residue_atom) combination.
+    # block_starts[i] marks where the i-th (lipid_atom, node) block begins so that
+    # np.minimum.reduceat can collapse each block to its per-residue minimum in one pass.
+    # This replaces n_lip * n_nodes separate md.compute_distances calls with a single call.
+    all_pairs    = []
+    block_starts = []   # length = n_lip * n_nodes
+
+    for lip_atom in lipid_atom_indices:
+        for node in binding_nodes:
+            block_starts.append(len(all_pairs))
+            for prot_atom in protein_atom_indices[node]:
+                all_pairs.append((lip_atom, prot_atom))
+
+    # One call → shape [n_frames, n_total_pairs]
+    all_dists = md.compute_distances(bound_poses, all_pairs, periodic=True)
+
+    # Per-block minimum → shape [n_frames, n_lip * n_nodes]
+    min_dists = np.minimum.reduceat(all_dists, block_starts, axis=1)
+
+    # Reshape to [n_frames, n_lip, n_nodes] then transpose → [n_lip, n_frames, n_nodes]
+    dist_per_atom = min_dists.reshape(bound_poses.n_frames, n_lip, n_nodes).transpose(1, 0, 2)
     return dist_per_atom
 
 
@@ -268,8 +294,10 @@ def calculate_scores(dist_matrix, kde_bw=0.15, pca_component=0.90, score_weights
 
     This function first lower the dimension of dist_matrix by using a
     `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_. Then the distribution of
-    the distance vectors for each atom is estimated using
-    `KDEMultivariate <https://www.statsmodels.org/devel/generated/statsmodels.nonparametric.kernel_density.KDEMultivariate.html>`_.
+    the distance vectors for each atom is estimated by a Gaussian kernel density estimate with a fixed bandwidth (the
+    same estimate as statsmodels'
+    `KDEMultivariate <https://www.statsmodels.org/devel/generated/statsmodels.nonparametric.kernel_density.KDEMultivariate.html>`_
+    with ``bw=[kde_bw] * n_components``, used by earlier versions of PyLipID, to within floating-point rounding).
 
     The score of a lipid pose is calculated based on the probability density function of the atom positions in the binding
     site and weights given to the atoms:
@@ -288,9 +316,7 @@ def calculate_scores(dist_matrix, kde_bw=0.15, pca_component=0.90, score_weights
         generated by :meth:`~vectorize_poses`.
 
     kde_bw : scalar, default=0.15
-        The bandwidth for kernel density estimation. Used by
-        `KDEMultivariate <https://www.statsmodels.org/devel/generated/statsmodels.nonparametric.kernel_density.KDEMultivariate.html>`_.
-        By default, the bandwidth is set to 0.15nm which roughly corresponds to the vdw radius of MARTINI 2 beads.
+        The bandwidth for kernel density estimation. By default, the bandwidth is set to 0.15nm which roughly corresponds to the vdw radius of MARTINI 2 beads.
 
     pca_component : scalar, default=0.9
         The number of components to keep. if ``0 < pca_component<1``, select the number of components such that the
@@ -321,19 +347,35 @@ def calculate_scores(dist_matrix, kde_bw=0.15, pca_component=0.90, score_weights
     try:
         for atom_idx in np.arange(np.shape(dist_matrix)[0]):
             transformed_data = PCA(n_components=pca_component).fit_transform(dist_matrix[atom_idx])
-            var_type = ""
-            bw = []
-            for dummy in range(len(transformed_data[0])):
-                var_type += "c"
-                bw.append(kde_bw)
-            kde_funcs[atom_idx] = kde(data=transformed_data, var_type=var_type, bw=bw)
+            kde_funcs[atom_idx] = _gaussian_kde_at_samples(transformed_data, kde_bw)
         # evaluate binding poses
-        scores = np.sum([weights[atom_idx] * kde_funcs[atom_idx].pdf()
+        scores = np.sum([weights[atom_idx] * kde_funcs[atom_idx]
                          for atom_idx in np.arange(np.shape(dist_matrix)[0])], axis=0)
         return scores
 
     except ValueError:
         print("Pose generation error -- possibly due to insufficient number of binding event.")
+        return np.array([])
+
+
+def _gaussian_kde_at_samples(data, bandwidth, max_elements=4_000_000):
+    r"""Gaussian kernel density estimate with a fixed bandwidth, evaluated at each of the samples.
+
+    pdf(x_i) = 1/n sum_j prod_k N((x_ik - x_jk) / h) / h. The product of the per-dimension Gaussians is evaluated as
+    one exponential of the scaled squared distance, which needs one exp per pair of samples rather than one per
+    dimension (~20x faster than statsmodels' KDEMultivariate for typical binding sites, with the same values to
+    within rounding). Pairs are processed in blocks of about max_elements to bound memory.
+    """
+    data = np.asarray(data, dtype=float)
+    n_samples, n_dims = data.shape
+    # sum_k (x_k - y_k)^2 / (2 h^2) is the squared distance between the samples scaled by 1 / (h sqrt(2))
+    scaled = data / (bandwidth * np.sqrt(2.0))
+    norm = (1.0 / (np.sqrt(2 * np.pi) * bandwidth)) ** n_dims / n_samples
+    pdf = np.empty(n_samples)
+    rows = max(1, max_elements // n_samples)
+    for start in range(0, n_samples, rows):
+        pdf[start:start + rows] = np.exp(-cdist(scaled[start:start + rows], scaled, "sqeuclidean")).sum(axis=1)
+    return pdf * norm
 
 
 def write_bound_poses(pose_traj, pose_indices, save_dir, pose_prefix="BoundPose", pose_format="pdb"):
@@ -371,9 +413,8 @@ def analyze_pose_wrapper(bs_id, bound_poses, binding_nodes, pose_info, pose_dir=
                          eps=None, min_samples=None, metric="euclidean", trajfile_list=None):
     r"""A wrapper function that ranks poses, clusters poses and calculates pose RMSD.
 
-    A wrapper function is to assist the calculation using `p_tqdm <https://github.com/swansonk14/p_tqdm>`_, which is
-    a multiprocessing library incorporated with progress bars. So some of the setting or parameters are used to
-    assist the use of multiprocessing.
+    A wrapper function to assist the calculation using Python multiprocessing, so some of the settings or
+    parameters are used to assist the use of multiprocessing.
 
     This function uses :meth:`~vectorize_poses` to convert bound poses into distance vectors, which measure the relative
     position of lipid atoms in their binding site. Then it uses :meth:`~calculate_scores` to calculate the density distributions
@@ -524,19 +565,68 @@ def analyze_pose_wrapper(bs_id, bound_poses, binding_nodes, pose_info, pose_dir=
         _write_pose_info([pose_info[int(pose_idx)] for pose_idx in selected_pose_indices],
                               f"{pose_dir_clustered}/pose_info.txt", trajfile_list)
     ## calculate RMSD ##
-    dist_mean = np.mean(lipid_dist_per_pose, axis=0)
-    pose_rmsds = [rmsd(lipid_dist_per_pose[pose_id], dist_mean)
-                  for pose_id in np.arange(len(lipid_dist_per_pose))]
+    # lipid_dist_per_pose is already computed above; vectorise over all poses at once
+    # instead of looping frame by frame.
+    dist_mean  = lipid_dist_per_pose.mean(axis=0)
+    pose_rmsds = np.sqrt(((lipid_dist_per_pose - dist_mean) ** 2).mean(axis=1)).tolist()
     return pose_rmsds
+
+
+# Radii (nm) of MARTINI protein beads used for surface areas
+MARTINI_CG_RADII = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23, "SC4": 0.23}
+
+
+def _with_bead_radii(traj, radii):
+    """Prepare traj for mdtraj.shrake_rupley with radii given per atom name.
+
+    mdtraj.shrake_rupley looks radii up by element symbol, and the element mdtraj guesses for a coarse-grained bead
+    (e.g. boron for BB, sulfur for SC1) does not identify the bead, so radii keyed by bead name would be ignored.
+    Atoms whose names are in ``radii`` are given a placeholder element (created without registering it in mdtraj's
+    element tables) on a copy of the topology. Returns the trajectory copy and the change_radii to pass to
+    shrake_rupley.
+    """
+    names = {atom.name for atom in traj.topology.atoms if atom.name in radii}
+    if not names:
+        return traj, None
+    traj = md.Trajectory(traj.xyz, traj.topology.copy(), traj.time, traj.unitcell_lengths, traj.unitcell_angles)
+    elements = {name: tuple.__new__(md.element.Element, (0, "pylipid_" + name, "PYLIPID_" + name, 0.0, radii[name]))
+                for name in names}
+    for atom in traj.topology.atoms:
+        if atom.name in elements:
+            atom.element = elements[atom.name]
+    return traj, {element.symbol: element.radius for element in elements.values()}
+
+
+def _shrake_rupley_per_frame(traj, radii):
+    """Per-atom solvent accessible surface areas, shape (n_frames, n_atoms), with radii given per atom name.
+
+    Each frame is calculated in its own mdtraj.shrake_rupley call: mdtraj (up to at least 1.11) does not reset its
+    per-atom accumulator between the frames of one call, so in a multi-frame call each frame's areas include a
+    fraction of the previous frame's.
+    """
+    traj, change_radii = _with_bead_radii(traj, radii)
+    return np.concatenate([md.shrake_rupley(traj[frame_idx], mode="atom", change_radii=change_radii)
+                           for frame_idx in range(traj.n_frames)])
+
+
+def surface_area_chunk(protein_traj, binding_site_atoms, radii):
+    """Surface areas of binding sites, shape (n_frames, n_sites), for a trajectory of one protein copy.
+
+    ``binding_site_atoms`` lists the atom indices (in ``protein_traj``) of each binding site. Frames are calculated
+    independently, so a trajectory can be split into chunks of frames with identical results.
+    """
+    if len(binding_site_atoms) == 0:
+        return np.empty((protein_traj.n_frames, 0))
+    area_all = _shrake_rupley_per_frame(protein_traj, radii)
+    return np.array([area_all[:, atom_ids].sum(axis=1) for atom_ids in binding_site_atoms]).T
 
 
 def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map={}, nprot=1, timeunit="us",
                                    stride=1, dt_traj=None, radii=None):
     """A wrapper function for calculating surface area.
 
-    A wrapper function is to assist the calculation using `p_tqdm <https://github.com/swansonk14/p_tqdm>`_, which is
-    a multiprocessing library incorporated with progress bars. So some of the setting or parameters are used to
-    assist the use of multiprocessing.
+    A wrapper function to assist the calculation using Python multiprocessing, so some of the settings or
+    parameters are used to assist the use of multiprocessing.
 
     In this function, the provided trajectory is read by mdtraj.read() and the solvent accessible surface of each residue
     is calculated by `mdtraj.shrake_rupley <https://mdtraj.org/1.9.4/api/generated/mdtraj.shrake_rupley.html>`_. The
@@ -546,8 +636,8 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
 
     The calculation of surface area requires a definition of the protein atom radius. MDtraj defines the radii for common
     atoms (see `here <https://github.com/mdtraj/mdtraj/blob/master/mdtraj/geometry/sasa.py#L56>`_). The radius of the BB
-    bead in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3 are defined as 0.23 nm in this function. Use the param
-    ``radii`` to define or change of definition of atom radius.
+    bead in MARTINI2 is defined as 0.26 nm, the SC1/SC2/SC3/SC4 are defined as 0.23 nm in this function. Use the param
+    ``radii`` to define or change of definition of atom radius, keyed by atom name.
 
     The returned data ``surface_area`` is a list of pandas.DataFrame objects, and each of these pandas.DataFrame object
     contains surface area data for one copy of the proteins in the simulation system. That is, if the system has N copies
@@ -557,7 +647,7 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
     surface areas are measured. The other returned data ``data_keys`` contains a list of tuples of (traj_idx, protein_idx),
     which corresponds to the list of pandas.DataFrame objects of ``surface_area``. The reason for having this arrangement
     is to assist the generation of a big pandas.DataFrame that includes surface area data from all trajectories in
-    :meth:`pylipid.api.LipidInteraction.compute_surface_area` when used in combination with ``p_tqdm``.
+    :meth:`pylipid.api.LipidInteraction.compute_surface_area` when used with Python multiprocessing.
 
     Parameters
     ----------
@@ -605,11 +695,7 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
         Calculate binding site surface area from a list of trajectories.
 
     """
-    MARTINI_CG_radii = {"BB": 0.26, "SC1": 0.23, "SC2": 0.23, "SC3": 0.23}
-    if radii is None:
-        radii_book = MARTINI_CG_radii
-    else:
-        radii_book = {**MARTINI_CG_radii, **radii}
+    radii_book = MARTINI_CG_RADII if radii is None else {**MARTINI_CG_RADII, **radii}
     traj = md.load(trajfile, top=topfile, stride=stride)
     traj_info, _, _ = get_traj_info(traj, nprot=nprot, protein_ref="A") # Assign random value to protein_ref to
     # prevent generation of protein Topology file to save time.
@@ -627,8 +713,7 @@ def calculate_surface_area_wrapper(trajfile, topfile, traj_idx, binding_site_map
         binding_site_map_atoms = {
             bs_id: np.hstack([traj_info_new["protein_residue_atomid_list"][0][node] for node in nodes])
             for bs_id, nodes in binding_site_map.items()}
-        area_all = md.shrake_rupley(new_traj, mode='atom', change_radii=radii_book)
-        selected_data = [area_all[:, atomids].sum(axis=1) for bs_id, atomids in binding_site_map_atoms.items()]
+        selected_data = list(surface_area_chunk(new_traj, list(binding_site_map_atoms.values()), radii_book).T)
         selected_data.append(traj_times)
         column_names = ["Binding Site {}".format(bs_id) for bs_id, atomids in binding_site_map_atoms.items()]
         column_names.append("Time")

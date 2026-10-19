@@ -1,12 +1,12 @@
 channels:
   - conda-forge
 dependencies:
-  - python>=3
+  - python=3.12
   - pandoc
   - ipykernel
   - pip
-  - sphinx=4.0.2
+  - sphinx>=7
   - pip:
     - nbsphinx
-    - pylipid
     - furo
+    - sphinx_rtd_theme
