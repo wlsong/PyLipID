@@ -26,7 +26,7 @@ Features
 - Kinetic parameters: koff and residence times per residue and site.
 - Interaction metrics including occupancy, count, duration.
 - Representative bound pose extraction and clustering.
-- SASA calculations per residue and site.
+- Binding site surface area (SASA) calculations.
 - Publication-ready plots and PyMOL scripts.
 
 Installation
@@ -120,7 +120,8 @@ Performance
 -----------
 - collect_residue_contacts computes distances in large batches instead of once per lipid, and shares
   the batches between worker processes that read the coordinates from shared memory (``num_cpus``;
-  parallel contacts suggested by Alex Moger). Results are identical to the serial calculation; on a
+  based on Alex Moger's parallel contacts in `PR #1 <https://github.com/pstansfeld/PyLipID/pull/1>`_).
+  Results are identical to the serial calculation; on a
   2 x 2,000-frame system contacts take 8 s instead of 40 s.
 - Bound-pose scoring evaluates the kernel density estimate in numpy (~20x faster; same scores to
   within floating-point rounding).
@@ -153,9 +154,12 @@ Citation
         author  = {Song, Wanling and Corey, Robin A. and Ansell, T. Bertie and
                    Cassidy, C. Keith and Horrell, Michael R. and Duncan, Anna L.
                    and Stansfeld, Phillip J. and Sansom, Mark S.P.},
-        title   = {PyLipID: A Python package for analysis of protein-lipid
-                   interactions from MD simulations},
+        title   = {PyLipID: A Python Package for Analysis of Protein-Lipid
+                   Interactions from Molecular Dynamics Simulations},
         journal = {J. Chem. Theory Comput.},
+        volume  = {18},
+        number  = {2},
+        pages   = {1188--1201},
         year    = {2022},
         doi     = {10.1021/acs.jctc.1c00708},
         url     = {https://doi.org/10.1021/acs.jctc.1c00708},
