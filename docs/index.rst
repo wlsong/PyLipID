@@ -21,21 +21,22 @@ Citation |DOI for Citing PyLipID|
 
 If you use PyLipID in scientific research, please cite the following paper: ::
 
-	@article{song_pylipid_2021,
-		author = {Song, Wanling. and Corey, Robin A. and Ansell, T. Bertie. and
-		            Cassidy, C. Keith. and Horrell, Michael R. and Duncan, Anna L.
+	@article{song_pylipid_2022,
+		author = {Song, Wanling and Corey, Robin A. and Ansell, T. Bertie and
+		            Cassidy, C. Keith and Horrell, Michael R. and Duncan, Anna L.
 		            and Stansfeld, Phillip J. and Sansom, Mark S.P.},
-		title = {PyLipID: A Python package for analysis of protein-lipid interactions from MD simulations},
-		journal = {BioRxiv},
-		year = {2021},
-		url = {https://doi.org/10.1101/2021.07.14.452312},
-		doi = {10.1101/2021.07.14.452312},
-		urldate = {2021-07-14},
-		month = jul,
+		title = {PyLipID: A Python Package for Analysis of Protein-Lipid Interactions from Molecular Dynamics Simulations},
+		journal = {J. Chem. Theory Comput.},
+		volume = {18},
+		number = {2},
+		pages = {1188--1201},
+		year = {2022},
+		doi = {10.1021/acs.jctc.1c00708},
+		url = {https://doi.org/10.1021/acs.jctc.1c00708},
 	}
 
-.. |DOI for Citing PyLipID| image:: https://img.shields.io/badge/DOI-10.1101/2021.07.14.452312-blue
-   :target: https://doi.org/10.1101/2021.07.14.452312
+.. |DOI for Citing PyLipID| image:: https://img.shields.io/badge/DOI-10.1021/acs.jctc.1c00708-blue
+   :target: https://doi.org/10.1021/acs.jctc.1c00708
 
 
 

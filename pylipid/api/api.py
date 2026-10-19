@@ -180,8 +180,8 @@ class LipidInteraction:
         rows, including, for each residue, the interaction residence times, averaged durations, occupancy and lipid
         count etc., and binding site IDs and the various interaction data of the belonging binding site.
 
-        For the computing-demanding functions of, i.e. ``compute_residue_koff``, ``compute_site_koff``,
-        ``analyze_bound_poses``, and ``compute_surface_area``, PyLipID uses the python multiprocessing library
+        For the computing-demanding functions of, i.e. ``collect_residue_contacts``, ``compute_residue_koff``,
+        ``compute_site_koff``, ``analyze_bound_poses``, and ``compute_surface_area``, PyLipID uses the python multiprocessing library
         to speed up the calculation. Users can specify the number of CPUs these functions can use, otherwise all the
         CPUs in the system will be used by default.
 
