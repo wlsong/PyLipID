@@ -80,6 +80,11 @@ PyLipID runs its calculations in parallel worker processes. When running it as a
 code under ``if __name__ == "__main__":`` (required on macOS and Windows, where the script would otherwise
 fail or hang); Jupyter notebooks need no change.
 
+What's New in v1.6.1
+====================
+Documentation and packaging only; results are unchanged from v1.6.0. The README and docs cite the published
+JCTC paper, documentation links point at this repository, and the package lists its current maintainer.
+
 What's New in v1.6.0
 ====================
 
